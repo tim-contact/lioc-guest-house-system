@@ -13,8 +13,9 @@ RUN apk add --no-cache \
         nodejs \
         npm \
         postgresql-dev \
-        $PHPIZE_DEPS \
-    && docker-php-ext-install \
+        $PHPIZE_DEPS
+
+RUN docker-php-ext-install \
         bcmath \
         intl \
         pdo_pgsql \
@@ -67,9 +68,10 @@ RUN apk add --no-cache \
         nss \
         postgresql-dev \
         supervisor \
-        ttf-freefont \
-        $PHPIZE_DEPS \
-    && docker-php-ext-install \
+        font-freefont \
+        $PHPIZE_DEPS
+
+RUN docker-php-ext-install \
         bcmath \
         intl \
         opcache \
