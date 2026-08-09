@@ -1,17 +1,42 @@
 ARG PHP_VERSION=8.5
 
-FROM node:22-alpine AS assets
+FROM php:${PHP_VERSION}-cli-alpine AS assets
 
 WORKDIR /app
 
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 
+RUN apk add --no-cache \
+        bash \
+        icu-dev \
+        libzip-dev \
+        nodejs \
+        npm \
+        postgresql-dev \
+        $PHPIZE_DEPS \
+    && docker-php-ext-install \
+        bcmath \
+        intl \
+        pdo_pgsql \
+        zip
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+COPY composer.json composer.lock ./
+RUN composer install \
+    --no-dev \
+    --no-interaction \
+    --prefer-dist \
+    --no-scripts \
+    --no-autoloader
+
 COPY package.json package-lock.json ./
 RUN npm ci
 
-COPY components.json tsconfig.json vite.config.ts ./
-COPY resources ./resources
-COPY public ./public
+COPY . .
+
+RUN composer dump-autoload --optimize \
+    && php artisan package:discover --ansi
 
 RUN npm run build
 
