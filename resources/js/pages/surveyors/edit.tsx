@@ -1,0 +1,113 @@
+import type { CrudConfig } from '@/components/crud/crud-types';
+import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
+import type { ExportColumn } from '@/lib/export-xlsx';
+import { destroy, store, update } from '@/routes/surveyors';
+
+interface Surveyor {
+    id: number;
+    survey_company: string;
+    name: string;
+    mail_id: string | null;
+    contact: string | null;
+    barge_id: string | null;
+}
+
+interface SurveyorsEditProps {
+    surveyors: Surveyor[];
+    barges: { imo: string; name: string }[];
+}
+
+export default function SurveyorsEdit({
+    surveyors,
+    barges,
+}: SurveyorsEditProps) {
+    const bargeOptions = barges.map((barge) => ({
+        value: barge.imo,
+        label: barge.name,
+    }));
+
+    const bargeName = (imo: string | null): string =>
+        bargeOptions.find((barge) => barge.value === imo)?.label ?? '—';
+
+    const exportColumns: ExportColumn<Surveyor>[] = [
+        {
+            header: 'Survey Company',
+            value: (surveyor) => surveyor.survey_company,
+        },
+        { header: 'Name', value: (surveyor) => surveyor.name },
+        { header: 'Mail ID', value: (surveyor) => surveyor.mail_id ?? '' },
+        { header: 'Contact', value: (surveyor) => surveyor.contact ?? '' },
+        { header: 'Barge', value: (surveyor) => bargeName(surveyor.barge_id) },
+    ];
+
+    const config: CrudConfig<Surveyor> = {
+        title: 'Surveyors',
+        entityLabel: 'Surveyor',
+        filename: 'surveyors',
+        emptyText: 'No surveyors yet.',
+        pk: (surveyor) => surveyor.id,
+        defaultSortKey: 'survey_company',
+        exportColumns,
+        editTitle: (surveyor) => surveyor.name,
+        deleteLabel: (surveyor) =>
+            `${surveyor.name} (${surveyor.survey_company})`,
+        columns: [
+            {
+                header: 'Survey Company',
+                sortKey: 'survey_company',
+                cell: (surveyor) => surveyor.survey_company,
+                className: 'font-medium',
+            },
+            {
+                header: 'Name',
+                sortKey: 'name',
+                cell: (surveyor) => surveyor.name,
+            },
+            {
+                header: 'Mail ID',
+                sortKey: 'mail_id',
+                cell: (surveyor) => surveyor.mail_id ?? '—',
+            },
+            {
+                header: 'Contact',
+                sortKey: 'contact',
+                cell: (surveyor) => surveyor.contact ?? '—',
+            },
+            {
+                header: 'Barge',
+                sortKey: 'barge_id',
+                cell: (surveyor) => bargeName(surveyor.barge_id),
+            },
+        ],
+        fields: [
+            { name: 'survey_company', label: 'Survey Company' },
+            { name: 'name', label: 'Name' },
+            { name: 'mail_id', label: 'Mail ID', type: 'email' },
+            { name: 'contact', label: 'Contact' },
+            {
+                name: 'barge_id',
+                label: 'Barge',
+                type: 'select',
+                options: bargeOptions,
+            },
+        ],
+        toFormData: (surveyor) => ({
+            survey_company: surveyor?.survey_company ?? '',
+            name: surveyor?.name ?? '',
+            mail_id: surveyor?.mail_id ?? '',
+            contact: surveyor?.contact ?? '',
+            barge_id: surveyor?.barge_id ?? '',
+        }),
+        routes: {
+            store: () => store(),
+            update: (id) => update(Number(id)),
+            destroy: (id) => destroy(Number(id)),
+        },
+    };
+
+    return <ResourceCrudPage rows={surveyors} config={config} />;
+}
+
+SurveyorsEdit.layout = {
+    title: 'Surveyors',
+};

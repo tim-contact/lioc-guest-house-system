@@ -1,0 +1,578 @@
+import { tableUpdate } from '@/actions/App/Http/Controllers/OrderController';
+import type { CrudConfig } from '@/components/crud/crud-types';
+import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
+import { FUEL_GRADES } from '@/lib/domain';
+import type { ExportColumn } from '@/lib/export-xlsx';
+import {
+    formatMoney,
+    optionLabel,
+    shortDate,
+    shortDateTime,
+    str,
+    toDateInput,
+    toDateTimeInput,
+} from '@/lib/utils';
+import type { AgentOption, AgentPicOption, EnumOption } from '@/types';
+
+interface Order {
+    id: number;
+    enquiry_id: number;
+    order_number: string;
+    order_date: string | null;
+    customer_id: string;
+    vessel_id: string | null;
+    vessel_name: string | null;
+    port_id: number | null;
+    eta: string | null;
+    laycan_from: string | null;
+    laycan_to: string | null;
+    delivery_mode: string | null;
+    delivery_location: string | null;
+    product_type: string | null;
+    barge_id: string | null;
+    agent_id: number | null;
+    agent_name: string | null;
+    agent_pic_id: number | null;
+    pic: string | null;
+    mobile_no: string | null;
+    credit_terms: string | null;
+    vlsfo_quantity_low: string | null;
+    vlsfo_quantity_high: string | null;
+    vlsfo_qty_range: string | null;
+    vlsfo_rate: string | null;
+    vlsfo_final_qty: string | null;
+    vlsfo_bdn_qty: string | null;
+    mgo_quantity_low: string | null;
+    mgo_quantity_high: string | null;
+    mgo_qty_range: string | null;
+    mgo_rate: string | null;
+    mgo_final_qty: string | null;
+    mgo_bdn_qty: string | null;
+    hsfo_quantity_low: string | null;
+    hsfo_quantity_high: string | null;
+    hsfo_qty_range: string | null;
+    hsfo_rate: string | null;
+    hsfo_final_qty: string | null;
+    hsfo_bdn_qty: string | null;
+    invoice_value: string | null;
+    invoice_date: string | null;
+    payment_due_date: string | null;
+    amount_received: string | null;
+    payment_receipt_date: string | null;
+    balance_amount: number;
+    status: string;
+    created_at: string | null;
+    updated_at: string | null;
+}
+
+interface OrdersTableProps {
+    orders: Order[];
+    agents: AgentOption[];
+    agentPics: AgentPicOption[];
+    statusOptions: EnumOption[];
+    deliveryModeOptions: EnumOption[];
+    supplyLocationOptions: EnumOption[];
+    productTypeOptions: EnumOption[];
+    creditTermsOptions: EnumOption[];
+}
+
+export default function OrdersTable({
+    orders,
+    agents,
+    agentPics,
+    statusOptions,
+    deliveryModeOptions,
+    supplyLocationOptions,
+    productTypeOptions,
+    creditTermsOptions,
+}: OrdersTableProps) {
+    const agentOptions = agents.map((agent) => ({
+        value: String(agent.id),
+        label: agent.name,
+    }));
+
+    // This select cannot filter on the chosen agency, so name the agency in every option.
+    const agencyNames = new Map(agents.map((agent) => [agent.id, agent.name]));
+    const agentPicOptions = agentPics.map((pic) => ({
+        value: String(pic.id),
+        label: `${pic.name} — ${agencyNames.get(pic.agent_id) ?? 'Unknown agency'}`,
+    }));
+
+    const exportColumns: ExportColumn<Order>[] = [
+        { header: 'ID', value: (o) => o.id },
+        { header: 'Enquiry ID', value: (o) => o.enquiry_id },
+        { header: 'Order Number', value: (o) => o.order_number },
+        { header: 'Order Date', value: (o) => o.order_date ?? '' },
+        { header: 'Customer ID', value: (o) => o.customer_id },
+        { header: 'Vessel ID', value: (o) => o.vessel_id ?? '' },
+        { header: 'Vessel Name', value: (o) => o.vessel_name ?? '' },
+        { header: 'Port ID', value: (o) => o.port_id ?? '' },
+        { header: 'ETA', value: (o) => o.eta ?? '' },
+        { header: 'Laycan From', value: (o) => o.laycan_from ?? '' },
+        { header: 'Laycan To', value: (o) => o.laycan_to ?? '' },
+        {
+            header: 'Delivery Mode',
+            value: (o) => optionLabel(deliveryModeOptions, o.delivery_mode),
+        },
+        {
+            header: 'Supply Location',
+            value: (o) =>
+                optionLabel(supplyLocationOptions, o.delivery_location),
+        },
+        {
+            header: 'Product Type',
+            value: (o) => optionLabel(productTypeOptions, o.product_type),
+        },
+        { header: 'Barge ID', value: (o) => o.barge_id ?? '' },
+        { header: 'Agent ID', value: (o) => o.agent_id ?? '' },
+        { header: 'Agent Name', value: (o) => o.agent_name ?? '' },
+        { header: 'Agent PIC ID', value: (o) => o.agent_pic_id ?? '' },
+        { header: 'PIC', value: (o) => o.pic ?? '' },
+        { header: 'Mobile No', value: (o) => o.mobile_no ?? '' },
+        {
+            header: 'Credit Terms',
+            value: (o) => optionLabel(creditTermsOptions, o.credit_terms),
+        },
+        ...FUEL_GRADES.flatMap((product): ExportColumn<Order>[] => [
+            {
+                header: `${product.label} Qty Low`,
+                value: (o) => o[`${product.key}_quantity_low`] ?? '',
+            },
+            {
+                header: `${product.label} Qty High`,
+                value: (o) => o[`${product.key}_quantity_high`] ?? '',
+            },
+            {
+                header: `${product.label} Qty Range`,
+                value: (o) => o[`${product.key}_qty_range`] ?? '',
+            },
+            {
+                header: `${product.label} Rate`,
+                value: (o) => o[`${product.key}_rate`] ?? '',
+            },
+            {
+                header: `${product.label} Final Qty`,
+                value: (o) => o[`${product.key}_final_qty`] ?? '',
+            },
+            {
+                header: `${product.label} BDN Qty`,
+                value: (o) => o[`${product.key}_bdn_qty`] ?? '',
+            },
+        ]),
+        { header: 'Invoice Value', value: (o) => o.invoice_value ?? '' },
+        { header: 'Invoice Date', value: (o) => o.invoice_date ?? '' },
+        {
+            header: 'Payment Due Date',
+            value: (o) => o.payment_due_date ?? '',
+        },
+        {
+            header: 'Amount Received',
+            value: (o) => o.amount_received ?? '',
+        },
+        {
+            header: 'Payment Receipt Date',
+            value: (o) => o.payment_receipt_date ?? '',
+        },
+        { header: 'Balance Amount', value: (o) => o.balance_amount },
+        {
+            header: 'Status',
+            value: (o) => optionLabel(statusOptions, o.status),
+        },
+        { header: 'Created At', value: (o) => o.created_at ?? '' },
+        { header: 'Updated At', value: (o) => o.updated_at ?? '' },
+    ];
+
+    const config: CrudConfig<Order> = {
+        title: 'Orders',
+        entityLabel: 'Order',
+        filename: 'orders',
+        emptyText: 'No orders yet.',
+        pk: (order) => order.id,
+        defaultSortKey: 'id',
+        canCreate: false,
+        formColumns: 2,
+        dialogClassName: 'sm:max-w-3xl',
+        exportColumns,
+        editTitle: (order) => order.order_number,
+        canDelete: false,
+        columns: [
+            {
+                header: 'Order Number',
+                sortKey: 'order_number',
+                cell: (o) => o.order_number,
+                className: 'font-medium',
+            },
+            {
+                header: 'Order Date',
+                sortKey: 'order_date',
+                cell: (o) => shortDate(o.order_date),
+            },
+            {
+                header: 'Customer ID',
+                sortKey: 'customer_id',
+                cell: (o) => o.customer_id,
+            },
+            {
+                header: 'Vessel Name',
+                sortKey: 'vessel_name',
+                cell: (o) => o.vessel_name ?? '—',
+            },
+            {
+                header: 'Vessel ID',
+                sortKey: 'vessel_id',
+                cell: (o) => o.vessel_id ?? '—',
+            },
+            {
+                header: 'Port ID',
+                sortKey: 'port_id',
+                cell: (o) => o.port_id ?? '—',
+            },
+            {
+                header: 'ETA',
+                sortKey: 'eta',
+                cell: (o) => shortDateTime(o.eta),
+            },
+            {
+                header: 'Laycan From',
+                sortKey: 'laycan_from',
+                cell: (o) => shortDate(o.laycan_from),
+            },
+            {
+                header: 'Laycan To',
+                sortKey: 'laycan_to',
+                cell: (o) => shortDate(o.laycan_to),
+            },
+            {
+                header: 'Delivery Mode',
+                sortKey: 'delivery_mode',
+                cell: (o) => optionLabel(deliveryModeOptions, o.delivery_mode),
+            },
+            {
+                header: 'Supply Location',
+                sortKey: 'delivery_location',
+                cell: (o) =>
+                    optionLabel(supplyLocationOptions, o.delivery_location),
+            },
+            {
+                header: 'Product Type',
+                sortKey: 'product_type',
+                cell: (o) => optionLabel(productTypeOptions, o.product_type),
+            },
+            {
+                header: 'Barge ID',
+                sortKey: 'barge_id',
+                cell: (o) => o.barge_id ?? '—',
+            },
+            {
+                header: 'Agent ID',
+                sortKey: 'agent_id',
+                cell: (o) => o.agent_id ?? '—',
+            },
+            {
+                header: 'Agent Name',
+                sortKey: 'agent_name',
+                cell: (o) => o.agent_name ?? '—',
+            },
+            {
+                header: 'Agent PIC ID',
+                sortKey: 'agent_pic_id',
+                cell: (o) => o.agent_pic_id ?? '—',
+            },
+            { header: 'PIC', sortKey: 'pic', cell: (o) => o.pic ?? '—' },
+            {
+                header: 'Mobile No',
+                sortKey: 'mobile_no',
+                cell: (o) => o.mobile_no ?? '—',
+            },
+            {
+                header: 'Credit Terms',
+                sortKey: 'credit_terms',
+                cell: (o) => optionLabel(creditTermsOptions, o.credit_terms),
+            },
+            ...FUEL_GRADES.flatMap((product) => [
+                {
+                    header: `${product.label} Qty Range`,
+                    sortKey: `${product.key}_qty_range` as const,
+                    cell: (o: Order) => o[`${product.key}_qty_range`] ?? '—',
+                },
+                {
+                    header: `${product.label} Rate`,
+                    sortKey: `${product.key}_rate` as const,
+                    align: 'right' as const,
+                    cell: (o: Order) => formatMoney(o[`${product.key}_rate`]),
+                },
+                {
+                    header: `${product.label} Final Qty`,
+                    sortKey: `${product.key}_final_qty` as const,
+                    align: 'right' as const,
+                    cell: (o: Order) => o[`${product.key}_final_qty`] ?? '—',
+                },
+                {
+                    header: `${product.label} BDN Qty`,
+                    sortKey: `${product.key}_bdn_qty` as const,
+                    align: 'right' as const,
+                    cell: (o: Order) => o[`${product.key}_bdn_qty`] ?? '—',
+                },
+            ]),
+            {
+                header: 'Invoice Value',
+                sortKey: 'invoice_value',
+                align: 'right',
+                cell: (o) => formatMoney(o.invoice_value),
+            },
+            {
+                header: 'Invoice Date',
+                sortKey: 'invoice_date',
+                cell: (o) => shortDate(o.invoice_date),
+            },
+            {
+                header: 'Payment Due Date',
+                sortKey: 'payment_due_date',
+                cell: (o) => shortDate(o.payment_due_date),
+            },
+            {
+                header: 'Amount Received',
+                sortKey: 'amount_received',
+                align: 'right',
+                cell: (o) => formatMoney(o.amount_received),
+            },
+            {
+                header: 'Payment Receipt Date',
+                sortKey: 'payment_receipt_date',
+                cell: (o) => shortDate(o.payment_receipt_date),
+            },
+            {
+                header: 'Balance',
+                sortKey: 'balance_amount',
+                align: 'right',
+                cell: (o) => formatMoney(o.balance_amount),
+            },
+            {
+                header: 'Status',
+                sortKey: 'status',
+                cell: (o) => optionLabel(statusOptions, o.status),
+            },
+            {
+                header: 'Created At',
+                sortKey: 'created_at',
+                cell: (o) => shortDateTime(o.created_at),
+            },
+            {
+                header: 'Updated At',
+                sortKey: 'updated_at',
+                cell: (o) => shortDateTime(o.updated_at),
+            },
+        ],
+        fields: [
+            { name: 'order_number', label: 'Order Number', section: 'Core' },
+            {
+                name: 'order_date',
+                label: 'Order Date',
+                type: 'date',
+                section: 'Core',
+            },
+            { name: 'enquiry_id', label: 'Enquiry ID', section: 'Core' },
+            { name: 'customer_id', label: 'Customer ID', section: 'Core' },
+            { name: 'vessel_id', label: 'Vessel ID', section: 'Core' },
+            { name: 'vessel_name', label: 'Vessel Name', section: 'Core' },
+            { name: 'port_id', label: 'Port ID', section: 'Core' },
+            {
+                name: 'eta',
+                label: 'ETA',
+                type: 'datetime-local',
+                section: 'Core',
+            },
+            {
+                name: 'laycan_from',
+                label: 'Laycan From',
+                type: 'date',
+                section: 'Core',
+            },
+            {
+                name: 'laycan_to',
+                label: 'Laycan To',
+                type: 'date',
+                section: 'Core',
+            },
+            {
+                name: 'agent_id',
+                label: 'Agency',
+                type: 'select',
+                options: agentOptions,
+                section: 'Core',
+            },
+            {
+                name: 'agent_pic_id',
+                label: 'PIC',
+                type: 'select',
+                options: agentPicOptions,
+                section: 'Core',
+            },
+            { name: 'barge_id', label: 'Barge ID', section: 'Core' },
+            { name: 'mobile_no', label: 'Mobile No', section: 'Core' },
+            {
+                name: 'credit_terms',
+                label: 'Credit Terms',
+                type: 'select',
+                options: creditTermsOptions,
+                section: 'Core',
+            },
+            {
+                name: 'status',
+                label: 'Status',
+                type: 'select',
+                options: statusOptions,
+                section: 'Core',
+            },
+            {
+                name: 'delivery_mode',
+                label: 'Delivery Mode',
+                type: 'select',
+                options: deliveryModeOptions,
+                section: 'Delivery',
+            },
+            {
+                name: 'delivery_location',
+                label: 'Supply Location',
+                type: 'select',
+                options: supplyLocationOptions,
+                section: 'Delivery',
+            },
+            {
+                name: 'product_type',
+                label: 'Product Type',
+                type: 'select',
+                options: productTypeOptions,
+                section: 'Delivery',
+            },
+            ...FUEL_GRADES.flatMap((product) => [
+                {
+                    name: `${product.key}_quantity_low`,
+                    label: 'Minimum Quantity',
+                    type: 'number' as const,
+                    step: '0.001',
+                    section: product.label,
+                },
+                {
+                    name: `${product.key}_quantity_high`,
+                    label: 'Maximum Quantity',
+                    type: 'number' as const,
+                    step: '0.001',
+                    section: product.label,
+                },
+                {
+                    name: `${product.key}_rate`,
+                    label: 'Rate',
+                    type: 'number' as const,
+                    step: '0.01',
+                    section: product.label,
+                },
+                {
+                    name: `${product.key}_final_qty`,
+                    label: 'Final Quantity',
+                    type: 'number' as const,
+                    step: '0.001',
+                    section: product.label,
+                },
+                {
+                    name: `${product.key}_bdn_qty`,
+                    label: 'BDN Quantity',
+                    type: 'number' as const,
+                    step: '0.001',
+                    section: product.label,
+                },
+            ]),
+            {
+                name: 'invoice_value',
+                label: 'Invoice Value',
+                type: 'number',
+                step: '0.01',
+                section: 'Invoicing',
+            },
+            {
+                name: 'invoice_date',
+                label: 'Invoice Date',
+                type: 'date',
+                section: 'Invoicing',
+            },
+            {
+                name: 'payment_due_date',
+                label: 'Payment Due Date',
+                type: 'date',
+                section: 'Invoicing',
+            },
+            {
+                name: 'amount_received',
+                label: 'Amount Received',
+                type: 'number',
+                step: '0.01',
+                section: 'Invoicing',
+            },
+            {
+                name: 'payment_receipt_date',
+                label: 'Payment Receipt Date',
+                type: 'date',
+                section: 'Invoicing',
+            },
+        ],
+        toFormData: (order) => ({
+            order_number: str(order?.order_number),
+            order_date: toDateInput(order?.order_date),
+            enquiry_id: str(order?.enquiry_id),
+            customer_id: str(order?.customer_id),
+            vessel_id: str(order?.vessel_id),
+            vessel_name: str(order?.vessel_name),
+            port_id: str(order?.port_id),
+            eta: toDateTimeInput(order?.eta),
+            laycan_from: toDateInput(order?.laycan_from),
+            laycan_to: toDateInput(order?.laycan_to),
+            agent_id: str(order?.agent_id),
+            agent_pic_id: str(order?.agent_pic_id),
+            barge_id: str(order?.barge_id),
+            mobile_no: str(order?.mobile_no),
+            credit_terms: str(order?.credit_terms),
+            status: order?.status ?? 'pending',
+            delivery_mode: str(order?.delivery_mode),
+            delivery_location: str(order?.delivery_location),
+            product_type: str(order?.product_type),
+            ...Object.fromEntries(
+                FUEL_GRADES.flatMap((product) => [
+                    [
+                        `${product.key}_quantity_low`,
+                        str(order?.[`${product.key}_quantity_low`]),
+                    ],
+                    [
+                        `${product.key}_quantity_high`,
+                        str(order?.[`${product.key}_quantity_high`]),
+                    ],
+                    [
+                        `${product.key}_rate`,
+                        str(order?.[`${product.key}_rate`]),
+                    ],
+                    [
+                        `${product.key}_final_qty`,
+                        str(order?.[`${product.key}_final_qty`]),
+                    ],
+                    [
+                        `${product.key}_bdn_qty`,
+                        str(order?.[`${product.key}_bdn_qty`]),
+                    ],
+                ]),
+            ),
+            invoice_value: str(order?.invoice_value),
+            invoice_date: toDateInput(order?.invoice_date),
+            payment_due_date: toDateInput(order?.payment_due_date),
+            amount_received: str(order?.amount_received),
+            payment_receipt_date: toDateInput(order?.payment_receipt_date),
+        }),
+        routes: {
+            update: (id) => tableUpdate(Number(id)),
+        },
+    };
+
+    return <ResourceCrudPage rows={orders} config={config} />;
+}
+
+OrdersTable.layout = {
+    title: 'Orders',
+};
