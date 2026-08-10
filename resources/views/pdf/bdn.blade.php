@@ -4,12 +4,97 @@
     <meta charset="utf-8">
     <title>eBDN</title>
     <style>
+        .confidential {
+            font-size: 8px;
+            line-height: 1.35;
+            color: #374151;
+            page-break-inside: avoid;
+        }
+
+        .confidential p {
+            margin: 0 0 3px;
+            text-align: justify;
+        }
+
+        .confidential-lead {
+            font-weight: 700;
+        }
+
+        .confidential-top {
+            margin: 6px 0 8px;
+        }
+
+        .confidential-bottom {
+            margin-top: 8px;
+            padding-top: 4px;
+            border-top: 1px solid #d1d5db;
+        }
+
+        .confidential-check,
+        .confidential-item {
+            display: table;
+            width: 100%;
+            margin-bottom: 2px;
+        }
+
+        .confidential-check > span,
+        .confidential-item > span {
+            display: table-cell;
+            vertical-align: top;
+        }
+
+        .confidential-check-box {
+            width: 14px;
+        }
+
+        .confidential-check-box .checkbox {
+            margin-left: 0;
+        }
+
+        .confidential-list {
+            margin: 2px 0 4px 16px;
+        }
+
+        .confidential-item-num {
+            width: 14px;
+        }
+
+
         body {
             margin: 0;
             font-family: Helvetica, Arial, sans-serif;
             font-size: 9px;
             line-height: 1.35;
             color: #111827;
+        }
+
+        .doc-header {
+            display: table;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .doc-header > div {
+            display: table-cell;
+            vertical-align: top;
+        }
+
+        .doc-header p {
+            margin: 0;
+        }
+
+        .doc-header-details {
+            text-align: right;
+            padding-right: 8px;
+        }
+
+        .doc-header-logo {
+            width: 52px;
+            text-align: right;
+        }
+
+        .doc-header-logo img {
+            width: 52px;
         }
 
         .serial {
@@ -22,7 +107,7 @@
             font-size: 14px;
             font-weight: 700;
             letter-spacing: 0.06em;
-            text-align: center;
+            text-align: left;
             text-transform: uppercase;
         }
 
@@ -243,9 +328,7 @@
 </head>
 <body>
     <div class="ebdn">
-        <div class="serial">Serial No: {{ $bdn?->bdn_number }}</div>
-
-        @include('pdf.partials.bdn-confidential', ['section' => 'top'])
+        @include('pdf.partials.header')
 
         <h1 class="title">Bunker Delivery Note</h1>
 
@@ -359,6 +442,8 @@
                 @endforeach
             </tbody>
         </table>
+
+        @include('pdf.partials.bdn-confidential', ['section' => 'top'])
 
         <div class="declarations">
             @foreach ([

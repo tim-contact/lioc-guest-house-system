@@ -1,5 +1,20 @@
-<div style="width: 100%; padding: 0 12mm; font-family: Helvetica, Arial, sans-serif; font-size: 10px; color: #111827; -webkit-print-color-adjust: exact;">
-    <div style="border-bottom: 1px solid #d1d5db; padding-bottom: 4px; font-weight: 700; letter-spacing: 0.12em;">
-        HEADER
+<div class="doc-header">
+    <div class="doc-header-serial">
+        <div class="serial">Serial No: {{ $bdn?->bdn_number }}</div>
+        <p>placeholder</p>
+        <p>placeholder</p>
+    </div>
+
+    <div class="doc-header-details">
+        <p>placeholder</p>
+        <p>placeholder</p>
+        <p>placeholder</p>
+        <p>placeholder</p>
+    </div>
+
+    <div class="doc-header-logo">
+        @if (file_exists(public_path('images/logo.png')))
+            <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('images/logo.png'))) }}" alt="">
+        @endif
     </div>
 </div>
