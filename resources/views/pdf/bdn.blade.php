@@ -83,22 +83,41 @@
             margin: 0;
         }
 
+        .doc-header-serial {
+            font-size: 7px;
+            line-height: 1.3;
+        }
+
+        .doc-header .title {
+            margin: 5px 0 0;
+        }
+
         .doc-header-details {
-            text-align: right;
             padding-right: 8px;
+            text-align: right;
+            font-size: 7px;
+            line-height: 1.3;
+        }
+
+        .doc-header-name {
+            margin-bottom: 2px;
+            font-size: 11px;
+            font-weight: 700;
         }
 
         .doc-header-logo {
-            width: 52px;
+            width: 80px;
             text-align: right;
         }
 
         .doc-header-logo img {
-            width: 52px;
+            width: 76px;
+            height: 76px;
         }
 
         .serial {
-            margin-bottom: 4px;
+            margin-bottom: 3px;
+            font-size: 9px;
             font-weight: 700;
         }
 
@@ -329,8 +348,6 @@
 <body>
     <div class="ebdn">
         @include('pdf.partials.header')
-
-        <h1 class="title">Bunker Delivery Note</h1>
 
         <table class="grid">
             <tr>

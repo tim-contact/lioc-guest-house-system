@@ -47,7 +47,8 @@
     </div>
 @else
     <div class="confidential confidential-bottom">
-        <p>placeholder</p>
-        <p>placeholder</p>
+        <p>Representative Samples drawn, sealed and delivered in accordance with Lanka IOC PLC's General Terms and Conditions of Sales in presence 
+            of the Master of the above named Vessel or his authorised representative.</p>
+        <p>Quantity delivered by Lanka IOC PLC has been verified and found correct.</p>
     </div>
 @endif
