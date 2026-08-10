@@ -4,17 +4,12 @@
     <meta charset="utf-8">
     <title>eBDN</title>
     <style>
-        * {
-            box-sizing: border-box;
-        }
-
         body {
             margin: 0;
             font-family: Helvetica, Arial, sans-serif;
             font-size: 9px;
             line-height: 1.35;
             color: #111827;
-            -webkit-print-color-adjust: exact;
         }
 
         .serial {
@@ -89,46 +84,51 @@
         }
 
         .declaration-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 8px;
+            display: table;
+            width: 100%;
             padding: 2px 0;
             border-bottom: 1px dotted #d1d5db;
         }
 
+        .declaration-row > span {
+            display: table-cell;
+        }
+
         .declaration-value {
+            text-align: right;
             font-weight: 700;
             white-space: nowrap;
         }
 
-        .sampling-method {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin: 6px 0 8px;
-            padding: 3px 0;
-            border-top: 1px solid #111827;
+        .sampling-method-row {
             font-weight: 700;
         }
 
+        .sampling-method-row > span {
+            vertical-align: middle;
+        }
+
         .sampling-method-option {
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
+            display: inline-block;
+            margin-left: 10px;
+            vertical-align: middle;
             font-weight: 400;
         }
 
         .checkbox {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+            display: inline-block;
             width: 10px;
             height: 10px;
+            margin-left: 3px;
             border: 1px solid #111827;
+            text-align: center;
+            line-height: 8px;
+            vertical-align: middle;
         }
 
         .checkbox.checked::after {
             content: '\2714';
+            font-family: 'DejaVu Sans', sans-serif;
             font-size: 10px;
             font-weight: 700;
             line-height: 1;
@@ -137,6 +137,7 @@
         .seals {
             width: 100%;
             border-collapse: collapse;
+            margin-top: 8px;
             margin-bottom: 8px;
         }
 
@@ -147,26 +148,59 @@
             text-align: left;
         }
 
+        .seal-line {
+            display: table;
+            width: 100%;
+        }
+
+        .seal-line > span {
+            display: table-cell;
+        }
+
         .seals .rotated-label {
-            width: 1%;
+            width: 36px;
+            padding: 3px 2px;
+            text-align: center;
+        }
+
+        .rotate-wrapper {
+            /* DOMPDF has no writing-mode support, so vertical text is faked by
+               rotating a fixed-width horizontal block. Rotating in place would
+               overflow the table cell (a rotated box isn't reflowed), so the
+               text is absolutely positioned inside a fixed-height relative
+               wrapper matching the cell, anchored at its own bottom-left
+               corner and rotated -90deg — that keeps the rotated box pinned
+               inside the wrapper's bounds instead of spilling into the row above.
+               The text itself wraps to multiple lines (width below is the
+               wrap width, becoming the vertical length after rotation; the
+               label's own td width is the wrapped block's thickness).
+            */
+            position: relative;
+            height: 50px;
         }
 
         .rotated-text {
-            /* Explicit height (not auto) makes the vertical text wrap into extra
-               columns instead of growing the row height without bound. */
-            height: 92px;
-            margin: 0 auto;
-            writing-mode: vertical-rl;
-            transform: rotate(180deg);
+            position: absolute;
+            left: 0;
+            top: 100%;
+            width: 50px;
+            height: 32px;
+            transform-origin: left top;
+            transform: rotate(-90deg);
             text-align: center;
             font-weight: 700;
             font-size: 7px;
-            line-height: 1.1;
+            line-height: 1.25;
             letter-spacing: 0.03em;
+        }
+
+        .seals .seal-value {
+            text-align: right;
         }
 
         .seals .counter-value {
             width: 40%;
+            text-align: right;
         }
 
         .signatures {
@@ -354,29 +388,30 @@
             ];
         @endphp
 
-        <div class="sampling-method">
-            <span>Samples Method:</span>
-            @foreach ($samplingMethodOptions as [$case, $label])
-                <span class="sampling-method-option">
-                    {{ $label }}
-                    <span class="checkbox {{ $bdn?->sampling_method === $case ? 'checked' : '' }}"></span>
-                </span>
-            @endforeach
-        </div>
-
         <table class="seals">
             <tbody>
+                <tr>
+                    <td colspan="4" class="sampling-method-row">
+                        <span>Samples Method:</span>{{--
+                        --}}@foreach ($samplingMethodOptions as [$case, $label])<span class="sampling-method-option">{{ $label }}<span class="checkbox {{ $bdn?->sampling_method === $case ? 'checked' : '' }}"></span></span>@endforeach
+                    </td>
+                </tr>
                 @foreach ($sealTypes as $i => [$prefix, $label])
                     <tr>
                         @if ($i === 0)
                             <td class="rotated-label" rowspan="{{ count($sealTypes) }}">
-                                <div class="rotated-text">Samples were taken, sealed, distributed as follows</div>
+                                <div class="rotate-wrapper"><div class="rotated-text">Samples were taken, sealed, distributed as follows</div></div>
                             </td>
                         @endif
-                        <td>{{ $label }} : {{ $bdn?->{"{$prefix}_seal_number"} }}</td>
+                        <td>
+                            <div class="seal-line">
+                                <span>{{ $label }} :</span>
+                                <span class="seal-value">{{ $bdn?->{"{$prefix}_seal_number"} }}</span>
+                            </div>
+                        </td>
                         @if ($i === 0)
                             <td class="rotated-label" rowspan="{{ count($sealTypes) }}">
-                                <div class="rotated-text">Counter Seal No (if any)</div>
+                                <div class="rotate-wrapper"><div class="rotated-text">Counter Seal No (if any)</div></div>
                             </td>
                         @endif
                         <td class="counter-value">{{ $bdn?->{"{$prefix}_counter_seal_number"} }}</td>
