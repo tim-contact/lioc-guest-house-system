@@ -97,7 +97,7 @@ class OrderService
      */
     public static function toRow(Order $order): array
     {
-        return [
+        $row = [
             'id' => $order->id,
             'order_number' => $order->order_number,
             'customer_name' => $order->customer?->name,
@@ -119,6 +119,13 @@ class OrderService
             'laycan_from' => $order->laycan_from,
             'status' => $order->status->value,
         ];
+
+        foreach (FuelGrade::keys() as $grade) {
+            $row["{$grade}_quantity_low"] = $order->{"{$grade}_quantity_low"};
+            $row["{$grade}_quantity_high"] = $order->{"{$grade}_quantity_high"};
+        }
+
+        return $row;
     }
 
     /**
