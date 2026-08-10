@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { SearchableCombobox } from '@/components/searchable-combobox';
 import { TableFrame } from '@/components/table-frame';
@@ -65,6 +65,7 @@ interface SurveyorDashboardProps {
     deliveryMethodOptions: EnumOption[];
     samplingLocationOptions: EnumOption[];
     samplingMethodOptions: EnumOption[];
+    assignedBarge?: BargeOption | null;
 }
 
 const PENDING_COLUMNS = [
@@ -109,8 +110,15 @@ export default function SurveyorDashboard({
     deliveryMethodOptions,
     samplingLocationOptions,
     samplingMethodOptions,
+    assignedBarge,
 }: SurveyorDashboardProps) {
-    const [selectedBarge, setSelectedBarge] = useState('');
+    const { auth } = usePage().props;
+    const userType = auth.user?.type ?? '';
+    const isSurveyor = userType === 'surveyor';
+
+    const [selectedBarge, setSelectedBarge] = useState(
+        assignedBarge?.imo ?? '',
+    );
     const [bdnOrderId, setBdnOrderId] = useState<number | null>(null);
 
     // Derived, so the open dialog sees the BDN number its own first save assigned.
@@ -125,24 +133,32 @@ export default function SurveyorDashboard({
 
             <div className="flex flex-col gap-6 p-4">
                 <div className="max-w-xs">
-                    <SearchableCombobox
-                        items={barges.map((barge) => ({
-                            value: barge.imo,
-                            label: barge.name,
-                            sublabel: barge.imo,
-                        }))}
-                        value={selectedBarge}
-                        onChange={(value) => {
-                            setSelectedBarge(value);
-                            router.reload({
-                                data: { barge: value },
-                                only: ['pendingOrders', 'completedOrders'],
-                            });
-                        }}
-                        placeholder="Select barge"
-                        searchPlaceholder="Search barge name or IMO"
-                        emptyText="No barges available."
-                    />
+                    {isSurveyor && assignedBarge ? (
+                        <div className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                            <span className="text-muted-foreground">Assigned barge:</span>
+                            <span className="font-medium">{assignedBarge.name}</span>
+                            <span className="text-xs text-muted-foreground">({assignedBarge.imo})</span>
+                        </div>
+                    ) : (
+                        <SearchableCombobox
+                            items={barges.map((barge) => ({
+                                value: barge.imo,
+                                label: barge.name,
+                                sublabel: barge.imo,
+                            }))}
+                            value={selectedBarge}
+                            onChange={(value) => {
+                                setSelectedBarge(value);
+                                router.reload({
+                                    data: { barge: value },
+                                    only: ['pendingOrders', 'completedOrders'],
+                                });
+                            }}
+                            placeholder="Select barge"
+                            searchPlaceholder="Search barge name or IMO"
+                            emptyText="No barges available."
+                        />
+                    )}
                 </div>
 
                 <section className="flex flex-col gap-4">

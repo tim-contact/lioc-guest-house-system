@@ -10,7 +10,9 @@ use App\Enums\SupplyLocation;
 use App\Models\Agent;
 use App\Models\Barge;
 use App\Models\Order;
+use App\Models\User;
 use App\Services\OrderService;
+use App\Services\SurveyorAssignment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -20,7 +22,33 @@ class SurveyingController extends Controller
 {
     public function index(Request $request): Response
     {
-        $barge = $request->query('barge');
+        /** @var User $user */
+        $user = $request->user();
+        $assignment = SurveyorAssignment::resolve($user);
+
+        // Surveyor users: force barge from assignment, ignore query param.
+        if ($user->type->value === 'surveyor') {
+            if ($assignment['denied']) {
+                return Inertia::render('surveyor/dashboard', [
+                    'pendingOrders' => [],
+                    'completedOrders' => [],
+                    'barges' => [],
+                    'agents' => fn () => Agent::orderBy('name')->get(['id', 'name', 'address']),
+                    'supplyLocationOptions' => $this->enumOptions(SupplyLocation::cases()),
+                    'deliveryMethodOptions' => $this->enumOptions(DeliveryMode::cases()),
+                    'samplingLocationOptions' => $this->enumOptions(Sampling::cases()),
+                    'samplingMethodOptions' => $this->enumOptions(SamplingMethod::cases()),
+                    'assignedBarge' => null,
+                ]);
+            }
+
+            $barge = $assignment['barge_id'];
+            $assignedBarge = Barge::where('imo', $barge)->first(['imo', 'name']);
+        } else {
+            // Privileged users: use query param as before.
+            $barge = $request->query('barge');
+            $assignedBarge = null;
+        }
 
         $pendingOrders = fn (): array => $barge
             ? OrderService::pending(dueWithinDays: 3)
@@ -72,17 +100,21 @@ class SurveyingController extends Controller
                 ->all()
             : [];
 
-        // Closures, so the BDN dialog's pendingOrders-only autosave reload
-        // doesn't run the queries it is going to discard.
+        // Barges: surveyor sees only their assigned barge.
+        $barges = $user->type->value === 'surveyor' && $assignedBarge
+            ? fn () => collect([$assignedBarge])
+            : fn () => Barge::orderBy('name')->get(['imo', 'name']);
+
         return Inertia::render('surveyor/dashboard', [
             'pendingOrders' => $pendingOrders,
             'completedOrders' => $completedOrders,
-            'barges' => fn () => Barge::orderBy('name')->get(['imo', 'name']),
+            'barges' => $barges,
             'agents' => fn () => Agent::orderBy('name')->get(['id', 'name', 'address']),
             'supplyLocationOptions' => $this->enumOptions(SupplyLocation::cases()),
             'deliveryMethodOptions' => $this->enumOptions(DeliveryMode::cases()),
             'samplingLocationOptions' => $this->enumOptions(Sampling::cases()),
             'samplingMethodOptions' => $this->enumOptions(SamplingMethod::cases()),
+            'assignedBarge' => $assignedBarge,
         ]);
     }
 
@@ -105,6 +137,8 @@ class SurveyingController extends Controller
 
     public function update(Request $request, Order $order): RedirectResponse
     {
+        SurveyorAssignment::authorizeOrder($request->user(), $order->barge_id);
+
         $validated = $request->validate([
             'vlsfo_bdn_qty' => ['nullable', 'numeric', 'min:0'],
             'mgo_bdn_qty' => ['nullable', 'numeric', 'min:0'],
@@ -119,6 +153,8 @@ class SurveyingController extends Controller
 
     public function complete(Order $order): RedirectResponse
     {
+        SurveyorAssignment::authorizeOrder(request()->user(), $order->barge_id);
+
         OrderService::complete($order);
 
         return $this->toast('Order completed.');

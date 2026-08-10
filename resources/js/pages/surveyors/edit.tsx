@@ -10,16 +10,28 @@ interface Surveyor {
     mail_id: string | null;
     contact: string | null;
     barge_id: string | null;
+    user_id: string | null;
+    user_name?: string | null;
+    user_email?: string | null;
+}
+
+interface AvailableUser {
+    id: string;
+    name: string;
+    email: string;
+    already_linked: boolean;
 }
 
 interface SurveyorsEditProps {
     surveyors: Surveyor[];
     barges: { imo: string; name: string }[];
+    availableUsers: AvailableUser[];
 }
 
 export default function SurveyorsEdit({
     surveyors,
     barges,
+    availableUsers,
 }: SurveyorsEditProps) {
     const bargeOptions = barges.map((barge) => ({
         value: barge.imo,
@@ -28,6 +40,11 @@ export default function SurveyorsEdit({
 
     const bargeName = (imo: string | null): string =>
         bargeOptions.find((barge) => barge.value === imo)?.label ?? '—';
+
+    const userOptions = availableUsers.map((user) => ({
+        value: user.id,
+        label: `${user.name} (${user.email})`,
+    }));
 
     const exportColumns: ExportColumn<Surveyor>[] = [
         {
@@ -38,6 +55,10 @@ export default function SurveyorsEdit({
         { header: 'Mail ID', value: (surveyor) => surveyor.mail_id ?? '' },
         { header: 'Contact', value: (surveyor) => surveyor.contact ?? '' },
         { header: 'Barge', value: (surveyor) => bargeName(surveyor.barge_id) },
+        {
+            header: 'Login User',
+            value: (surveyor) => surveyor.user_name ?? '—',
+        },
     ];
 
     const config: CrudConfig<Surveyor> = {
@@ -78,6 +99,13 @@ export default function SurveyorsEdit({
                 sortKey: 'barge_id',
                 cell: (surveyor) => bargeName(surveyor.barge_id),
             },
+            {
+                header: 'Login User',
+                cell: (surveyor) =>
+                    surveyor.user_name
+                        ? `${surveyor.user_name} (${surveyor.user_email})`
+                        : '—',
+            },
         ],
         fields: [
             { name: 'survey_company', label: 'Survey Company' },
@@ -90,6 +118,12 @@ export default function SurveyorsEdit({
                 type: 'select',
                 options: bargeOptions,
             },
+            {
+                name: 'user_id',
+                label: 'Login User',
+                type: 'select',
+                options: userOptions,
+            },
         ],
         toFormData: (surveyor) => ({
             survey_company: surveyor?.survey_company ?? '',
@@ -97,6 +131,7 @@ export default function SurveyorsEdit({
             mail_id: surveyor?.mail_id ?? '',
             contact: surveyor?.contact ?? '',
             barge_id: surveyor?.barge_id ?? '',
+            user_id: surveyor?.user_id ?? '',
         }),
         routes: {
             store: () => store(),

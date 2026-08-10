@@ -9,7 +9,9 @@ use App\Enums\SamplingMethod;
 use App\Enums\SupplyLocation;
 use App\Models\Bdn;
 use App\Models\Order;
+use App\Models\User;
 use App\Services\OrderService;
+use App\Services\SurveyorAssignment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -23,9 +25,18 @@ class BdnController extends Controller
 {
     public function index(): Response
     {
-        $bdns = Bdn::with(['order.customer', 'agent', 'barge'])
-            ->latest()
-            ->get()
+        /** @var User $user */
+        $user = request()->user();
+        $assignment = SurveyorAssignment::resolve($user);
+
+        $query = Bdn::with(['order.customer', 'agent', 'barge'])->latest();
+
+        // Surveyor users: filter to their assigned barge.
+        if ($user->type->value === 'surveyor' && ! $assignment['denied'] && $assignment['barge_id']) {
+            $query->whereHas('order', fn ($q) => $q->where('barge_id', $assignment['barge_id']));
+        }
+
+        $bdns = $query->get()
             ->map(fn (Bdn $bdn): array => [
                 ...$bdn->toArray(),
                 'order_number' => $bdn->order?->order_number,
@@ -46,6 +57,8 @@ class BdnController extends Controller
 
     public function ebdn(Order $order): PdfBuilder
     {
+        SurveyorAssignment::authorizeOrder(request()->user(), $order->barge_id);
+
         $order->load(['port', 'bdn.agent', 'bdn.barge']);
         $bdn = $order->bdn;
 
@@ -68,7 +81,19 @@ class BdnController extends Controller
      */
     public function update(Request $request, Order $order): RedirectResponse
     {
+        SurveyorAssignment::authorizeBdnBarge(
+            $request->user(),
+            $order->barge_id,
+            $request->input('barge_id'),
+        );
+
         $validated = $request->validate($this->rules());
+
+        // For surveyor users, force barge_id to their assigned barge.
+        $assignment = SurveyorAssignment::resolve($request->user());
+        if ($assignment['barge_id'] && ! $request->user()->type->isPrivileged()) {
+            $validated['barge_id'] = $assignment['barge_id'];
+        }
 
         $bdn = Bdn::updateOrCreate(
             ['order_id' => $order->id],

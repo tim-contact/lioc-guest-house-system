@@ -95,8 +95,8 @@ const config: CrudConfig<User> = {
     }),
     routes: {
         store: () => store(),
-        update: (id) => update({ user: id as unknown as number }),
-        destroy: (id) => destroy({ user: id as unknown as number }),
+        update: (id) => update({ user: id as string }),
+        destroy: (id) => destroy({ user: id as string }),
     },
 };
 

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -52,5 +53,11 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'deactivated_at' => 'datetime',
         ];
+    }
+
+    /** @return HasOne<Surveyor, $this> */
+    public function surveyor(): HasOne
+    {
+        return $this->hasOne(Surveyor::class);
     }
 }
