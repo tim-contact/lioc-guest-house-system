@@ -1,10 +1,5 @@
-<<<<<<< HEAD
 import { Head, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
-=======
-import { Head, router } from '@inertiajs/react';
 import { Fragment, useState } from 'react';
->>>>>>> dc3bd2a (Surveyor - Operational Instructions)
 import { SearchableCombobox } from '@/components/searchable-combobox';
 import { TableFrame } from '@/components/table-frame';
 import { Button } from '@/components/ui/button';

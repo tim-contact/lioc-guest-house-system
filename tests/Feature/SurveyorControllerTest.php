@@ -2,12 +2,9 @@
 
 use App\Enums\CreditTerms;
 use App\Enums\OrderStatus;
-<<<<<<< HEAD
 use App\Enums\UserType;
-=======
 use App\Enums\QualityClaim;
 use App\Enums\Sampling;
->>>>>>> dc3bd2a (Surveyor - Operational Instructions)
 use App\Enums\SupplyLocation;
 use App\Models\Agent;
 use App\Models\Barge;
