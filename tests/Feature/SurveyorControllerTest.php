@@ -2,7 +2,12 @@
 
 use App\Enums\CreditTerms;
 use App\Enums\OrderStatus;
+<<<<<<< HEAD
 use App\Enums\UserType;
+=======
+use App\Enums\QualityClaim;
+use App\Enums\Sampling;
+>>>>>>> dc3bd2a (Surveyor - Operational Instructions)
 use App\Enums\SupplyLocation;
 use App\Models\Agent;
 use App\Models\Barge;
@@ -77,6 +82,34 @@ test('index renders pending orders with location and fuel grade quantities for t
             ->where('pendingOrders.0.mgo_qty', '100.000')
             ->has('pendingOrders.0.order_number')
             ->has('pendingOrders.0.vlsfo_bdn_qty'));
+});
+
+test('index renders the operational instructions from the pending order enquiry', function () {
+    $this->actingAs(User::factory()->create());
+
+    $enquiry = Enquiry::factory()->create([
+        'sampling' => Sampling::VesselManifold,
+        'quality_claim' => QualityClaim::ThirtyDays,
+        'instructions' => 'Deliver port side, two hoses.',
+        'barging_cost' => 1200,
+    ]);
+
+    $order = createSurveyorOrder([
+        'enquiry_id' => $enquiry->id,
+        'pic' => 'Nimal Perera',
+        'mobile_no' => '+94 77 123 4567',
+    ]);
+
+    $this->get(route('surveyor', ['barge' => $order->barge_id]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('surveyor/dashboard')
+            ->where('pendingOrders.0.pic', 'Nimal Perera')
+            ->where('pendingOrders.0.mobile_no', '+94 77 123 4567')
+            ->where('pendingOrders.0.sampling', 'Vessel Manifold')
+            ->where('pendingOrders.0.quality_claim', '30 days')
+            ->where('pendingOrders.0.instructions', 'Deliver port side, two hoses.')
+            ->where('pendingOrders.0.barging_cost', '1200.00'));
 });
 
 test('index lists pending orders due within three days and overdue ones, but not later orders', function () {

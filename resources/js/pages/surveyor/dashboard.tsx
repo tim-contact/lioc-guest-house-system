@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+=======
+import { Head, router } from '@inertiajs/react';
+import { Fragment, useState } from 'react';
+>>>>>>> dc3bd2a (Surveyor - Operational Instructions)
 import { SearchableCombobox } from '@/components/searchable-combobox';
 import { TableFrame } from '@/components/table-frame';
 import { Button } from '@/components/ui/button';
@@ -11,7 +16,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { shortDate } from '@/lib/utils';
+import { formatMoney, shortDate } from '@/lib/utils';
 import { ebdn } from '@/routes/bdns';
 import { complete as completeOrder } from '@/routes/surveyor';
 import type { AgentOption, EnumOption } from '@/types';
@@ -34,6 +39,12 @@ export interface PendingRow {
     delivery_mode: string | null;
     barge_id: string | null;
     agent_id: number | null;
+    pic: string | null;
+    mobile_no: string | null;
+    sampling: string | null;
+    quality_claim: string | null;
+    instructions: string | null;
+    barging_cost: string | null;
     vlsfo_qty: string | null;
     mgo_qty: string | null;
     hsfo_qty: string | null;
@@ -99,6 +110,46 @@ function shortTime(value: string | null): string {
         hour: '2-digit',
         minute: '2-digit',
     });
+}
+
+function picLabel({ pic, mobile_no }: PendingRow): string {
+    if (!pic) {
+        return '—';
+    }
+
+    return mobile_no ? `${pic} (${mobile_no})` : pic;
+}
+
+function OperationalInstruction({ row }: { row: PendingRow }) {
+    const details: [string, string][] = [
+        ['PIC', picLabel(row)],
+        ['Sampling', row.sampling ?? '—'],
+        ['Claim', row.quality_claim ?? '—'],
+        ['Barging', formatMoney(row.barging_cost)],
+    ];
+
+    return (
+        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-3 text-xs">
+            {details.map(([label, value]) => (
+                <Fragment key={label}>
+                    <span className="text-muted-foreground">{label}</span>
+                    <span>{value}</span>
+                </Fragment>
+            ))}
+
+            {row.instructions && (
+                <>
+                    <span className="text-muted-foreground">Notes</span>
+                    <span
+                        className="col-span-3 line-clamp-2"
+                        title={row.instructions}
+                    >
+                        {row.instructions}
+                    </span>
+                </>
+            )}
+        </div>
+    );
 }
 
 export default function SurveyorDashboard({
@@ -204,7 +255,9 @@ export default function SurveyorDashboard({
                                         <TableCell>
                                             {shortTime(row.eta)}
                                         </TableCell>
-                                        <TableCell>—</TableCell>
+                                        <TableCell className="max-w-md align-top whitespace-normal">
+                                            <OperationalInstruction row={row} />
+                                        </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
                                                 <Button

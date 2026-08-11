@@ -33,16 +33,16 @@ export default function Login({ status, canResetPassword }: Props) {
                 action={store.url()}
                 method="post"
                 resetOnSuccess={['password']}
-                className="flex flex-col gap-5"
+                className="flex flex-col gap-4 sm:gap-5"
             >
                 {({ processing, errors }) => (
                     <>
-                        <div className="grid gap-5">
+                        <div className="grid gap-4 sm:gap-5">
                             {/* Email */}
-                            <div className="grid gap-1.5">
+                            <div className="grid gap-1 sm:gap-1.5">
                                 <Label
                                     htmlFor="email"
-                                    className="text-xs font-semibold tracking-wide text-slate-900"
+                                    className="text-[11px] font-semibold tracking-wide text-slate-900 sm:text-xs"
                                 >
                                     Email address
                                 </Label>
@@ -55,15 +55,16 @@ export default function Login({ status, canResetPassword }: Props) {
                                     tabIndex={1}
                                     autoComplete="email"
                                     placeholder=""
+                                    className="h-11 sm:h-10"
                                 />
                                 <InputError message={errors.email} />
                             </div>
 
                             {/* Password */}
-                            <div className="grid gap-1.5">
+                            <div className="grid gap-1 sm:gap-1.5">
                                 <Label
                                     htmlFor="password"
-                                    className="text-xs font-semibold tracking-wide text-slate-900"
+                                    className="text-[11px] font-semibold tracking-wide text-slate-900 sm:text-xs"
                                 >
                                     Password
                                 </Label>
@@ -84,13 +85,13 @@ export default function Login({ status, canResetPassword }: Props) {
                                 <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
                                     <button
                                         type="button"
-                                        className="self-start text-xs font-medium text-slate-700 underline decoration-slate-400 underline-offset-4 transition-colors hover:text-slate-950 hover:decoration-slate-700"
+                                        className="self-start text-[11px] font-medium text-slate-700 underline decoration-slate-400 underline-offset-4 transition-colors hover:text-slate-950 hover:decoration-slate-700 sm:text-xs"
                                         tabIndex={5}
                                         onClick={() => setForgotOpen(true)}
                                     >
                                         Forgot your password?
                                     </button>
-                                    <DialogContent>
+                                    <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-sm">
                                         <DialogHeader>
                                             <DialogTitle>Forgot Password</DialogTitle>
                                             <DialogDescription className="space-y-4 pt-2">
@@ -124,15 +125,15 @@ export default function Login({ status, canResetPassword }: Props) {
                             )}
 
                             {/* Remember me */}
-                            <div className="flex items-center space-x-3 pt-1">
-                                <Checkbox 
+                            <div className="flex items-center space-x-3 pt-0 sm:pt-1">
+                                <Checkbox
                                     id="remember"
                                     name="remember"
                                     tabIndex={3}
                                 />
                                 <Label
                                     htmlFor="remember"
-                                    className="text-sm font-medium text-slate-800"
+                                    className="text-[13px] font-medium text-slate-800 sm:text-sm"
                                 >
                                     Remember me
                                 </Label>
@@ -141,7 +142,7 @@ export default function Login({ status, canResetPassword }: Props) {
                             {/* Submit — restrained deep green accent */}
                             <Button
                                 type="submit"
-                                className="mt-2 w-full bg-orange-900 text-white hover:bg-orange-800 focus-visible:ring-2 focus-visible:ring-orange-700 focus-visible:ring-offset-2"
+                                className="mt-1 h-11 w-full bg-orange-900 text-white hover:bg-orange-800 focus-visible:ring-2 focus-visible:ring-orange-700 focus-visible:ring-offset-2 sm:mt-2 sm:h-10"
                                 tabIndex={4}
                                 disabled={processing}
                                 data-test="login-button"
@@ -155,7 +156,7 @@ export default function Login({ status, canResetPassword }: Props) {
             </Form>
 
             {status && (
-                <div className="mt-2 text-center text-sm font-medium text-green-700">
+                <div className="mt-2 text-center text-xs font-medium text-green-700 sm:text-sm">
                     {status}
                 </div>
             )}

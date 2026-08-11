@@ -7,12 +7,12 @@ export default function AuthSimpleLayout({
 }: AuthLayoutProps) {
     return (
         <div
-            className="flex min-h-svh flex-col items-center justify-center bg-cover bg-center bg-no-repeat p-6 md:items-end md:justify-center md:p-10"
+            className="flex min-h-svh flex-col items-center justify-center bg-cover bg-center bg-no-repeat p-4 sm:p-6 md:items-end md:justify-center md:p-10"
             style={{ backgroundImage: "url('/images/tanker_background.png')" }}
         >
-            {/* Glassmorphism card – right side */}
+            {/* Glassmorphism card — centered on mobile, right side on desktop */}
             <div
-                className="w-full max-w-md md:mr-8 lg:mr-16"
+                className="w-full max-w-sm sm:max-w-md md:mr-8 lg:mr-16"
                 style={{
                     background: 'rgba(255, 255, 255, 0.22)',
                     borderRadius: '16px',
@@ -22,20 +22,20 @@ export default function AuthSimpleLayout({
                     border: '1px solid rgba(255, 255, 255, 0.15)',
                 }}
             >
-                <div className="flex flex-col gap-6 py-12 px-8">
+                <div className="flex flex-col gap-5 sm:gap-6 py-8 px-5 sm:py-12 sm:px-8">
                     {/* Logo — restrained, let the type carry the brand */}
-                    <div className="flex flex-col items-center gap-5">
+                    <div className="flex flex-col items-center gap-4 sm:gap-5">
                         <img
                             src="/images/lanka-ioc-logo.png"
                             alt="Lanka IOC Logo"
-                            className="h-24 w-auto"
+                            className="h-16 w-auto sm:h-20 md:h-24"
                         />
 
                         <div className="space-y-1 text-center">
-                            <h1 className="text-2xl font-bold tracking-tight text-slate-950">
+                            <h1 className="text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
                                 {title}
                             </h1>
-                            <p className="text-sm font-light text-slate-950">
+                            <p className="text-xs font-light text-slate-950 sm:text-sm">
                                 {description}
                             </p>
                         </div>

@@ -53,7 +53,7 @@ class SurveyingController extends Controller
         $pendingOrders = fn (): array => $barge
             ? OrderService::pending(dueWithinDays: 3)
                 ->where('barge_id', $barge)
-                ->load('bdn')
+                ->load(['bdn', 'enquiry'])
                 ->map(fn (Order $order): array => [
                     'id' => $order->id,
                     'order_number' => $order->order_number,
@@ -65,6 +65,12 @@ class SurveyingController extends Controller
                     'delivery_mode' => $order->delivery_mode?->value,
                     'barge_id' => $order->barge_id,
                     'agent_id' => $order->agent_id,
+                    'pic' => $order->pic,
+                    'mobile_no' => $order->mobile_no,
+                    'sampling' => $order->enquiry?->sampling?->label(),
+                    'quality_claim' => $order->enquiry?->quality_claim?->label(),
+                    'instructions' => $order->enquiry?->instructions,
+                    'barging_cost' => $order->enquiry?->barging_cost,
                     'vlsfo_qty' => $order->vlsfo_final_qty,
                     'mgo_qty' => $order->mgo_final_qty,
                     'hsfo_qty' => $order->hsfo_final_qty,
