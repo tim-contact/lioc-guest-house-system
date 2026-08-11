@@ -138,6 +138,7 @@
 
         .grid td {
             width: 33.33%;
+            height: 22px;
             border: 1px solid #d1d5db;
             padding: 3px 5px;
             vertical-align: top;
@@ -151,6 +152,16 @@
             letter-spacing: 0.05em;
             text-transform: uppercase;
             color: #6b7280;
+        }
+
+        .field-value {
+            display: block;
+            min-height: 12px;
+        }
+
+        /* keeps an empty value from collapsing its line box */
+        .field-value::after {
+            content: '\00a0';
         }
 
         .specs {
@@ -351,29 +362,29 @@
 
         <table class="grid">
             <tr>
-                <td><span class="field-label">Delivery Date</span>{{ $bdn?->delivery_date?->format('d M Y') }}</td>
-                <td><span class="field-label">Delivery Port</span>{{ $order->port?->name }}</td>
-                <td><span class="field-label">Delivery Location</span>{{ $deliveryLocationLabel }}</td>
+                <td><span class="field-label">Delivery Date</span><span class="field-value">{{ $bdn?->delivery_date?->format('d M Y') }}</span></td>
+                <td><span class="field-label">Delivery Port</span><span class="field-value">{{ $order->port?->name }}</span></td>
+                <td><span class="field-label">Delivery Location</span><span class="field-value">{{ $deliveryLocationLabel }}</span></td>
             </tr>
             <tr>
-                <td><span class="field-label">Vessel Name</span>{{ $order->vessel_name }}</td>
-                <td><span class="field-label">IMO / Flag No</span>{{ $order->vessel_id }} / {{ $bdn?->vessel_flag }}</td>
-                <td><span class="field-label">Gross Tonnage</span>{{ $bdn?->grt }}</td>
+                <td><span class="field-label">Vessel Name</span><span class="field-value">{{ $order->vessel_name }}</span></td>
+                <td><span class="field-label">IMO / Flag No</span><span class="field-value">{{ $order->vessel_id }} / {{ $bdn?->vessel_flag }}</span></td>
+                <td><span class="field-label">Gross Tonnage</span><span class="field-value">{{ $bdn?->grt }}</span></td>
             </tr>
             <tr>
-                <td><span class="field-label">Vessel's P&amp;I Club</span>{{ $bdn?->pi_club }}</td>
-                <td><span class="field-label">Vessel Agent</span>{{ $bdn?->agent?->name }}</td>
-                <td><span class="field-label">Owner / Operator</span>{{ $bdn?->owner_operator }}</td>
+                <td><span class="field-label">Vessel's P&amp;I Club</span><span class="field-value">{{ $bdn?->pi_club }}</span></td>
+                <td><span class="field-label">Vessel Agent</span><span class="field-value">{{ $bdn?->agent?->name }}</span></td>
+                <td><span class="field-label">Owner / Operator</span><span class="field-value">{{ $bdn?->owner_operator }}</span></td>
             </tr>
             <tr>
-                <td><span class="field-label">Barge Alongside</span>{{ $bdn?->barge_alongside_at?->format('d M Y H:i') }}</td>
-                <td><span class="field-label">Last Port of Call</span>{{ $bdn?->last_port_of_call }}</td>
-                <td><span class="field-label">Destination Port</span>{{ $bdn?->destination_port }}</td>
+                <td><span class="field-label">Barge Alongside</span><span class="field-value">{{ $bdn?->barge_alongside_at?->format('d M Y H:i') }}</span></td>
+                <td><span class="field-label">Last Port of Call</span><span class="field-value">{{ $bdn?->last_port_of_call }}</span></td>
+                <td><span class="field-label">Destination Port</span><span class="field-value">{{ $bdn?->destination_port }}</span></td>
             </tr>
             <tr>
-                <td><span class="field-label">Delivery Method</span>{{ $deliveryMethodLabel }}</td>
-                <td><span class="field-label">Barge Name</span>{{ $bdn?->barge?->name }}</td>
-                <td><span class="field-label">Barge IMO No / Flag</span>{{ $bdn?->barge_id }}</td>
+                <td><span class="field-label">Delivery Method</span><span class="field-value">{{ $deliveryMethodLabel }}</span></td>
+                <td><span class="field-label">Barge Name</span><span class="field-value">{{ $bdn?->barge?->name }}</span></td>
+                <td><span class="field-label">Barge IMO No / Flag</span><span class="field-value">{{ $bdn?->barge_id }}</span></td>
             </tr>
         </table>
 
