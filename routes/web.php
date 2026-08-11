@@ -21,7 +21,7 @@ use App\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes.
-Route::inertia('/', 'welcome')->name('home')->middleware('guest');
+Route::redirect('/', '/login')->name('home')->middleware('guest');
 
 // All authenticated active users.
 Route::middleware(['auth', 'verified', 'active'])->group(function () {
