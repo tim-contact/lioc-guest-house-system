@@ -11,6 +11,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { FUEL_GRADES } from '@/lib/domain';
 import { formatMoney, shortDate } from '@/lib/utils';
 import { ebdn } from '@/routes/bdns';
 import { complete as completeOrder } from '@/routes/surveyor';
@@ -78,13 +79,11 @@ const PENDING_COLUMNS = [
     'Vessel Name',
     'Port',
     'Supply Location',
-    'VLSFO Qty',
-    'MGO Qty',
-    'HSFO Qty',
+    ...FUEL_GRADES.map((grade) => `${grade.label} Qty`),
     'ETA Date',
     'ETA Time',
     'Operational Instruction',
-] as const;
+];
 
 const COMPLETED_COLUMNS = [
     'Vessel Name',
@@ -235,15 +234,11 @@ export default function SurveyorDashboard({
                                         <TableCell>
                                             {row.location ?? '—'}
                                         </TableCell>
-                                        <TableCell>
-                                            {row.vlsfo_qty ?? '—'}
-                                        </TableCell>
-                                        <TableCell>
-                                            {row.mgo_qty ?? '—'}
-                                        </TableCell>
-                                        <TableCell>
-                                            {row.hsfo_qty ?? '—'}
-                                        </TableCell>
+                                        {FUEL_GRADES.map((grade) => (
+                                            <TableCell key={grade.key}>
+                                                {row[`${grade.key}_qty`] ?? '—'}
+                                            </TableCell>
+                                        ))}
                                         <TableCell>
                                             {shortDate(row.eta)}
                                         </TableCell>

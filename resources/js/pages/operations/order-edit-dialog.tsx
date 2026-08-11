@@ -13,6 +13,7 @@ import { LockedEditDialog } from '@/components/edit-panel/locked-edit-dialog';
 import { SearchableCombobox } from '@/components/searchable-combobox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { FUEL_GRADES } from '@/lib/domain';
 import { dateOnlyToDate, dateToDateOnly } from '@/lib/utils';
 import type { AgentOption, AgentPicOption, EnumOption } from '@/types';
 import type { BargeOption, OpsEditRow } from './dashboard';
@@ -158,27 +159,20 @@ export function OrderEditDialog({
             <Separator />
 
             <FormSection title="Final Quantities" cols={3}>
-                <LabeledField
-                    id="ops-vlsfo-final"
-                    label="VLSFO Final Qty"
-                    type="number"
-                    value={form.data.vlsfo_final_qty}
-                    onChange={(value) => form.setData('vlsfo_final_qty', value)}
-                />
-                <LabeledField
-                    id="ops-mgo-final"
-                    label="MGO Final Qty"
-                    type="number"
-                    value={form.data.mgo_final_qty}
-                    onChange={(value) => form.setData('mgo_final_qty', value)}
-                />
-                <LabeledField
-                    id="ops-hsfo-final"
-                    label="HSFO Final Qty"
-                    type="number"
-                    value={form.data.hsfo_final_qty}
-                    onChange={(value) => form.setData('hsfo_final_qty', value)}
-                />
+                {FUEL_GRADES.map((grade) => {
+                    const field = `${grade.key}_final_qty` as keyof OpsFormData;
+
+                    return (
+                        <LabeledField
+                            key={field}
+                            id={`ops-${grade.key}-final`}
+                            label={`${grade.label} Final Qty`}
+                            type="number"
+                            value={form.data[field]}
+                            onChange={(value) => form.setData(field, value)}
+                        />
+                    );
+                })}
             </FormSection>
 
             <Separator />
