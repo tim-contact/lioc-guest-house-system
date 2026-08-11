@@ -22,7 +22,7 @@
 
     <div class="doc-header-logo">
         @if (file_exists(public_path('images/lanka-ioc-logo.png')))
-            <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('images/logo.png'))) }}" alt="">
+            <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('images/lanka-ioc-logo.png'))) }}" alt="Lanka IOC Logo">
         @endif
     </div>
 </div>
