@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { login, register } from '@/routes';
+import { login } from '@/routes';
 
 export default function Welcome() {
     return (
@@ -13,12 +13,6 @@ export default function Welcome() {
                         className="rounded-md border px-5 py-2 text-sm hover:bg-muted"
                     >
                         Log in
-                    </Link>
-                    <Link
-                        href={register()}
-                        className="rounded-md bg-primary px-5 py-2 text-sm text-primary-foreground hover:bg-primary/90"
-                    >
-                        Register
                     </Link>
                 </div>
             </div>
