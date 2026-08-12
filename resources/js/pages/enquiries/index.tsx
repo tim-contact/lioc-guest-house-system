@@ -17,11 +17,17 @@ import { dateToDateOnly, toDateRange } from '@/lib/utils';
 import { store } from '@/routes/enquiries';
 import type { AgentOption, EnumOption } from '@/types';
 import { EnquiryCard } from './enquiry-card';
-import type { CustomerOption, EnquiryRow, PortOption } from './enquiry-card';
+import type {
+    CustomerCredit,
+    CustomerOption,
+    EnquiryRow,
+    PortOption,
+} from './enquiry-card';
 
 interface EnquiriesIndexProps {
     enquiries: EnquiryRow[];
     customers: CustomerOption[];
+    creditByCustomer: Record<string, CustomerCredit>;
     ports: PortOption[];
     agents: AgentOption[];
     supplyLocationOptions: EnumOption[];
@@ -35,6 +41,7 @@ interface EnquiriesIndexProps {
 export default function EnquiriesIndex({
     enquiries,
     customers,
+    creditByCustomer,
     ports,
     agents,
     supplyLocationOptions,
@@ -76,6 +83,7 @@ export default function EnquiriesIndex({
                                 <EnquiryCard
                                     enquiry={enquiry}
                                     customers={customers}
+                                    creditByCustomer={creditByCustomer}
                                     ports={ports}
                                     agents={agents}
                                     supplyLocationOptions={

@@ -62,8 +62,6 @@ export interface EnquiryCustomerRow {
     id: number;
     customer_id: string;
     name: string | null;
-    credit_limit: string | null;
-    credit_available: number | null;
     credit_terms: string | null;
     status: string; // pending | fixed | lost
     vlsfo_initial_offer: string | null;
@@ -112,6 +110,11 @@ export interface EnquiryRow {
 export interface CustomerOption {
     sap_id: string;
     name: string;
+}
+
+export interface CustomerCredit {
+    credit_limit: string | null;
+    credit_available: number | null;
 }
 
 export interface PortOption {
@@ -254,16 +257,19 @@ interface CustomerFormData {
 function CustomerBlock({
     customer,
     customers,
+    creditByCustomer,
     otherCustomerIds,
     maxQuantities,
     totalBasis,
     setTotalBasis,
     setStatus,
     onDirtyChange,
+    onCustomerIdChange,
     creditTermsOptions,
 }: {
     customer: EnquiryCustomerRow;
     customers: CustomerOption[];
+    creditByCustomer: Record<string, CustomerCredit>;
     creditTermsOptions: EnumOption[];
     otherCustomerIds: Set<string>;
     maxQuantities: Record<FuelGradeKey, string>;
@@ -271,6 +277,7 @@ function CustomerBlock({
     setTotalBasis: (basis: TotalBasis) => void;
     setStatus: (row: EnquiryCustomerRow, status: 'fixed' | 'pending') => void;
     onDirtyChange: (id: number, dirty: boolean) => void;
+    onCustomerIdChange: (id: number, customerId: string) => void;
 }) {
     const form = useForm<CustomerFormData>({
         customer_id: customer.customer_id,
@@ -292,6 +299,11 @@ function CustomerBlock({
         return () => onDirtyChange(customer.id, false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [form.isDirty, customer.id]);
+
+    useEffect(() => {
+        onCustomerIdChange(customer.id, form.data.customer_id);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [form.data.customer_id, customer.id]);
 
     // Anyone not already on this enquiry, plus whoever is currently picked for this block.
     const pickable = customers.filter(
@@ -332,7 +344,13 @@ function CustomerBlock({
                     sublabel: c.sap_id,
                 }))}
                 value={form.data.customer_id}
-                onChange={(value) => form.setData('customer_id', value)}
+                onChange={(value) =>
+                    form.setData({
+                        ...form.data,
+                        customer_id: value,
+                        credit_terms: '',
+                    })
+                }
                 placeholder="Select customer"
                 searchPlaceholder="Search name or SAP ID"
                 emptyText="No customers available."
@@ -355,7 +373,10 @@ function CustomerBlock({
                 <div className="grid content-end">
                     <DetailRow
                         label="Credit Available"
-                        value={formatMoney(customer.credit_available)}
+                        value={formatMoney(
+                            creditByCustomer[form.data.customer_id]
+                                ?.credit_available ?? null,
+                        )}
                     />
                 </div>
             </div>
@@ -509,6 +530,7 @@ function CustomerBlock({
 export function EnquiryCard({
     enquiry,
     customers,
+    creditByCustomer,
     ports,
     agents,
     supplyLocationOptions,
@@ -520,6 +542,7 @@ export function EnquiryCard({
 }: {
     enquiry: EnquiryRow;
     customers: CustomerOption[];
+    creditByCustomer: Record<string, CustomerCredit>;
     ports: PortOption[];
     agents: AgentOption[];
     supplyLocationOptions: EnumOption[];
@@ -537,6 +560,11 @@ export function EnquiryCard({
     const [dirtyCustomerIds, setDirtyCustomerIds] = useState<Set<number>>(
         new Set(),
     );
+    // Live (including unsaved) customer_id per row, so duplicate picks are
+    // caught across sibling blocks before anyone saves.
+    const [liveCustomerIds, setLiveCustomerIds] = useState<
+        Record<number, string>
+    >({});
     // Shared across this card's customers so their totals stay comparable.
     const [totalBasis, setTotalBasis] = useState<TotalBasis>('latest');
 
@@ -557,14 +585,26 @@ export function EnquiryCard({
         [],
     );
 
+    const handleCustomerIdChange = useCallback(
+        (id: number, customerId: string) => {
+            setLiveCustomerIds((previous) => ({
+                ...previous,
+                [id]: customerId,
+            }));
+        },
+        [],
+    );
+
     // Once any customer is fixed the stem is committed: the losing quotes drop out of view.
     const isFixed = enquiry.customers.some((c) => c.status === 'fixed');
     const visibleCustomers = isFixed
         ? enquiry.customers.filter((c) => c.status === 'fixed')
         : enquiry.customers;
 
-    // Customers not yet on this enquiry are the only ones addable.
-    const existing = new Set(enquiry.customers.map((c) => c.customer_id));
+    // Customers not yet on this enquiry (including unsaved picks) are the only ones addable.
+    const existing = new Set(
+        enquiry.customers.map((c) => liveCustomerIds[c.id] ?? c.customer_id),
+    );
     const available = customers.filter((c) => !existing.has(c.sap_id));
 
     const form = useForm<CoreFormData>({
@@ -858,7 +898,7 @@ export function EnquiryCard({
                     const otherCustomerIds = new Set(
                         enquiry.customers
                             .filter((c) => c.id !== customer.id)
-                            .map((c) => c.customer_id),
+                            .map((c) => liveCustomerIds[c.id] ?? c.customer_id),
                     );
 
                     return (
@@ -867,12 +907,14 @@ export function EnquiryCard({
                             key={customer.id}
                             customer={customer}
                             customers={customers}
+                            creditByCustomer={creditByCustomer}
                             otherCustomerIds={otherCustomerIds}
                             maxQuantities={maxQuantities}
                             totalBasis={totalBasis}
                             setTotalBasis={setTotalBasis}
                             setStatus={setStatus}
                             onDirtyChange={handleCustomerDirtyChange}
+                            onCustomerIdChange={handleCustomerIdChange}
                         />
                     );
                 })}
