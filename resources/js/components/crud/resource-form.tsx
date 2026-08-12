@@ -1,5 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
+import { DateTimePicker } from '@/components/date-time-picker';
 import { ReadOnlyValue } from '@/components/edit-panel/fields';
 import { SummaryBand } from '@/components/edit-panel/summary-band';
 import InputError from '@/components/input-error';
@@ -58,6 +59,12 @@ function FieldControl({
 
     if (field.type === 'currency') {
         return <MoneyInput id={field.name} value={value} onChange={onChange} />;
+    }
+
+    if (field.type === 'datetime-local') {
+        return (
+            <DateTimePicker id={field.name} value={value} onChange={onChange} />
+        );
     }
 
     return (

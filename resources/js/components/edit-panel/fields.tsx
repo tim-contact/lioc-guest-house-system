@@ -1,5 +1,6 @@
 import { MoneyInput } from '@/components/money-input';
 import { NoneSelect } from '@/components/none-select';
+import { TimeField } from '@/components/time-field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -38,6 +39,13 @@ export function LabeledField({
             <Label htmlFor={id}>{label}</Label>
             {type === 'currency' ? (
                 <MoneyInput
+                    id={id}
+                    value={value}
+                    onChange={onChange}
+                    placeholder={placeholder}
+                />
+            ) : type === 'time' ? (
+                <TimeField
                     id={id}
                     value={value}
                     onChange={onChange}
