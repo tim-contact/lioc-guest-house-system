@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { ReadOnlyValue } from '@/components/edit-panel/fields';
 import { SummaryBand } from '@/components/edit-panel/summary-band';
 import InputError from '@/components/input-error';
+import { MoneyInput } from '@/components/money-input';
 import { Button } from '@/components/ui/button';
 import {
     DialogFooter,
@@ -53,6 +54,10 @@ function FieldControl({
                 onChange={(e) => onChange(e.target.value)}
             />
         );
+    }
+
+    if (field.type === 'currency') {
+        return <MoneyInput id={field.name} value={value} onChange={onChange} />;
     }
 
     return (

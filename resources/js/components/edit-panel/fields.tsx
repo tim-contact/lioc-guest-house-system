@@ -1,3 +1,4 @@
+import { MoneyInput } from '@/components/money-input';
 import { NoneSelect } from '@/components/none-select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,21 +29,30 @@ export function LabeledField({
     label: string;
     value: string;
     onChange: (value: string) => void;
-    type?: React.HTMLInputTypeAttribute;
+    type?: React.HTMLInputTypeAttribute | 'currency';
     placeholder?: string;
     step?: string;
 }) {
     return (
         <div className="grid gap-1">
             <Label htmlFor={id}>{label}</Label>
-            <Input
-                id={id}
-                type={type}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder={placeholder}
-                step={step}
-            />
+            {type === 'currency' ? (
+                <MoneyInput
+                    id={id}
+                    value={value}
+                    onChange={onChange}
+                    placeholder={placeholder}
+                />
+            ) : (
+                <Input
+                    id={id}
+                    type={type}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder={placeholder}
+                    step={step}
+                />
+            )}
         </div>
     );
 }

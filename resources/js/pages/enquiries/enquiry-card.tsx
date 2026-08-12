@@ -8,6 +8,7 @@ import {
 } from '@/actions/App/Http/Controllers/EnquiryCustomerController';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { DetailRow } from '@/components/edit-panel/fields';
+import { MoneyInput } from '@/components/money-input';
 import { NoneSelect } from '@/components/none-select';
 import { SearchableCombobox } from '@/components/searchable-combobox';
 import { Badge } from '@/components/ui/badge';
@@ -393,15 +394,11 @@ function CustomerBlock({
                                             key={product.key}
                                             className="p-1"
                                         >
-                                            <Input
-                                                type="number"
+                                            <MoneyInput
                                                 className="h-7"
                                                 value={form.data[field]}
-                                                onChange={(e) =>
-                                                    form.setData(
-                                                        field,
-                                                        e.target.value,
-                                                    )
+                                                onChange={(value) =>
+                                                    form.setData(field, value)
                                                 }
                                             />
                                         </TableCell>

@@ -1,5 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import { markLost } from '@/actions/App/Http/Controllers/EnquiryController';
+import { MoneyInput } from '@/components/money-input';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -92,12 +93,11 @@ export function LostDialog({
                                     <Label htmlFor={`${field}-${enquiryId}`}>
                                         {product.label} Price
                                     </Label>
-                                    <Input
+                                    <MoneyInput
                                         id={`${field}-${enquiryId}`}
-                                        type="number"
                                         value={form.data[field]}
-                                        onChange={(e) =>
-                                            form.setData(field, e.target.value)
+                                        onChange={(value) =>
+                                            form.setData(field, value)
                                         }
                                     />
                                 </div>

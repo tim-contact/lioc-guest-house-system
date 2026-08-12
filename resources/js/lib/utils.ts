@@ -38,7 +38,10 @@ export function emptyToNull<T extends object>(
     ) as { [K in keyof T]: T[K] | null };
 }
 
-/** Format a decimal string as money (2dp), or an em dash when absent. */
+/**
+ * Format a decimal string as money (2dp), or an em dash when absent.
+ * The locale is pinned so grouping doesn't vary with the browser's.
+ */
 export function formatMoney(value: string | number | null): string {
     if (value === null || value === '') {
         return '—';
@@ -48,7 +51,7 @@ export function formatMoney(value: string | number | null): string {
 
     return Number.isNaN(number)
         ? String(value)
-        : number.toLocaleString(undefined, {
+        : number.toLocaleString('en-US', {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
           });

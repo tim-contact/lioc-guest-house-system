@@ -272,8 +272,7 @@ export function DisputeEditDialog({
                     <LabeledField
                         id="dispute-value"
                         label="Dispute Value"
-                        type="number"
-                        step="0.01"
+                        type="currency"
                         value={form.data.dispute_value}
                         onChange={(value) =>
                             form.setData('dispute_value', value)

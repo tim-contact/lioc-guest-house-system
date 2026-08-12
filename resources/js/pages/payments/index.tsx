@@ -87,7 +87,7 @@ export default function PaymentsIndex({
             },
         ],
         fields: [
-            { name: 'amount', label: 'Amount', type: 'number', step: '0.01' },
+            { name: 'amount', label: 'Amount', type: 'currency' },
             { name: 'date', label: 'Date', type: 'date' },
             {
                 name: 'type',

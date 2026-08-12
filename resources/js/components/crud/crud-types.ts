@@ -7,6 +7,7 @@ export type CrudFieldType =
     | 'text'
     | 'email'
     | 'number'
+    | 'currency'
     | 'date'
     | 'datetime-local'
     | 'select'
