@@ -51,7 +51,7 @@ class SurveyingController extends Controller
         }
 
         $pendingOrders = fn (): array => $barge
-            ? OrderService::pending(dueWithinDays: 3)
+            ? OrderService::pending(dueWithinDays: 7)
                 ->where('barge_id', $barge)
                 ->load(['bdn', 'enquiry'])
                 ->map(fn (Order $order): array => [

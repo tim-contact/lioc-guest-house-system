@@ -208,7 +208,7 @@ export default function SurveyorDashboard({
 
                 <section className="flex flex-col gap-4">
                     <h2 className="text-xl font-semibold tracking-tight">
-                        Pending Orders (next 3 days)
+                        Pending Orders (next 7 days)
                     </h2>
                     <TableFrame>
                         <Table>
