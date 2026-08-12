@@ -81,9 +81,12 @@ class SurveyorAssignment
 
     /**
      * Authorize that a BDN barge operation targets the surveyor's assigned barge.
-     * Also rejects attempts to change the barge_id away from the assignment.
+     *
+     * Only the order's authoritative barge_id (from route-model binding) is used
+     * for the authorization check. The controller later forces surveyors' submitted
+     * barge_id to their assignment, so no untrusted user input is needed here.
      */
-    public static function authorizeBdnBarge(User $user, string $bargeId, ?string $inputBargeId = null): void
+    public static function authorizeBdnBarge(User $user, string $orderBargeId): void
     {
         $assignment = static::resolve($user);
 
@@ -96,13 +99,8 @@ class SurveyorAssignment
             return;
         }
 
-        // If input is trying to change the barge, reject it.
-        if ($inputBargeId !== null && $inputBargeId !== $assignment['barge_id']) {
-            abort(403);
-        }
-
-        // The current barge must match the assignment.
-        if ($bargeId !== $assignment['barge_id']) {
+        // The order's barge must match the surveyor's assignment.
+        if ($orderBargeId !== $assignment['barge_id']) {
             abort(403);
         }
     }

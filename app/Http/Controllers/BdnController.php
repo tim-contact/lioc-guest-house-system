@@ -81,10 +81,17 @@ class BdnController extends Controller
      */
     public function update(Request $request, Order $order): RedirectResponse
     {
+        // Non-privileged users cannot submit a barge_id different from the order's.
+        if (! $request->user()->type->isPrivileged()) {
+            $submitted = $request->input('barge_id');
+            if ($submitted !== null && $submitted !== $order->barge_id) {
+                abort(403);
+            }
+        }
+
         SurveyorAssignment::authorizeBdnBarge(
             $request->user(),
             $order->barge_id,
-            $request->input('barge_id'),
         );
 
         $validated = $request->validate($this->rules());

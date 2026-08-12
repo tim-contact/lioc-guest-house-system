@@ -32,8 +32,8 @@ class UpdateUserRequest extends FormRequest
                 if (! $policy->changeRole($actor, $target)) {
                     return false;
                 }
-                // Master cannot promote to super_admin.
-                if ($newRole === UserType::SuperAdmin && ! $actor->type->canManageSuperAdmins()) {
+                // Actor cannot assign a role they are not allowed to manage.
+                if (! $actor->type->canManageRole($newRole)) {
                     return false;
                 }
             }

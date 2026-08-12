@@ -23,9 +23,15 @@ class UserManagementController extends Controller
         /** @var User $actor */
         $actor = $request->user();
 
+        // Build filtered role options for the create/edit dropdown.
+        $roleOptions = array_values(array_map(fn (UserType $type) => [
+            'value' => $type->value,
+            'label' => $type->label(),
+        ], array_filter(UserType::cases(), fn (UserType $type) => $actor->type->canManageRole($type))));
+
         $query = User::query();
 
-        // Master cannot see super_admin users.
+        // Hide users whose role the actor cannot manage.
         if (! $actor->type->canManageSuperAdmins()) {
             $query->where('type', '!=', UserType::SuperAdmin->value);
         }
@@ -35,6 +41,7 @@ class UserManagementController extends Controller
 
         return Inertia::render('users/index', [
             'users' => $users,
+            'roleOptions' => $roleOptions,
         ]);
     }
 
@@ -158,17 +165,10 @@ class UserManagementController extends Controller
         /** @var User $actor */
         $actor = $request->user();
 
-        $cases = UserType::cases();
-
-        // Master cannot assign super_admin.
-        if (! $actor->type->canManageSuperAdmins()) {
-            $cases = array_filter($cases, fn (UserType $type) => $type !== UserType::SuperAdmin);
-        }
-
-        $options = array_map(fn (UserType $type) => [
+        $options = array_values(array_map(fn (UserType $type) => [
             'value' => $type->value,
             'label' => $type->label(),
-        ], array_values($cases));
+        ], array_filter(UserType::cases(), fn (UserType $type) => $actor->type->canManageRole($type))));
 
         return response()->json($options);
     }
