@@ -34,6 +34,7 @@ test('store creates a customer', function () {
         'address' => '1 Harbour Road',
         'credit_limit' => 50000,
         'country' => 'Singapore',
+        'account_type' => 'fcbu',
         'contact_person' => 'Jane Doe',
         'contact_phone' => '+65 6123 4567',
         'mail_id' => 'jane.doe@blueocean.example',
@@ -58,6 +59,7 @@ test('store allows the new contact fields to be omitted', function () {
         'address' => '2 Harbour Road',
         'credit_limit' => 25000,
         'country' => 'Malaysia',
+        'account_type' => 'dbu',
     ])->assertRedirect()->assertSessionHasNoErrors();
 
     expect(Customer::sole())
@@ -76,6 +78,7 @@ test('store rejects an invalid mail id', function () {
         'address' => '3 Harbour Road',
         'credit_limit' => 1000,
         'country' => 'Singapore',
+        'account_type' => 'fcbu',
         'mail_id' => 'not-an-email',
     ])->assertSessionHasErrors('mail_id');
 });
@@ -84,7 +87,7 @@ test('store requires the core fields', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $this->post(route('customers.store'), [])
-        ->assertSessionHasErrors(['sap_id', 'name', 'address', 'credit_limit', 'country']);
+        ->assertSessionHasErrors(['sap_id', 'name', 'address', 'credit_limit', 'country', 'account_type']);
 });
 
 test('store rejects a duplicate sap id', function () {
@@ -98,6 +101,7 @@ test('store rejects a duplicate sap id', function () {
         'address' => '1 Harbour Road',
         'credit_limit' => 50000,
         'country' => 'Singapore',
+        'account_type' => 'fcbu',
     ])->assertSessionHasErrors('sap_id');
 });
 
@@ -112,6 +116,7 @@ test('update saves edits to a customer', function () {
         'address' => 'Updated Address',
         'credit_limit' => 75000,
         'country' => 'Malaysia',
+        'account_type' => 'dbu',
         'contact_person' => 'John Smith',
         'contact_phone' => '0123456789',
         'mail_id' => 'john.smith@example.com',

@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\AccountType;
 use App\Models\Customer;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -23,6 +24,7 @@ class CustomerFactory extends Factory
             'address' => fake()->address(),
             'credit_limit' => fake()->randomFloat(2, 0, 1000000),
             'country' => fake()->country(),
+            'account_type' => fake()->randomElement(AccountType::cases()),
             'contact_person' => fake()->name(),
             'contact_phone' => fake()->phoneNumber(),
             'mail_id' => fake()->safeEmail(),

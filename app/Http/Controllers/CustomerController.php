@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AccountType;
 use App\Models\Customer;
 use App\Models\Order;
 use Illuminate\Http\RedirectResponse;
@@ -16,7 +17,7 @@ class CustomerController extends Controller
     {
         return Inertia::render('customers/index', [
             'customers' => Customer::orderBy('name')->get([
-                'sap_id', 'name', 'address', 'credit_limit', 'country',
+                'sap_id', 'name', 'address', 'credit_limit', 'country', 'account_type',
                 'contact_person', 'contact_phone', 'mail_id', 'invoice_mail_ids',
             ]),
         ]);
@@ -54,6 +55,7 @@ class CustomerController extends Controller
             'address' => ['required', 'string', 'max:500'],
             'credit_limit' => ['required', 'numeric', 'min:0'],
             'country' => ['required', 'string', 'max:255'],
+            'account_type' => ['required', Rule::enum(AccountType::class)],
             'contact_person' => ['nullable', 'string', 'max:255'],
             'contact_phone' => ['nullable', 'string', 'max:255'],
             'mail_id' => ['nullable', 'email', 'max:255'],

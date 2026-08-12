@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AccountType;
 use Database\Factories\CustomerFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,12 +15,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $address
  * @property float $credit_limit
  * @property string $country
+ * @property AccountType|null $account_type
  * @property string|null $contact_person
  * @property string|null $contact_phone
  * @property string|null $mail_id
  * @property string|null $invoice_mail_ids
  */
-#[Fillable(['sap_id', 'name', 'address', 'credit_limit', 'country', 'contact_person', 'contact_phone', 'mail_id', 'invoice_mail_ids'])]
+#[Fillable(['sap_id', 'name', 'address', 'credit_limit', 'country', 'account_type', 'contact_person', 'contact_phone', 'mail_id', 'invoice_mail_ids'])]
 class Customer extends Model
 {
     /** @use HasFactory<CustomerFactory> */
@@ -39,6 +41,7 @@ class Customer extends Model
     protected function casts(): array
     {
         return [
+            'account_type' => AccountType::class,
             'credit_limit' => 'decimal:2',
         ];
     }
