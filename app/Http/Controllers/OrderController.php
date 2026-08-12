@@ -140,7 +140,6 @@ class OrderController extends Controller
             'product_type' => ['nullable', Rule::enum(ProductType::class)],
             'credit_terms' => ['nullable', Rule::enum(CreditTerms::class)],
             'status' => ['required', Rule::enum(OrderStatus::class)],
-            'invoice_value' => ['nullable', 'numeric', 'min:0'],
             'invoice_date' => ['nullable', 'date'],
             'payment_due_date' => ['nullable', 'date', 'after_or_equal:invoice_date'],
             'amount_received' => ['nullable', 'numeric', 'min:0'],

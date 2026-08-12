@@ -432,6 +432,28 @@ test('table update saves every section of the order, unlike the narrower dashboa
     expect($fresh->vlsfo_qty_range)->toBe('100 - 200');
     expect((float) $fresh->amount_received)->toBe(45000.0);
     expect($fresh->payment_receipt_date->toDateString())->toBe('2026-02-10');
+    expect((float) $fresh->invoice_value)->toBe(75000.0);
+});
+
+test('table update ignores a submitted invoice value and recomputes it from bdn quantity and rate', function () {
+    $this->actingAs(User::factory()->create());
+
+    $order = createOrder([
+        'status' => OrderStatus::Delivered,
+        'vlsfo_bdn_qty' => 100,
+        'vlsfo_rate' => 500,
+        'invoice_value' => 50000,
+    ]);
+
+    $this->patch(route('orders.table.update', $order), [
+        'order_number' => $order->order_number,
+        'enquiry_id' => $order->enquiry_id,
+        'customer_id' => $order->customer_id,
+        'status' => OrderStatus::Delivered->value,
+        'invoice_value' => 999999,
+    ])->assertRedirect();
+
+    expect((float) $order->refresh()->invoice_value)->toBe(50000.0);
 });
 
 test('table update rejects a duplicate order number', function () {

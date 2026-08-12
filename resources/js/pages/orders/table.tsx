@@ -486,6 +486,7 @@ export default function OrdersTable({
                 label: 'Invoice Value',
                 type: 'currency',
                 section: 'Invoicing',
+                disabledOnEdit: true,
             },
             {
                 name: 'invoice_date',
