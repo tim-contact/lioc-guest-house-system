@@ -41,7 +41,7 @@ export function ResourceCrudPage<T>({
     );
     const canEdit = config.canEdit !== false;
     const canDelete = config.canDelete !== false;
-    const showActions = canEdit || canDelete;
+    const showActions = canEdit || canDelete || !!config.rowActions;
 
     return (
         <>
@@ -116,6 +116,7 @@ export function ResourceCrudPage<T>({
                                     {showActions && (
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
+                                                {config.rowActions?.(row)}
                                                 {canEdit && (
                                                     <Button
                                                         variant="outline"
@@ -218,7 +219,7 @@ export function ResourceCrudPage<T>({
                             variant="destructive"
                             onClick={() => {
                                 const action = deleting
-                                    ? config.routes.destroy?.(
+                                    ? config.routes?.destroy?.(
                                           config.pk(deleting),
                                       )
                                     : undefined;

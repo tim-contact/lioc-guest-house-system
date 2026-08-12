@@ -107,11 +107,14 @@ export function ResourceForm<T>({
     row: T | null;
     onDone: () => void;
 }) {
-    const form = useForm<Record<string, string>>(config.toFormData(row));
+    const form = useForm<Record<string, string>>(
+        config.toFormData?.(row) ?? {},
+    );
     const isEdit = row !== null;
     const isLocked = (field: CrudField) => isEdit && !!field.disabledOnEdit;
-    const lockedFields = config.fields.filter(isLocked);
-    const editableFields = config.fields.filter((field) => !isLocked(field));
+    const fields = config.fields ?? [];
+    const lockedFields = fields.filter(isLocked);
+    const editableFields = fields.filter((field) => !isLocked(field));
     const gridClass =
         config.formColumns === 2 ? 'grid grid-cols-2 gap-3' : 'grid gap-3';
 
@@ -119,8 +122,8 @@ export function ResourceForm<T>({
         event.preventDefault();
 
         const action = isEdit
-            ? config.routes.update?.(config.pk(row))
-            : config.routes.store?.();
+            ? config.routes?.update?.(config.pk(row))
+            : config.routes?.store?.();
 
         if (!action) {
             return;
