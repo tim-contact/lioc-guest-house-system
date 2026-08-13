@@ -12,7 +12,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { FUEL_GRADES } from '@/lib/domain';
-import { formatMoney, shortDate } from '@/lib/utils';
+import { shortDate } from '@/lib/utils';
 import { ebdn } from '@/routes/bdns';
 import { complete as completeOrder } from '@/routes/surveyor';
 import type { AgentOption, EnumOption } from '@/types';
@@ -40,7 +40,6 @@ export interface PendingRow {
     sampling: string | null;
     quality_claim: string | null;
     instructions: string | null;
-    barging_cost: string | null;
     vlsfo_qty: string | null;
     mgo_qty: string | null;
     hsfo_qty: string | null;
@@ -116,19 +115,20 @@ function picLabel({ pic, mobile_no }: PendingRow): string {
 }
 
 function OperationalInstruction({ row }: { row: PendingRow }) {
-    const details: [string, string][] = [
-        ['PIC', picLabel(row)],
+    const pairs: [string, string][] = [
         ['Sampling', row.sampling ?? '—'],
         ['Claim', row.quality_claim ?? '—'],
-        ['Barging', formatMoney(row.barging_cost)],
     ];
 
     return (
-        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-3 text-xs">
-            {details.map(([label, value]) => (
+        <div className="grid grid-cols-[auto_1fr_auto_1fr] items-baseline gap-x-3 gap-y-1 text-xs">
+            <span className="text-muted-foreground">PIC</span>
+            <span className="col-span-3 break-words">{picLabel(row)}</span>
+
+            {pairs.map(([label, value]) => (
                 <Fragment key={label}>
                     <span className="text-muted-foreground">{label}</span>
-                    <span>{value}</span>
+                    <span className="break-words">{value}</span>
                 </Fragment>
             ))}
 
@@ -136,7 +136,7 @@ function OperationalInstruction({ row }: { row: PendingRow }) {
                 <>
                     <span className="text-muted-foreground">Notes</span>
                     <span
-                        className="col-span-3 line-clamp-2"
+                        className="col-span-3 line-clamp-2 break-words"
                         title={row.instructions}
                     >
                         {row.instructions}

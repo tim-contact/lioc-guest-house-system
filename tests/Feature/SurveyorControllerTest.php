@@ -88,7 +88,6 @@ test('index renders the operational instructions from the pending order enquiry'
         'sampling' => Sampling::VesselManifold,
         'quality_claim' => QualityClaim::ThirtyDays,
         'instructions' => 'Deliver port side, two hoses.',
-        'barging_cost' => 1200,
     ]);
 
     $order = createSurveyorOrder([
@@ -106,7 +105,7 @@ test('index renders the operational instructions from the pending order enquiry'
             ->where('pendingOrders.0.sampling', 'Vessel Manifold')
             ->where('pendingOrders.0.quality_claim', '30 days')
             ->where('pendingOrders.0.instructions', 'Deliver port side, two hoses.')
-            ->where('pendingOrders.0.barging_cost', '1200.00'));
+            ->missing('pendingOrders.0.barging_cost'));
 });
 
 test('index lists pending orders due within three days and overdue ones, but not later orders', function () {

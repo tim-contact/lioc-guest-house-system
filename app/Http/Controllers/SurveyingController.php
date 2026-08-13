@@ -70,7 +70,6 @@ class SurveyingController extends Controller
                     'sampling' => $order->enquiry?->sampling?->label(),
                     'quality_claim' => $order->enquiry?->quality_claim?->label(),
                     'instructions' => $order->enquiry?->instructions,
-                    'barging_cost' => $order->enquiry?->barging_cost,
                     'vlsfo_qty' => $order->vlsfo_final_qty,
                     'mgo_qty' => $order->mgo_final_qty,
                     'hsfo_qty' => $order->hsfo_final_qty,
