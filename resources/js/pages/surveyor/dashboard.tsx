@@ -14,7 +14,6 @@ import {
 import { FUEL_GRADES } from '@/lib/domain';
 import { shortDate } from '@/lib/utils';
 import { ebdn } from '@/routes/bdns';
-import { complete as completeOrder } from '@/routes/surveyor';
 import type { AgentOption, EnumOption } from '@/types';
 import { BdnDialog } from './bdn-dialog';
 import type { BdnRow } from './bdn-dialog';
@@ -170,9 +169,6 @@ export default function SurveyorDashboard({
     // Derived, so the open dialog sees the BDN number its own first save assigned.
     const bdnOrder = pendingOrders.find((row) => row.id === bdnOrderId);
 
-    const handleComplete = (id: number) =>
-        router.patch(completeOrder(id).url, {}, { preserveScroll: true });
-
     return (
         <>
             <Head title="Surveyor" />
@@ -250,30 +246,14 @@ export default function SurveyorDashboard({
                                             <OperationalInstruction row={row} />
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                >
-                                                    Upload
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        setBdnOrderId(row.id)
-                                                    }
-                                                >
-                                                    BDN
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        handleComplete(row.id)
-                                                    }
-                                                >
-                                                    Submit
-                                                </Button>
-                                            </div>
+                                            <Button
+                                                size="sm"
+                                                onClick={() =>
+                                                    setBdnOrderId(row.id)
+                                                }
+                                            >
+                                                BDN
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}
