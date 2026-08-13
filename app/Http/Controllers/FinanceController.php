@@ -34,6 +34,7 @@ class FinanceController extends Controller
                 'invoice_date' => $order->invoice_date,
                 'payment_due_date' => $order->payment_due_date,
                 'amount_received' => $order->amount_received,
+                'amount_remaining' => $order->balance_amount,
                 'payment_receipt_date' => $order->payment_receipt_date,
                 'status' => $order->status->label(),
                 'paid_in_full' => $order->isPaidInFull(),

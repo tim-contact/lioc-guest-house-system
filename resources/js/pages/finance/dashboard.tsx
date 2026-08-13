@@ -41,6 +41,7 @@ export interface CompletedRow {
     invoice_date: string | null;
     payment_due_date: string | null;
     amount_received: string | null;
+    amount_remaining: number;
     payment_receipt_date: string | null;
     status: string | null;
     paid_in_full: boolean;
@@ -123,6 +124,12 @@ const COLUMNS: Column[] = [
         cell: (row) => formatMoney(row.amount_received),
     },
     {
+        header: 'Amount Remaining',
+        sortKey: 'amount_remaining',
+        align: 'right',
+        cell: (row) => formatMoney(row.amount_remaining),
+    },
+    {
         header: 'Last Payment Date',
         sortKey: 'payment_receipt_date',
         cell: (row) => shortDate(row.payment_receipt_date),
@@ -150,6 +157,7 @@ const EXPORT_COLUMNS: ExportColumn<CompletedRow>[] = [
         value: (row) => (row.paid_in_full ? 'Received' : 'Not Received'),
     },
     { header: 'Amount Received', value: (row) => row.amount_received ?? '' },
+    { header: 'Amount Remaining', value: (row) => row.amount_remaining },
     {
         header: 'Last Payment Date',
         value: (row) => row.payment_receipt_date ?? '',
