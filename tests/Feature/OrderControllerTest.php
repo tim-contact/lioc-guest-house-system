@@ -2,11 +2,13 @@
 
 use App\Enums\CreditTerms;
 use App\Enums\DeliveryMode;
+use App\Enums\DisputeStatus;
 use App\Enums\OrderStatus;
 use App\Models\Agent;
 use App\Models\AgentPic;
 use App\Models\Barge;
 use App\Models\Customer;
+use App\Models\Dispute;
 use App\Models\Enquiry;
 use App\Models\Order;
 use App\Models\Port;
@@ -70,6 +72,38 @@ test('index renders pending and completed orders grouped by port', function () {
             ->where('pendingOrders.0.vessel_name', 'MV Pending')
             ->has('completedOrders', 1)
             ->where('completedOrders.0.vessel_name', 'MV Delivered Recently'));
+});
+
+test('old delivered orders stay on the completed list while a dispute is open', function () {
+    $this->actingAs(User::factory()->create());
+
+    $disputed = createOrder([
+        'vessel_name' => 'MV Disputed',
+        'status' => OrderStatus::Delivered,
+        'invoice_date' => now()->subDays(45),
+    ]);
+
+    Dispute::factory()->create([
+        'order_id' => $disputed->id,
+        'dispute_status' => DisputeStatus::Open,
+    ]);
+
+    $settled = createOrder([
+        'vessel_name' => 'MV Settled',
+        'status' => OrderStatus::Delivered,
+        'invoice_date' => now()->subDays(45),
+    ]);
+
+    Dispute::factory()->create([
+        'order_id' => $settled->id,
+        'dispute_status' => DisputeStatus::Closed,
+    ]);
+
+    $this->get(route('orders'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('completedOrders', 1)
+            ->where('completedOrders.0.vessel_name', 'MV Disputed'));
 });
 
 test('order rows include port, customer and fuel grade quantities', function () {
