@@ -517,6 +517,7 @@ function CustomerBlock({
                     <Button
                         type="button"
                         size="sm"
+                        className="bg-green-600 text-white hover:bg-green-600/90"
                         onClick={() => setStatus(customer, 'fixed')}
                     >
                         Fixed
