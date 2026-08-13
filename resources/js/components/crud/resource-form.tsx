@@ -176,7 +176,7 @@ export function ResourceForm<T>({
                 header
             )}
 
-            <div className="max-h-[65vh] overflow-y-auto pr-1">
+            <div>
                 {groupFields(editableFields).map((section) => (
                     <div key={section.name} className="mb-4 last:mb-0">
                         {section.name && (

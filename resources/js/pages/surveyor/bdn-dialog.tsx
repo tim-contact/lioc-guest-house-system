@@ -262,7 +262,7 @@ export function BdnDialog({
     return (
         <Dialog open={open} onOpenChange={(next) => !next && close()}>
             <DialogContent
-                className="max-h-[88vh] overflow-y-auto sm:max-w-4xl"
+                className="sm:max-w-4xl"
                 onInteractOutside={(e) => e.preventDefault()}
             >
                 <SummaryBand>
