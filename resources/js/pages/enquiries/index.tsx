@@ -58,27 +58,39 @@ export default function EnquiriesIndex({
         <>
             <Head title="Enquiries" />
 
-            <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
-                <div className="flex items-center justify-end">
-                    <Button onClick={() => setCreating(true)}>
+            <div className="flex min-h-0 flex-1 flex-col gap-5 bg-[#f6f9fc] p-4 md:p-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-2xl font-semibold tracking-normal text-slate-950">
+                            Enquiries
+                        </h1>
+                        <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-600 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                            {enquiries.length}
+                        </span>
+                    </div>
+                    <Button
+                        onClick={() => setCreating(true)}
+                        className="w-full bg-[#315cfd] text-white shadow-[0_1px_2px_rgba(49,92,253,0.24)] hover:bg-[#254be6] sm:w-auto"
+                    >
                         + New Enquiry
                     </Button>
                 </div>
 
                 {enquiries.length === 0 ? (
-                    <p className="text-muted-foreground">No enquiries yet.</p>
+                    <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+                        No enquiries yet.
+                    </div>
                 ) : (
                     <div
                         ref={rowRef}
                         tabIndex={0}
                         aria-label="Enquiries"
-                        className="flex min-h-0 flex-1 cursor-grab items-start gap-4 overflow-x-auto pt-2 pr-2 pb-4 pl-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="flex min-h-0 flex-1 cursor-grab items-start gap-4 overflow-x-auto overflow-y-hidden px-1 pt-1 pb-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:gap-5"
                     >
                         {enquiries.map((enquiry) => (
                             <div
                                 key={enquiry.id}
-                                data-drag-scroll-ignore
-                                className="w-[min(90vw,36rem)] shrink-0 cursor-auto"
+                                className="w-[36rem] shrink-0 cursor-auto"
                             >
                                 <EnquiryCard
                                     enquiry={enquiry}
