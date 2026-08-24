@@ -1,5 +1,15 @@
 import { router, useForm } from '@inertiajs/react';
-import { ChevronDown } from 'lucide-react';
+import {
+    CalendarDays,
+    ChevronDown,
+    CircleDollarSign,
+    Fuel,
+    MapPin,
+    RotateCcw,
+    Save,
+    Ship,
+    Trophy,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { update } from '@/actions/App/Http/Controllers/EnquiryController';
 import {
@@ -50,6 +60,7 @@ import {
     dateToDateOnly,
     emptyToNull,
     formatMoney,
+    portColorClasses,
     shortDate,
     toDateRange,
 } from '@/lib/utils';
@@ -122,20 +133,20 @@ export interface PortOption {
     name: string;
 }
 
-const ENQUIRY_STATUS_STYLE: Record<string, { ring: string; badge: string }> = {
+const ENQUIRY_STATUS_STYLE: Record<string, { card: string; badge: string }> = {
     open: {
-        ring: 'ring-[3px] ring-info/40',
-        badge: 'bg-info/20 text-info font-semibold',
+        card: 'border-info/30 shadow-[0_1px_3px_rgba(16,24,40,0.06)] ring-[3px] ring-info/15',
+        badge: 'border-info/20 bg-info/10 text-info',
     },
     completing: {
-        ring: 'ring-[3px] ring-warning/40',
-        badge: 'bg-warning/20 text-warning font-semibold',
+        card: 'border-warning/35 shadow-[0_1px_3px_rgba(16,24,40,0.06)] ring-[3px] ring-warning/15',
+        badge: 'border-warning/25 bg-warning/10 text-warning',
     },
 };
 
 const NEUTRAL_ENQUIRY_STATUS_STYLE = {
-    ring: 'ring-[3px] ring-foreground/40',
-    badge: '',
+    card: 'border-slate-200 shadow-[0_1px_3px_rgba(16,24,40,0.06)]',
+    badge: 'border-slate-200 bg-slate-100 text-slate-700',
 };
 
 const PRICE_ROWS = [
@@ -329,36 +340,43 @@ function CustomerBlock({
     return (
         <form
             onSubmit={save}
-            className={`flex flex-col gap-2 rounded-md border-l-4 py-2.5 pr-3 pl-3 text-sm transition ${
+            className={`relative z-[1] flex flex-col gap-4 rounded-xl border bg-white p-4 text-sm shadow-[0_2px_8px_rgba(16,24,40,0.06)] transition ${
                 customer.status === 'fixed'
-                    ? 'border-l-success bg-success/15'
+                    ? 'border-success/25 bg-success/5'
                     : customer.status === 'lost'
-                      ? 'border-l-destructive bg-destructive/15'
-                      : 'border-l-border bg-muted/10'
+                      ? 'border-destructive/25 bg-destructive/5'
+                      : 'border-slate-200'
             }`}
         >
-            <SearchableCombobox
-                items={pickable.map((c) => ({
-                    value: c.sap_id,
-                    label: c.name,
-                    sublabel: c.sap_id,
-                }))}
-                value={form.data.customer_id}
-                onChange={(value) =>
-                    form.setData({
-                        ...form.data,
-                        customer_id: value,
-                        credit_terms: '',
-                    })
-                }
-                placeholder="Select customer"
-                searchPlaceholder="Search name or SAP ID"
-                emptyText="No customers available."
-            />
+            <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-brand-surface text-brand">
+                    <CircleDollarSign className="size-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <SearchableCombobox
+                        items={pickable.map((c) => ({
+                            value: c.sap_id,
+                            label: c.name,
+                            sublabel: c.sap_id,
+                        }))}
+                        value={form.data.customer_id}
+                        onChange={(value) =>
+                            form.setData({
+                                ...form.data,
+                                customer_id: value,
+                                credit_terms: '',
+                            })
+                        }
+                        placeholder="Select customer"
+                        searchPlaceholder="Search name or SAP ID"
+                        emptyText="No customers available."
+                    />
+                </div>
+            </div>
 
-            <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-1">
-                    <Label className="text-xs text-muted-foreground">
+            <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                    <Label className="text-xs font-medium text-slate-500">
                         Credit Terms
                     </Label>
                     <NoneSelect
@@ -381,17 +399,17 @@ function CustomerBlock({
                 </div>
             </div>
 
-            <div className="overflow-x-auto rounded-md border bg-muted/70">
+            <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50/70">
                 <Table>
-                    <TableHeader className="bg-muted">
-                        <TableRow>
-                            <TableHead className="h-7 w-24 text-xs">
+                    <TableHeader className="bg-slate-100/90">
+                        <TableRow className="border-b-0 hover:bg-transparent">
+                            <TableHead className="h-7 w-24 text-xs text-slate-500">
                                 Product
                             </TableHead>
                             {FUEL_GRADES.map((product) => (
                                 <TableHead
                                     key={product.key}
-                                    className="h-7 min-w-20 text-xs"
+                                    className="h-7 min-w-20 text-xs font-semibold text-slate-700"
                                 >
                                     {product.label}
                                 </TableHead>
@@ -400,8 +418,11 @@ function CustomerBlock({
                     </TableHeader>
                     <TableBody>
                         {PRICE_ROWS.map((row) => (
-                            <TableRow key={row.key}>
-                                <TableCell className="p-1 text-xs text-muted-foreground">
+                            <TableRow
+                                key={row.key}
+                                className="border-b-0 hover:bg-transparent"
+                            >
+                                <TableCell className="p-2 text-xs text-slate-500">
                                     {row.label}
                                 </TableCell>
                                 {FUEL_GRADES.map((product) => {
@@ -413,10 +434,10 @@ function CustomerBlock({
                                     return (
                                         <TableCell
                                             key={product.key}
-                                            className="p-1"
+                                            className="p-2"
                                         >
                                             <MoneyInput
-                                                className="h-7"
+                                                className="h-7 rounded-sm"
                                                 value={form.data[field]}
                                                 onChange={(value) =>
                                                     form.setData(field, value)
@@ -427,15 +448,15 @@ function CustomerBlock({
                                 })}
                             </TableRow>
                         ))}
-                        <TableRow>
-                            <TableCell className="p-1">
+                        <TableRow className="border-b-0 hover:bg-transparent">
+                            <TableCell className="p-2">
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button
                                             type="button"
                                             variant="ghost"
                                             size="sm"
-                                            className="h-7 w-full justify-between px-1 text-xs text-muted-foreground"
+                                            className="h-7 w-full justify-between px-1 text-xs text-slate-500"
                                         >
                                             {`Total: ${
                                                 TOTAL_BASES.find(
@@ -479,7 +500,7 @@ function CustomerBlock({
                                 return (
                                     <TableCell
                                         key={product.key}
-                                        className="p-1 px-2 text-xs font-medium tabular-nums"
+                                        className="p-2 text-xs font-semibold text-slate-800 tabular-nums"
                                         title={
                                             totalBasis === 'latest' && row
                                                 ? `${PRICE_ROWS.find((priceRow) => priceRow.key === row)?.label} × ${maxQuantities[product.key] || '—'}`
@@ -502,6 +523,7 @@ function CustomerBlock({
                     variant="outline"
                     disabled={!form.isDirty || form.processing}
                 >
+                    <Save className="size-3.5" />
                     Save
                 </Button>
                 {customer.status === 'fixed' || customer.status === 'lost' ? (
@@ -511,6 +533,7 @@ function CustomerBlock({
                         variant="outline"
                         onClick={() => setStatus(customer, 'pending')}
                     >
+                        <RotateCcw className="size-3.5" />
                         Revert
                     </Button>
                 ) : (
@@ -520,6 +543,7 @@ function CustomerBlock({
                         className="bg-green-600 text-white hover:bg-green-600/90"
                         onClick={() => setStatus(customer, 'fixed')}
                     >
+                        <Trophy className="size-3.5" />
                         Fixed
                     </Button>
                 )}
@@ -697,40 +721,58 @@ export function EnquiryCard({
 
     const statusStyle =
         ENQUIRY_STATUS_STYLE[enquiry.status] ?? NEUTRAL_ENQUIRY_STATUS_STYLE;
+    const portColor = portColorClasses(form.data.port_id || enquiry.port);
 
     return (
-        <Card size="sm" className={statusStyle.ring}>
-            <CardHeader data-drag-scroll-handle className="cursor-grab">
-                <div className="flex items-start justify-between gap-2">
-                    <div>
-                        <CardTitle>
-                            {enquiry.vessel_name || 'Untitled vessel'}
+        <Card
+            size="sm"
+            className={`relative overflow-hidden rounded-[14px] ring-0 ${portColor.card} ${statusStyle.card}`}
+        >
+            <div
+                className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${portColor.accent}`}
+            />
+            <CardHeader className="pt-4">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <div className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-500">
+                            <span>Enquiry #{enquiry.id}</span>
+                            <span className="size-1 rounded-full bg-slate-300" />
+                            <span>{shortDate(enquiry.created_at)}</span>
+                        </div>
+                        <CardTitle className="flex min-w-0 items-center gap-2 text-lg font-semibold text-slate-950">
+                            <span
+                                className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${portColor.icon}`}
+                            >
+                                <Ship className="size-4" />
+                            </span>
+                            <span className="truncate">
+                                {enquiry.vessel_name || 'Untitled vessel'}
+                            </span>
                         </CardTitle>
-                        <p className="text-sm text-muted-foreground">
-                            Enquiry #{enquiry.id} ·{' '}
-                            {shortDate(enquiry.created_at)}
-                        </p>
                     </div>
                     <Badge
-                        variant="secondary"
-                        className={`capitalize ${statusStyle.badge}`}
+                        variant="outline"
+                        className={`h-6 rounded-md px-2.5 font-semibold capitalize ${statusStyle.badge}`}
                     >
                         {enquiry.status}
                     </Badge>
                 </div>
             </CardHeader>
 
-            <CardContent className="flex flex-col gap-4">
+            <CardContent className="flex flex-col gap-5">
                 {/* ---- Core details ---- */}
-                <form onSubmit={saveCore} className="flex flex-col gap-4">
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <div className="grid gap-1">
-                            <Label htmlFor={`vessel-name-${enquiry.id}`}>
+                <form onSubmit={saveCore} className="flex flex-col gap-5">
+                    <div className="relative z-[1] grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4 shadow-[0_2px_8px_rgba(16,24,40,0.05)] sm:grid-cols-2">
+                        <div className="grid gap-2">
+                            <Label
+                                htmlFor={`vessel-name-${enquiry.id}`}
+                                className="text-xs font-medium text-slate-500"
+                            >
                                 Vessel Name
                             </Label>
                             <Input
                                 id={`vessel-name-${enquiry.id}`}
-                                className="h-7"
+                                className="h-8 rounded-sm border-slate-300 bg-white"
                                 value={form.data.vessel_name}
                                 onChange={(e) =>
                                     form.setData('vessel_name', e.target.value)
@@ -743,11 +785,16 @@ export function EnquiryCard({
                             )}
                         </div>
 
-                        <div className="grid gap-1">
-                            <Label htmlFor={`imo-${enquiry.id}`}>IMO</Label>
+                        <div className="grid gap-2">
+                            <Label
+                                htmlFor={`imo-${enquiry.id}`}
+                                className="text-xs font-medium text-slate-500"
+                            >
+                                IMO
+                            </Label>
                             <Input
                                 id={`imo-${enquiry.id}`}
-                                className="h-7"
+                                className="h-8 rounded-sm border-slate-300 bg-white"
                                 value={form.data.imo}
                                 onChange={(e) =>
                                     form.setData('imo', e.target.value)
@@ -755,10 +802,13 @@ export function EnquiryCard({
                             />
                         </div>
 
-                        <div className="grid gap-1">
-                            <Label>Port</Label>
+                        <div className="grid gap-2">
+                            <Label className="text-xs font-medium text-slate-500">
+                                <MapPin className="size-3.5" />
+                                Port
+                            </Label>
                             <NoneSelect
-                                size="sm"
+                                className="rounded-sm border-slate-300 bg-white"
                                 value={form.data.port_id}
                                 onChange={(value) =>
                                     form.setData('port_id', value)
@@ -771,10 +821,14 @@ export function EnquiryCard({
                             />
                         </div>
 
-                        <div className="grid gap-1">
-                            <Label>Delivery Laycan</Label>
+                        <div className="grid gap-2">
+                            <Label className="text-xs font-medium text-slate-500">
+                                <CalendarDays className="size-3.5" />
+                                Delivery Laycan
+                            </Label>
                             <DateRangePicker
-                                size="sm"
+                                size="lg"
+                                className="rounded-sm border-slate-300 bg-white"
                                 value={laycanRange}
                                 onChange={(range) => {
                                     form.setData({
@@ -790,87 +844,105 @@ export function EnquiryCard({
                         </div>
                     </div>
 
-                    <Separator />
+                    <Separator className="bg-slate-200" />
 
                     {/* ---- Product grid ---- */}
-                    <div className="overflow-x-auto rounded-md border bg-muted/70">
-                        <Table>
-                            <TableHeader className="bg-muted">
-                                <TableRow>
-                                    <TableHead className="h-7 w-24 text-xs">
-                                        Product
-                                    </TableHead>
-                                    {FUEL_GRADES.map((product) => (
-                                        <TableHead
-                                            key={product.key}
-                                            className="h-7 min-w-28 text-xs"
-                                        >
-                                            {product.label}
+                    <div className="relative z-[1]">
+                        <div className="mb-2 flex items-center gap-2 px-1">
+                            <Fuel className="size-4 text-brand" />
+                            <span className="text-sm font-semibold text-slate-900">
+                                Product requirements
+                            </span>
+                        </div>
+                        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_2px_8px_rgba(16,24,40,0.05)]">
+                            <Table className="mb-4">
+                                <TableHeader className="bg-slate-100/80">
+                                    <TableRow className="rounded-sm border-b-0 hover:bg-transparent [&>th]:pb-3">
+                                        <TableHead className="h-9 w-24 pt-1 pb-1 pl-5 text-xs text-slate-500">
+                                            Product
                                         </TableHead>
-                                    ))}
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {gridRows(
-                                    productTypeOptions,
-                                    deliveryModeOptions,
-                                ).map((row) => (
-                                    <TableRow key={row.attr}>
-                                        <TableCell className="p-1.5 text-xs text-muted-foreground">
-                                            {row.label}
-                                        </TableCell>
-                                        {FUEL_GRADES.map((product) => {
-                                            const field = productField(
-                                                product.key,
-                                                row.attr,
-                                            );
-
-                                            return (
-                                                <TableCell
-                                                    key={product.key}
-                                                    className="p-1.5"
-                                                >
-                                                    {row.options ? (
-                                                        <NoneSelect
-                                                            size="sm"
-                                                            value={
-                                                                form.data[field]
-                                                            }
-                                                            onChange={(value) =>
-                                                                setProductField(
-                                                                    product.key,
-                                                                    row.attr,
-                                                                    value,
-                                                                )
-                                                            }
-                                                            options={
-                                                                row.options
-                                                            }
-                                                        />
-                                                    ) : (
-                                                        <Input
-                                                            type="number"
-                                                            className="h-7"
-                                                            value={
-                                                                form.data[field]
-                                                            }
-                                                            onChange={(e) =>
-                                                                setProductField(
-                                                                    product.key,
-                                                                    row.attr,
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                        />
-                                                    )}
-                                                </TableCell>
-                                            );
-                                        })}
+                                        {FUEL_GRADES.map((product) => (
+                                            <TableHead
+                                                key={product.key}
+                                                className="h-9 min-w-32 pt-3 pb-1 pl-3 text-xs font-semibold text-slate-700"
+                                            >
+                                                {product.label}
+                                            </TableHead>
+                                        ))}
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody className="[&>tr:first-child>td]:pt-4">
+                                    {gridRows(
+                                        productTypeOptions,
+                                        deliveryModeOptions,
+                                    ).map((row) => (
+                                        <TableRow
+                                            key={row.attr}
+                                            className="rounded-sm border-b-0 hover:bg-transparent"
+                                        >
+                                            <TableCell className="px-4 py-3 text-xs text-slate-500">
+                                                {row.label}
+                                            </TableCell>
+                                            {FUEL_GRADES.map((product) => {
+                                                const field = productField(
+                                                    product.key,
+                                                    row.attr,
+                                                );
+
+                                                return (
+                                                    <TableCell
+                                                        key={product.key}
+                                                        className="p-2"
+                                                    >
+                                                        {row.options ? (
+                                                            <NoneSelect
+                                                                size="sm"
+                                                                className="rounded-sm border-slate-300 bg-white"
+                                                                value={
+                                                                    form.data[
+                                                                        field
+                                                                    ]
+                                                                }
+                                                                onChange={(
+                                                                    value,
+                                                                ) =>
+                                                                    setProductField(
+                                                                        product.key,
+                                                                        row.attr,
+                                                                        value,
+                                                                    )
+                                                                }
+                                                                options={
+                                                                    row.options
+                                                                }
+                                                            />
+                                                        ) : (
+                                                            <Input
+                                                                type="number"
+                                                                className="h-7 rounded-sm border-slate-300 bg-white"
+                                                                value={
+                                                                    form.data[
+                                                                        field
+                                                                    ]
+                                                                }
+                                                                onChange={(e) =>
+                                                                    setProductField(
+                                                                        product.key,
+                                                                        row.attr,
+                                                                        e.target
+                                                                            .value,
+                                                                    )
+                                                                }
+                                                            />
+                                                        )}
+                                                    </TableCell>
+                                                );
+                                            })}
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </div>
 
                     <div className="flex items-center justify-end gap-2">
@@ -878,14 +950,16 @@ export function EnquiryCard({
                             type="submit"
                             size="sm"
                             disabled={!form.isDirty || form.processing}
+                            className="bg-[#315cfd] text-white hover:bg-[#254be6]"
                         >
+                            <Save className="size-3.5" />
                             Save
                         </Button>
                         {!isFixed && (
                             <Button
                                 type="button"
                                 size="sm"
-                                className="bg-destructive text-foreground hover:bg-destructive/90"
+                                variant="destructive"
                                 onClick={() => setLostOpen(true)}
                             >
                                 Lost
@@ -926,7 +1000,7 @@ export function EnquiryCard({
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="w-full"
+                        className="w-full border-slate-300 bg-white hover:bg-slate-50"
                         onClick={submitDetails}
                     >
                         Add additional details & submit
@@ -938,7 +1012,7 @@ export function EnquiryCard({
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="w-full"
+                                className="w-full border-slate-300 bg-white hover:bg-slate-50"
                             >
                                 + Add Customer
                             </Button>
