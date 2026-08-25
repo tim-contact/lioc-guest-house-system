@@ -45,6 +45,7 @@ export interface CompletedRow {
     payment_receipt_date: string | null;
     status: string | null;
     paid_in_full: boolean;
+    can_close: boolean;
     payments: PaymentRow[];
 }
 
@@ -258,7 +259,7 @@ export default function FinanceDashboard({
                                                     variant="default"
                                                     size="sm"
                                                     disabled={
-                                                        !row.paid_in_full ||
+                                                        !row.can_close ||
                                                         closingId === row.id
                                                     }
                                                     onClick={() =>

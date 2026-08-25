@@ -1,4 +1,5 @@
 import { ChevronDown } from 'lucide-react';
+import { SortableHead } from '@/components/sortable-head';
 import { TableFrame } from '@/components/table-frame';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,17 +16,11 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useSortable } from '@/hooks/use-sortable';
 import { FUEL_GRADES } from '@/lib/domain';
 import { shortDate } from '@/lib/utils';
 
 export const PORTS = ['Colombo', 'Trincomalee', 'Galle', 'Hambantota'] as const;
-
-const COLUMNS = [
-    'Vessel Name',
-    'Customer Name',
-    ...FUEL_GRADES.map((grade) => `${grade.label} QTY`),
-    'ETA',
-];
 
 export interface OrderRow {
     id: number;
@@ -48,6 +43,32 @@ export interface OrderRow {
     laycan_from: string | null;
     status: string;
 }
+
+interface Column {
+    header: string;
+    sortKey: keyof OrderRow;
+}
+
+const COLUMNS: Column[] = [
+    {
+        header: 'Vessel Name',
+        sortKey: 'vessel_name',
+    },
+    {
+        header: 'Customer Name',
+        sortKey: 'customer_name',
+    },
+    ...FUEL_GRADES.map(
+        (grade): Column => ({
+            header: `${grade.label} QTY`,
+            sortKey: `${grade.key}_qty`,
+        }),
+    ),
+    {
+        header: 'ETA',
+        sortKey: 'eta',
+    },
+];
 
 export interface RowAction<T> {
     label: string | ((row: T) => string);
@@ -141,19 +162,28 @@ function PortTable<T extends OrderRow>({
     rows: T[];
     actions: RowAction<T>[];
 }) {
+    const { sortKey, sortDir, handleSort, sorted } = useSortable(rows, 'eta');
+
     return (
         <TableFrame>
             <Table>
                 <TableHeader>
                     <TableRow>
                         {COLUMNS.map((column) => (
-                            <TableHead key={column}>{column}</TableHead>
+                            <SortableHead
+                                key={column.sortKey}
+                                label={column.header}
+                                sortKey={column.sortKey}
+                                currentKey={sortKey}
+                                currentDir={sortDir}
+                                onSort={handleSort}
+                            />
                         ))}
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {rows.map((row) => (
+                    {sorted.map((row) => (
                         <TableRow key={row.id}>
                             <TableCell>{row.vessel_name ?? '—'}</TableCell>
                             <TableCell>{row.customer_name ?? '—'}</TableCell>

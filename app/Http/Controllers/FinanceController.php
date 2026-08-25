@@ -38,6 +38,7 @@ class FinanceController extends Controller
                 'payment_receipt_date' => $order->payment_receipt_date,
                 'status' => $order->status->label(),
                 'paid_in_full' => $order->isPaidInFull(),
+                'can_close' => $order->canBeClosed(),
                 'payments' => $order->payments
                     ->sortByDesc('date')
                     ->values()
@@ -71,8 +72,8 @@ class FinanceController extends Controller
 
     public function close(Order $order): RedirectResponse
     {
-        if ($order->status !== OrderStatus::Delivered || ! $order->isPaidInFull()) {
-            return $this->toast('Order cannot be closed until it is delivered and paid in full.', 'error');
+        if (! $order->canBeClosed()) {
+            return $this->toast('Order cannot be closed until it is delivered and has no balance outstanding.', 'error');
         }
 
         $order->update(['status' => OrderStatus::Closed]);
