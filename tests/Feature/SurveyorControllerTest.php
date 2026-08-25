@@ -255,7 +255,7 @@ test('complete with immediate credit terms makes payment due the same day', func
     expect($order->refresh()->payment_due_date->toDateString())->toBe(now()->toDateString());
 });
 
-test('completed orders are pivoted into one row per fuel grade for the selected barge', function () {
+test('completed orders show all fuel grade quantities in one row for the selected barge', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $order = createSurveyorOrder([
@@ -263,6 +263,8 @@ test('completed orders are pivoted into one row per fuel grade for the selected 
         'status' => OrderStatus::Delivered,
         'invoice_date' => now()->subDays(10),
         'vlsfo_final_qty' => 500,
+        'vlsfo_bdn_qty' => 510,
+        'mgo_final_qty' => 75,
         'hsfo_final_qty' => 200,
     ]);
 
@@ -291,13 +293,12 @@ test('completed orders are pivoted into one row per fuel grade for the selected 
 
     $this->get(route('surveyor', ['barge' => $order->barge_id]))
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('completedOrders', 2)
+            ->has('completedOrders', 1)
+            ->where('completedOrders.0.id', $order->id)
             ->where('completedOrders.0.vessel_name', 'MV Delivered Recently')
-            ->where('completedOrders.0.product', 'VLSFO')
-            ->where('completedOrders.0.qty', '500.000')
-            ->where('completedOrders.1.vessel_name', 'MV Delivered Recently')
-            ->where('completedOrders.1.product', 'HSFO')
-            ->where('completedOrders.1.qty', '200.000'));
+            ->where('completedOrders.0.vlsfo_qty', '510.000')
+            ->where('completedOrders.0.mgo_qty', '75.000')
+            ->where('completedOrders.0.hsfo_qty', '200.000'));
 });
 
 test('edit renders the surveyors edit page with barges', function () {

@@ -51,13 +51,13 @@ export interface PendingRow {
 }
 
 interface CompletedRow {
-    id: string;
-    order_id: number;
+    id: number;
     vessel_name: string | null;
     port: string | null;
     location: string | null;
-    product: string;
-    qty: string | null;
+    vlsfo_qty: string | null;
+    mgo_qty: string | null;
+    hsfo_qty: string | null;
     eta: string | null;
 }
 
@@ -87,11 +87,10 @@ const COMPLETED_COLUMNS = [
     'Vessel Name',
     'Port',
     'Supply Location',
-    'Product',
-    'Qty',
+    ...FUEL_GRADES.map((grade) => `${grade.label} Qty`),
     'ETA Date',
     'ETA Time',
-] as const;
+];
 
 function shortTime(value: string | null): string {
     if (!value) {
@@ -301,8 +300,11 @@ export default function SurveyorDashboard({
                                         <TableCell>
                                             {row.location ?? '—'}
                                         </TableCell>
-                                        <TableCell>{row.product}</TableCell>
-                                        <TableCell>{row.qty ?? '—'}</TableCell>
+                                        {FUEL_GRADES.map((grade) => (
+                                            <TableCell key={grade.key}>
+                                                {row[`${grade.key}_qty`] ?? '—'}
+                                            </TableCell>
+                                        ))}
                                         <TableCell>
                                             {shortDate(row.eta)}
                                         </TableCell>
@@ -316,9 +318,7 @@ export default function SurveyorDashboard({
                                                 asChild
                                             >
                                                 <a
-                                                    href={
-                                                        ebdn(row.order_id).url
-                                                    }
+                                                    href={ebdn(row.id).url}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                 >
