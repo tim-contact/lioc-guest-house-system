@@ -544,7 +544,7 @@
             <tr>
                 <td class="signature-caption">
                     <strong>Name &amp; Signature</strong>
-                    <span>representative (signature &amp; stamp)</span>
+                    <span>LIOC representative (signature &amp; stamp)</span>
                 </td>
                 <td class="signature-caption">
                     <strong>Master / Chief Officer</strong>

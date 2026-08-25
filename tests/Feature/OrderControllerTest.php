@@ -50,6 +50,7 @@ test('index renders pending and completed orders grouped by port', function () {
         'vessel_name' => 'MV Delivered Recently',
         'status' => OrderStatus::Delivered,
         'invoice_date' => now()->subDays(10),
+        'vlsfo_final_qty' => 375,
     ]);
 
     createOrder([
@@ -71,7 +72,9 @@ test('index renders pending and completed orders grouped by port', function () {
             ->has('pendingOrders', 1)
             ->where('pendingOrders.0.vessel_name', 'MV Pending')
             ->has('completedOrders', 1)
-            ->where('completedOrders.0.vessel_name', 'MV Delivered Recently'));
+            ->where('completedOrders.0.vessel_name', 'MV Delivered Recently')
+            ->where('completedOrders.0.port', 'Colombo')
+            ->where('completedOrders.0.vlsfo_final_qty', '375.000'));
 });
 
 test('old delivered orders stay on the completed list while a dispute is open', function () {

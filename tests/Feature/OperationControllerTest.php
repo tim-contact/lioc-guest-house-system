@@ -7,6 +7,7 @@ use App\Models\Agent;
 use App\Models\AgentPic;
 use App\Models\Barge;
 use App\Models\Order;
+use App\Models\Port;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
@@ -52,6 +53,26 @@ test('index exposes the ordered quantity bounds', function () {
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('pendingOrders.0.vlsfo_quantity_low', '100.000')
             ->where('pendingOrders.0.vlsfo_quantity_high', '250.000'));
+});
+
+test('index exposes recent completed orders with their port and final quantities', function () {
+    $this->actingAs(User::factory()->create());
+
+    $port = Port::factory()->create(['name' => 'Galle']);
+
+    Order::factory()->create([
+        'port_id' => $port->id,
+        'status' => OrderStatus::Delivered,
+        'invoice_date' => now()->subDays(10),
+        'vlsfo_final_qty' => 812.5,
+    ]);
+
+    $this->get(route('operations'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('completedOrders', 1)
+            ->where('completedOrders.0.port', 'Galle')
+            ->where('completedOrders.0.vlsfo_final_qty', '812.500'));
 });
 
 test('guests cannot update an operations order', function () {
