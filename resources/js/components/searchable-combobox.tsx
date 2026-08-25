@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 
 export interface ComboboxItem {
     value: string; // the value stored on the form (sap_id / imo)
@@ -8,8 +13,6 @@ export interface ComboboxItem {
     sublabel: string; // secondary text, also searchable (SAP ID / IMO)
 }
 
-// ---- Searchable dropdown: filters on both label and sublabel ----
-// Deliberately custom (no cmdk installed; shadcn Select isn't searchable). Mouse-only.
 export function SearchableCombobox({
     items,
     value,
@@ -37,66 +40,58 @@ export function SearchableCombobox({
     );
 
     return (
-        <div className="relative">
-            <Button
-                type="button"
-                variant="outline"
-                className="w-full justify-between font-normal"
-                onClick={() => setOpen((previous) => !previous)}
-            >
-                <span className={selected ? '' : 'text-muted-foreground'}>
-                    {selected
-                        ? `${selected.label} (${selected.sublabel})`
-                        : placeholder}
-                </span>
-                <span className="text-muted-foreground">▾</span>
-            </Button>
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-between font-normal"
+                >
+                    <span className={selected ? '' : 'text-muted-foreground'}>
+                        {selected
+                            ? `${selected.label} (${selected.sublabel})`
+                            : placeholder}
+                    </span>
+                    <span className="text-muted-foreground">▾</span>
+                </Button>
+            </PopoverTrigger>
 
-            {open && (
-                <>
-                    {/* click-outside backdrop */}
-                    <button
-                        type="button"
-                        aria-hidden
-                        tabIndex={-1}
-                        className="fixed inset-0 z-40 cursor-default"
-                        onClick={() => setOpen(false)}
-                    />
-                    <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
-                        <Input
-                            autoFocus
-                            placeholder={searchPlaceholder}
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            className="mb-1"
-                        />
-                        <div className="max-h-48 overflow-y-auto">
-                            {filtered.map((item) => (
-                                <button
-                                    key={item.value}
-                                    type="button"
-                                    onClick={() => {
-                                        onChange(item.value);
-                                        setQuery('');
-                                        setOpen(false);
-                                    }}
-                                    className="flex w-full flex-col items-start rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
-                                >
-                                    <span>{item.label}</span>
-                                    <span className="text-xs text-muted-foreground">
-                                        {item.sublabel}
-                                    </span>
-                                </button>
-                            ))}
-                            {filtered.length === 0 && (
-                                <p className="px-2 py-1.5 text-sm text-muted-foreground">
-                                    {emptyText}
-                                </p>
-                            )}
-                        </div>
-                    </div>
-                </>
-            )}
-        </div>
+            <PopoverContent
+                align="start"
+                className="w-(--radix-popover-trigger-width) gap-0 rounded-md border p-1 ring-0"
+            >
+                <Input
+                    autoFocus
+                    placeholder={searchPlaceholder}
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    className="mb-1"
+                />
+                <div className="max-h-48 overflow-y-auto">
+                    {filtered.map((item) => (
+                        <button
+                            key={item.value}
+                            type="button"
+                            onClick={() => {
+                                onChange(item.value);
+                                setQuery('');
+                                setOpen(false);
+                            }}
+                            className="flex w-full flex-col items-start rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
+                        >
+                            <span>{item.label}</span>
+                            <span className="text-xs text-muted-foreground">
+                                {item.sublabel}
+                            </span>
+                        </button>
+                    ))}
+                    {filtered.length === 0 && (
+                        <p className="px-2 py-1.5 text-sm text-muted-foreground">
+                            {emptyText}
+                        </p>
+                    )}
+                </div>
+            </PopoverContent>
+        </Popover>
     );
 }
