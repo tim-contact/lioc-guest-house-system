@@ -43,10 +43,30 @@ enum UserType: string
     }
 
     /**
+     * Whether this role can manage users of the given role.
+     *
+     * SuperAdmin can manage anyone. Master can only manage
+     * non-privileged roles (sales, operations, surveyor, finance).
+     */
+    public function canManageRole(UserType $targetRole): bool
+    {
+        if (! $this->canManageUsers()) {
+            return false;
+        }
+
+        if ($this === self::SuperAdmin) {
+            return true;
+        }
+
+        // Master can only manage non-privileged roles.
+        return ! $targetRole->isPrivileged();
+    }
+
+    /**
      * Whether this role can manage super_admin users.
      */
     public function canManageSuperAdmins(): bool
     {
-        return $this === self::SuperAdmin;
+        return $this->canManageRole(self::SuperAdmin);
     }
 }

@@ -1,5 +1,161 @@
 # Authentication And Authorization Workplan
 
+## Addendum: Surveyor Barge Assignment Authorization
+
+### Goal
+
+Allow `super_admin` and `master` users to assign a barge to a surveyor login, and ensure a `surveyor` user can only see and update records for their assigned barge.
+
+Current project context:
+
+- `surveyors` already stores `barge_id`.
+- `SurveyorController` already manages surveyor master data at `/surveyors/edit`.
+- `SurveyingController@index` currently reads a public `?barge=` query parameter and returns matching pending/completed orders.
+- `resources/js/pages/surveyor/dashboard.tsx` currently lets the user choose any barge from the full barge list.
+
+The required change is not just UI filtering. Enforce the assignment on the backend for every surveyor-facing route.
+
+### Data Model Plan
+
+1. Add a nullable `user_id` column to `surveyors`.
+   - Type: `ulid`.
+   - Foreign key: references `users.id`.
+   - Unique: one login user can be linked to only one surveyor profile.
+   - Nullable during rollout so existing surveyor master records do not break immediately.
+2. Keep `surveyors.barge_id` as the assigned barge.
+   - It already references `barges.imo`.
+   - Do not move this assignment to `users`; the assignment belongs to the surveyor operational profile, not authentication identity.
+3. Update `App\Models\Surveyor`.
+   - Add `user_id` to fillable fields.
+   - Add `user(): BelongsTo` relation to `App\Models\User`.
+4. Update `App\Models\User`.
+   - Add `surveyor(): HasOne` relation to `App\Models\Surveyor`.
+   - Keep `users.id` as the internal ULID source of truth.
+   - Do not use the visual `users.user_id` for foreign keys or authorization checks.
+
+### Assignment UI Plan
+
+Use the existing `/surveyors/edit` screen rather than creating a separate assignment module.
+
+1. Update `SurveyorController@edit`.
+   - Continue returning surveyor records and barges.
+   - Also return active users where `type = surveyor`, ordered by name.
+   - Exclude users already linked to another surveyor record unless editing that linked record.
+2. Update `resources/js/pages/surveyors/edit.tsx`.
+   - Add a `User` select field for the surveyor login.
+   - Keep the existing `Barge` select field as the barge assignment.
+   - Show linked user name/email in the table.
+3. Update `SurveyorController` validation.
+   - `user_id`: nullable, exists in `users.id`.
+   - Add a validation rule that the selected user has `type = surveyor`.
+   - Add unique validation so the same user cannot be assigned to multiple surveyor profiles.
+   - `barge_id`: keep nullable if the business accepts unassigned surveyors; otherwise make it required once rollout data is cleaned.
+
+### Backend Authorization Plan
+
+Create one central resolver so every surveyor-facing controller applies the same rule.
+
+1. Add a helper method or service, for example `SurveyorAssignment`.
+   - Input: authenticated `User`.
+   - Output for `super_admin` and `master`: privileged access, no forced barge restriction.
+   - Output for `surveyor`: assigned `Surveyor` record and assigned `barge_id`.
+   - If a surveyor user has no linked surveyor record or no assigned barge, return no operational rows and block write actions.
+2. Update `SurveyingController@index`.
+   - For `super_admin` and `master`, keep the barge picker behavior.
+   - For `surveyor`, ignore the request `?barge=` parameter completely.
+   - For `surveyor`, force `$barge` from `auth()->user()->surveyor->barge_id`.
+   - Return only that one barge in the `barges` prop, or return an `assignedBarge` prop and remove the picker for surveyor users.
+3. Update `SurveyingController@update`.
+   - Before updating BDN quantities, authorize that the order `barge_id` matches the authenticated surveyor's assigned `barge_id`.
+   - Allow `super_admin` and `master`.
+   - Deny surveyors with no assignment.
+4. Update `SurveyingController@complete`.
+   - Apply the same order/barge authorization before completing the order.
+5. Update `BdnController@update`.
+   - Apply the same order/barge authorization before saving BDN details.
+   - For surveyor users, reject attempts to change `bdn.barge_id` to a different barge.
+   - Prefer forcing the BDN barge to the order or assigned barge instead of trusting request input.
+6. Update `BdnController@ebdn`.
+   - If surveyors can open eBDNs, ensure the order belongs to their assigned barge.
+   - Allow `super_admin` and `master`.
+7. Review `BdnController@index`.
+   - If this route remains available to surveyors, filter rows to the assigned barge.
+   - If not required, remove `surveyor` from the `bdns.index` route group or deny surveyor access in the controller.
+
+### Frontend Surveyor Dashboard Plan
+
+1. Update `resources/js/pages/surveyor/dashboard.tsx`.
+   - Add an auth/role prop or use the shared auth page props if already available.
+   - If role is `surveyor`, do not render the global barge selector.
+   - Show the assigned barge name as read-only context.
+   - If no barge is assigned, show an empty state and no action buttons.
+2. Keep the barge selector for `super_admin` and `master`.
+   - Their selected barge should continue to reload `pendingOrders` and `completedOrders`.
+3. Update `resources/js/pages/surveyor/bdn-dialog.tsx`.
+   - For surveyor users, render Barge as read-only or restrict the combobox to the assigned barge only.
+   - Do not let surveyors submit a different `barge_id`.
+
+### Route-Level Plan
+
+Existing route group can remain:
+
+```php
+Route::middleware('role:super_admin,master,surveyor')->group(function () {
+    Route::get('surveyor', [SurveyingController::class, 'index'])->name('surveyor');
+    Route::patch('surveyor/{order}', [SurveyingController::class, 'update'])->name('surveyor.update');
+    Route::patch('surveyor/{order}/complete', [SurveyingController::class, 'complete'])->name('surveyor.complete');
+    Route::put('surveyor/{order}/bdn', [BdnController::class, 'update'])->name('surveyor.bdn.update');
+    Route::get('bdns', [BdnController::class, 'index'])->name('bdns.index');
+    Route::get('bdns/{order}/ebdn', [BdnController::class, 'ebdn'])->name('bdns.ebdn');
+});
+```
+
+But controller-level checks are mandatory because the route middleware only checks role, not ownership of the barge/order.
+
+### Testing Plan
+
+Use Pest feature tests.
+
+1. Migration/model tests.
+   - A surveyor profile can be linked to a `surveyor` user.
+   - The same user cannot be linked to two surveyor profiles.
+   - A surveyor profile can be assigned a barge.
+2. Surveyor dashboard tests.
+   - A surveyor with assigned barge sees pending orders for that barge only.
+   - A surveyor cannot see orders for another barge by passing `?barge=OTHER`.
+   - A surveyor with no linked profile or no barge sees no operational orders.
+   - `master` and `super_admin` can still filter by barge.
+3. Surveyor write tests.
+   - A surveyor can update BDN quantities for an order on their assigned barge.
+   - A surveyor cannot update BDN quantities for another barge.
+   - A surveyor cannot complete an order for another barge.
+   - A surveyor cannot update BDN details for another barge.
+   - A surveyor cannot submit a BDN payload that changes the barge away from their assignment.
+4. Master assignment tests.
+   - `master` can assign a surveyor user to a surveyor profile.
+   - `master` can assign a barge to a surveyor profile.
+   - Non-privileged roles cannot access `/surveyors/edit` or mutate surveyor assignments.
+5. Regression tests.
+   - Existing `super_admin` and `master` surveyor dashboard access still works.
+   - Existing operations assignment of `orders.barge_id` still works.
+
+Run:
+
+```bash
+php artisan test --compact --filter=Surveyor
+php artisan test --compact --filter=Bdn
+vendor/bin/pint --dirty --format agent
+```
+
+### Acceptance Criteria
+
+- `master` can assign an active `surveyor` login to a surveyor profile.
+- `master` can assign a barge to that surveyor profile.
+- A logged-in `surveyor` sees only pending and completed orders for their assigned barge.
+- A logged-in `surveyor` cannot bypass the restriction through query params, direct route calls, BDN updates, or complete-order actions.
+- `super_admin` and `master` keep privileged visibility for operational oversight.
+- All authorization is enforced server-side.
+
 ## Scope
 
 Implement application authentication and role-based authorization for the existing Laravel 13 + Inertia React application.

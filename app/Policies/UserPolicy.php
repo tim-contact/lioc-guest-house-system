@@ -24,12 +24,7 @@ class UserPolicy
             return false;
         }
 
-        if ($actor->type->canManageSuperAdmins()) {
-            return true;
-        }
-
-        // Master can only view non-super-admin users.
-        return $target->type !== UserType::SuperAdmin;
+        return $actor->type->canManageRole($target->type);
     }
 
     /**
@@ -45,15 +40,7 @@ class UserPolicy
      */
     public function createWithRole(User $actor, UserType $role): bool
     {
-        if (! $actor->type->canManageUsers()) {
-            return false;
-        }
-
-        if ($role === UserType::SuperAdmin && ! $actor->type->canManageSuperAdmins()) {
-            return false;
-        }
-
-        return true;
+        return $actor->type->canManageRole($role);
     }
 
     /**
@@ -65,7 +52,7 @@ class UserPolicy
             return false;
         }
 
-        if ($target->type === UserType::SuperAdmin && ! $actor->type->canManageSuperAdmins()) {
+        if (! $actor->type->canManageRole($target->type)) {
             return false;
         }
 
@@ -81,7 +68,7 @@ class UserPolicy
             return false;
         }
 
-        if ($target->type === UserType::SuperAdmin && ! $actor->type->canManageSuperAdmins()) {
+        if (! $actor->type->canManageRole($target->type)) {
             return false;
         }
 
@@ -106,7 +93,7 @@ class UserPolicy
             return false;
         }
 
-        if ($target->type === UserType::SuperAdmin && ! $actor->type->canManageSuperAdmins()) {
+        if (! $actor->type->canManageRole($target->type)) {
             return false;
         }
 
@@ -131,7 +118,7 @@ class UserPolicy
             return false;
         }
 
-        if ($target->type === UserType::SuperAdmin && ! $actor->type->canManageSuperAdmins()) {
+        if (! $actor->type->canManageRole($target->type)) {
             return false;
         }
 
@@ -147,7 +134,7 @@ class UserPolicy
             return false;
         }
 
-        if ($target->type === UserType::SuperAdmin && ! $actor->type->canManageSuperAdmins()) {
+        if (! $actor->type->canManageRole($target->type)) {
             return false;
         }
 
@@ -168,7 +155,7 @@ class UserPolicy
             return false;
         }
 
-        if ($target->type === UserType::SuperAdmin && ! $actor->type->canManageSuperAdmins()) {
+        if (! $actor->type->canManageRole($target->type)) {
             return false;
         }
 

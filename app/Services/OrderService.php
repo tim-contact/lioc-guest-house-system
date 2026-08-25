@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\DisputeStatus;
 use App\Enums\FuelGrade;
 use App\Enums\OrderStatus;
 use App\Models\Agent;
@@ -37,13 +38,21 @@ class OrderService
     /**
      * Orders completed within the last $days, same loading and ordering.
      *
+     * With $keepOpenDisputes, orders carrying an unresolved dispute stay on the
+     * list however old they are, so the dispute remains reachable.
+     *
      * @return Collection<int, Order>
      */
-    public static function completedWithin(int $days = 30): Collection
+    public static function completedWithin(int $days = 30, bool $keepOpenDisputes = false): Collection
     {
         return Order::with(['customer', 'port'])
             ->whereIn('status', OrderStatus::completedStatuses())
-            ->where('invoice_date', '>=', Carbon::now()->subDays($days))
+            ->where(fn ($query) => $query
+                ->where('invoice_date', '>=', Carbon::now()->subDays($days))
+                ->when($keepOpenDisputes, fn ($disputed) => $disputed->orWhereHas(
+                    'disputes',
+                    fn ($dispute) => $dispute->where('dispute_status', DisputeStatus::Open),
+                )))
             ->orderBy('port_id')
             ->orderBy('eta')
             ->get();
@@ -97,7 +106,7 @@ class OrderService
      */
     public static function toRow(Order $order): array
     {
-        return [
+        $row = [
             'id' => $order->id,
             'order_number' => $order->order_number,
             'customer_name' => $order->customer?->name,
@@ -119,6 +128,13 @@ class OrderService
             'laycan_from' => $order->laycan_from,
             'status' => $order->status->value,
         ];
+
+        foreach (FuelGrade::keys() as $grade) {
+            $row["{$grade}_quantity_low"] = $order->{"{$grade}_quantity_low"};
+            $row["{$grade}_quantity_high"] = $order->{"{$grade}_quantity_high"};
+        }
+
+        return $row;
     }
 
     /**

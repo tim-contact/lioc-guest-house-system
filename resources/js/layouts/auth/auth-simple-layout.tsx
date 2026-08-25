@@ -1,6 +1,3 @@
-import { Link } from '@inertiajs/react';
-import AppLogoIcon from '@/components/app-logo-icon';
-import { home } from '@/routes';
 import type { AuthLayoutProps } from '@/types';
 
 export default function AuthSimpleLayout({
@@ -9,27 +6,41 @@ export default function AuthSimpleLayout({
     description,
 }: AuthLayoutProps) {
     return (
-        <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10">
-            <div className="w-full max-w-sm">
-                <div className="flex flex-col gap-8">
-                    <div className="flex flex-col items-center gap-4">
-                        <Link
-                            href={home()}
-                            className="flex flex-col items-center gap-2 font-medium"
-                        >
-                            <div className="mb-1 flex h-9 w-9 items-center justify-center rounded-md">
-                                <AppLogoIcon className="size-9 fill-current text-[var(--foreground)] dark:text-white" />
-                            </div>
-                            <span className="sr-only">{title}</span>
-                        </Link>
+        <div
+            className="flex min-h-svh flex-col items-center justify-center bg-cover bg-center bg-no-repeat p-4 sm:p-6 md:items-end md:justify-center md:p-10"
+            style={{ backgroundImage: "url('/images/tanker_background.png')" }}
+        >
+            {/* Glassmorphism card — centered on mobile, right side on desktop */}
+            <div
+                className="w-full max-w-sm sm:max-w-md md:mr-8 lg:mr-16"
+                style={{
+                    background: 'rgba(255, 255, 255, 0.22)',
+                    borderRadius: '16px',
+                    boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+                    backdropFilter: 'blur(5.1px)',
+                    WebkitBackdropFilter: 'blur(5.1px)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                }}
+            >
+                <div className="flex flex-col gap-5 sm:gap-6 py-8 px-5 sm:py-12 sm:px-8">
+                    {/* Logo — restrained, let the type carry the brand */}
+                    <div className="flex flex-col items-center gap-4 sm:gap-5">
+                        <img
+                            src="/images/lanka-ioc-logo.png"
+                            alt="Lanka IOC Logo"
+                            className="h-16 w-auto sm:h-20 md:h-24"
+                        />
 
-                        <div className="space-y-2 text-center">
-                            <h1 className="text-xl font-medium">{title}</h1>
-                            <p className="text-center text-sm text-muted-foreground">
+                        <div className="space-y-1 text-center">
+                            <h1 className="text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
+                                {title}
+                            </h1>
+                            <p className="text-xs font-light text-slate-950 sm:text-sm">
                                 {description}
                             </p>
                         </div>
                     </div>
+
                     {children}
                 </div>
             </div>

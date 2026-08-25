@@ -11,6 +11,7 @@ interface Customer {
     address: string;
     credit_limit: string;
     country: string;
+    account_type: string | null;
     contact_person: string | null;
     contact_phone: string | null;
     mail_id: string | null;
@@ -26,6 +27,10 @@ const customerColumns: ExportColumn<Customer>[] = [
     { header: 'Name', value: (customer) => customer.name },
     { header: 'Address', value: (customer) => customer.address },
     { header: 'Country', value: (customer) => customer.country },
+    {
+        header: 'Account Type',
+        value: (customer) => customer.account_type ?? '',
+    },
     {
         header: 'Contact Person',
         value: (customer) => customer.contact_person ?? '',
@@ -71,6 +76,11 @@ const config: CrudConfig<Customer> = {
             cell: (customer) => customer.country,
         },
         {
+            header: 'Account Type',
+            sortKey: 'account_type',
+            cell: (customer) => customer.account_type ?? '—',
+        },
+        {
             header: 'Contact Person',
             sortKey: 'contact_person',
             cell: (customer) => customer.contact_person,
@@ -101,16 +111,20 @@ const config: CrudConfig<Customer> = {
         { name: 'name', label: 'Name' },
         { name: 'address', label: 'Address' },
         { name: 'country', label: 'Country' },
+        {
+            name: 'account_type',
+            label: 'Account Type',
+            type: 'select',
+            options: [
+                { value: 'fcbu', label: 'FCBU' },
+                { value: 'dbu', label: 'DBU' },
+            ],
+        },
         { name: 'contact_person', label: 'Contact Person' },
         { name: 'contact_phone', label: 'Contact Phone' },
         { name: 'mail_id', label: 'Mail ID', type: 'email' },
         { name: 'invoice_mail_ids', label: 'Mails IDs for Invoice' },
-        {
-            name: 'credit_limit',
-            label: 'Credit limit',
-            type: 'number',
-            step: '0.01',
-        },
+        { name: 'credit_limit', label: 'Credit limit', type: 'currency' },
     ],
     toFormData: (customer) => ({
         sap_id: customer?.sap_id ?? '',
@@ -118,6 +132,7 @@ const config: CrudConfig<Customer> = {
         address: customer?.address ?? '',
         credit_limit: customer?.credit_limit ?? '',
         country: customer?.country ?? '',
+        account_type: customer?.account_type ?? '',
         contact_person: customer?.contact_person ?? '',
         contact_phone: customer?.contact_phone ?? '',
         mail_id: customer?.mail_id ?? '',

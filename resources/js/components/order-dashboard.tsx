@@ -15,6 +15,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FUEL_GRADES } from '@/lib/domain';
 import { shortDate } from '@/lib/utils';
 
 export const PORTS = ['Colombo', 'Trincomalee', 'Galle', 'Hambantota'] as const;
@@ -22,28 +23,26 @@ export const PORTS = ['Colombo', 'Trincomalee', 'Galle', 'Hambantota'] as const;
 const COLUMNS = [
     'Vessel Name',
     'Customer Name',
-    'MGO QTY',
-    'VLSFO QTY',
-    'HSFO QTY',
+    ...FUEL_GRADES.map((grade) => `${grade.label} QTY`),
     'ETA',
-] as const;
+];
 
 export interface OrderRow {
     id: number;
     vessel_name: string | null;
     customer_name: string | null;
     port: string | null;
-    mgo_qty: string | null;
     vlsfo_qty: string | null;
+    mgo_qty: string | null;
     hsfo_qty: string | null;
-    mgo_final_qty: string | null;
     vlsfo_final_qty: string | null;
+    mgo_final_qty: string | null;
     hsfo_final_qty: string | null;
-    mgo_quantity_low: string | null;
     vlsfo_quantity_low: string | null;
+    mgo_quantity_low: string | null;
     hsfo_quantity_low: string | null;
-    mgo_quantity_high: string | null;
     vlsfo_quantity_high: string | null;
+    mgo_quantity_high: string | null;
     hsfo_quantity_high: string | null;
     eta: string | null;
     laycan_from: string | null;
@@ -158,9 +157,12 @@ function PortTable<T extends OrderRow>({
                         <TableRow key={row.id}>
                             <TableCell>{row.vessel_name ?? '—'}</TableCell>
                             <TableCell>{row.customer_name ?? '—'}</TableCell>
-                            <TableCell>{row.mgo_qty ?? '—'}</TableCell>
-                            <TableCell>{row.vlsfo_qty ?? '—'}</TableCell>
-                            <TableCell>{row.hsfo_qty ?? '—'}</TableCell>
+                            {FUEL_GRADES.map((grade) => (
+                                <TableCell key={grade.key}>
+                                    {(row as OrderRow)[`${grade.key}_qty`] ??
+                                        '—'}
+                                </TableCell>
+                            ))}
                             <TableCell>
                                 {shortDate(row.eta ?? row.laycan_from)}
                             </TableCell>

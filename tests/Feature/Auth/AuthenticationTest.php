@@ -1,6 +1,8 @@
 <?php
 
+use App\Enums\UserType;
 use App\Models\User;
+use App\Support\UserLandingPage;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Fortify\Features;
 
@@ -11,23 +13,23 @@ test('login screen can be rendered', function () {
 });
 
 test('authenticated users visiting the login screen are redirected to their landing page', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['type' => UserType::Operations]);
 
     $response = $this->actingAs($user)->get(route('login'));
 
-    $response->assertRedirect(route('sales-dashboard', absolute: false));
+    $response->assertRedirect(route('operations', absolute: false));
 });
 
 test('authenticated users visiting the welcome page are redirected to their landing page', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['type' => UserType::Finance]);
 
     $response = $this->actingAs($user)->get(route('home'));
 
-    $response->assertRedirect(route('sales-dashboard', absolute: false));
+    $response->assertRedirect(route('finance', absolute: false));
 });
 
-test('users can authenticate using the login screen', function () {
-    $user = User::factory()->create();
+test('users can authenticate using the login screen', function (UserType $type) {
+    $user = User::factory()->create(['type' => $type]);
 
     $response = $this->post(route('login.store'), [
         'email' => $user->email,
@@ -35,7 +37,21 @@ test('users can authenticate using the login screen', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('sales-dashboard', absolute: false));
+    $response->assertRedirect(UserLandingPage::pathFor($user));
+})->with(UserType::cases());
+
+test('login ignores a forbidden intended url and redirects to the role landing page', function () {
+    $user = User::factory()->create(['type' => UserType::Finance]);
+
+    $response = $this
+        ->withSession(['url.intended' => route('admin')])
+        ->post(route('login.store'), [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
+    $this->assertAuthenticated();
+    $response->assertRedirect(route('finance', absolute: false));
 });
 
 test('users with two factor enabled are redirected to two factor challenge', function () {

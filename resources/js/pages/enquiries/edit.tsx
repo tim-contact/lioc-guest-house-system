@@ -273,8 +273,7 @@ export default function EnquiriesEdit({
             {
                 name: 'barging_cost',
                 label: 'Barging Cost',
-                type: 'number',
-                step: '0.01',
+                type: 'currency',
                 section: 'Details',
             },
             { name: 'lost_to', label: 'Lost To', section: 'Details' },
@@ -311,8 +310,7 @@ export default function EnquiriesEdit({
                 {
                     name: `${product.key}_lost_price`,
                     label: 'Lost Price',
-                    type: 'number' as const,
-                    step: '0.01',
+                    type: 'currency' as const,
                     section: product.label,
                 },
             ]),

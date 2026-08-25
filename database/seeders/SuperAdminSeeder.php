@@ -14,7 +14,15 @@ class SuperAdminSeeder extends Seeder
      */
     public function run(): void
     {
-        if (User::where('type', UserType::SuperAdmin)->exists()) {
+        $email = env('AdminEmail', 'superadmin@example.com');
+
+        $existingUser = User::query()
+            ->where('type', UserType::SuperAdmin)
+            ->orWhere('user_id', 'SUPER-ADMIN-001')
+            ->orWhere('email', $email)
+            ->exists();
+
+        if ($existingUser) {
             return;
         }
 
@@ -22,7 +30,7 @@ class SuperAdminSeeder extends Seeder
             'user_id' => 'SUPER-ADMIN-001',
             'name' => 'Super Admin',
             'type' => UserType::SuperAdmin,
-            'email' => env('AdminEmail', 'superadmin@example.com'),
+            'email' => $email,
             'password' => Hash::make(env('AdminPassword', 'password')),
             'is_active' => true,
         ]);

@@ -1,5 +1,5 @@
-import { Head, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, router, usePage } from '@inertiajs/react';
+import { Fragment, useState } from 'react';
 import { SearchableCombobox } from '@/components/searchable-combobox';
 import { TableFrame } from '@/components/table-frame';
 import { Button } from '@/components/ui/button';
@@ -11,9 +11,9 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { FUEL_GRADES } from '@/lib/domain';
 import { shortDate } from '@/lib/utils';
 import { ebdn } from '@/routes/bdns';
-import { complete as completeOrder } from '@/routes/surveyor';
 import type { AgentOption, EnumOption } from '@/types';
 import { BdnDialog } from './bdn-dialog';
 import type { BdnRow } from './bdn-dialog';
@@ -34,6 +34,11 @@ export interface PendingRow {
     delivery_mode: string | null;
     barge_id: string | null;
     agent_id: number | null;
+    pic: string | null;
+    mobile_no: string | null;
+    sampling: string | null;
+    quality_claim: string | null;
+    instructions: string | null;
     vlsfo_qty: string | null;
     mgo_qty: string | null;
     hsfo_qty: string | null;
@@ -65,19 +70,18 @@ interface SurveyorDashboardProps {
     deliveryMethodOptions: EnumOption[];
     samplingLocationOptions: EnumOption[];
     samplingMethodOptions: EnumOption[];
+    assignedBarge?: BargeOption | null;
 }
 
 const PENDING_COLUMNS = [
     'Vessel Name',
     'Port',
     'Supply Location',
-    'VLSFO Qty',
-    'MGO Qty',
-    'HSFO Qty',
+    ...FUEL_GRADES.map((grade) => `${grade.label} Qty`),
     'ETA Date',
     'ETA Time',
     'Operational Instruction',
-] as const;
+];
 
 const COMPLETED_COLUMNS = [
     'Vessel Name',
@@ -97,7 +101,49 @@ function shortTime(value: string | null): string {
     return new Date(value).toLocaleTimeString(undefined, {
         hour: '2-digit',
         minute: '2-digit',
+        hour12: false,
     });
+}
+
+function picLabel({ pic, mobile_no }: PendingRow): string {
+    if (!pic) {
+        return '—';
+    }
+
+    return mobile_no ? `${pic} (${mobile_no})` : pic;
+}
+
+function OperationalInstruction({ row }: { row: PendingRow }) {
+    const pairs: [string, string][] = [
+        ['Sampling', row.sampling ?? '—'],
+        ['Claim', row.quality_claim ?? '—'],
+    ];
+
+    return (
+        <div className="grid grid-cols-[auto_1fr_auto_1fr] items-baseline gap-x-3 gap-y-1 text-xs">
+            <span className="text-muted-foreground">PIC</span>
+            <span className="col-span-3 break-words">{picLabel(row)}</span>
+
+            {pairs.map(([label, value]) => (
+                <Fragment key={label}>
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className="break-words">{value}</span>
+                </Fragment>
+            ))}
+
+            {row.instructions && (
+                <>
+                    <span className="text-muted-foreground">Notes</span>
+                    <span
+                        className="col-span-3 line-clamp-2 break-words"
+                        title={row.instructions}
+                    >
+                        {row.instructions}
+                    </span>
+                </>
+            )}
+        </div>
+    );
 }
 
 export default function SurveyorDashboard({
@@ -109,15 +155,19 @@ export default function SurveyorDashboard({
     deliveryMethodOptions,
     samplingLocationOptions,
     samplingMethodOptions,
+    assignedBarge,
 }: SurveyorDashboardProps) {
-    const [selectedBarge, setSelectedBarge] = useState('');
+    const { auth } = usePage().props;
+    const userType = auth.user?.type ?? '';
+    const isSurveyor = userType === 'surveyor';
+
+    const [selectedBarge, setSelectedBarge] = useState(
+        assignedBarge?.imo ?? '',
+    );
     const [bdnOrderId, setBdnOrderId] = useState<number | null>(null);
 
     // Derived, so the open dialog sees the BDN number its own first save assigned.
     const bdnOrder = pendingOrders.find((row) => row.id === bdnOrderId);
-
-    const handleComplete = (id: number) =>
-        router.patch(completeOrder(id).url, {}, { preserveScroll: true });
 
     return (
         <>
@@ -125,29 +175,37 @@ export default function SurveyorDashboard({
 
             <div className="flex flex-col gap-6 p-4">
                 <div className="max-w-xs">
-                    <SearchableCombobox
-                        items={barges.map((barge) => ({
-                            value: barge.imo,
-                            label: barge.name,
-                            sublabel: barge.imo,
-                        }))}
-                        value={selectedBarge}
-                        onChange={(value) => {
-                            setSelectedBarge(value);
-                            router.reload({
-                                data: { barge: value },
-                                only: ['pendingOrders', 'completedOrders'],
-                            });
-                        }}
-                        placeholder="Select barge"
-                        searchPlaceholder="Search barge name or IMO"
-                        emptyText="No barges available."
-                    />
+                    {isSurveyor && assignedBarge ? (
+                        <div className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                            <span className="text-muted-foreground">Assigned barge:</span>
+                            <span className="font-medium">{assignedBarge.name}</span>
+                            <span className="text-xs text-muted-foreground">({assignedBarge.imo})</span>
+                        </div>
+                    ) : (
+                        <SearchableCombobox
+                            items={barges.map((barge) => ({
+                                value: barge.imo,
+                                label: barge.name,
+                                sublabel: barge.imo,
+                            }))}
+                            value={selectedBarge}
+                            onChange={(value) => {
+                                setSelectedBarge(value);
+                                router.reload({
+                                    data: { barge: value },
+                                    only: ['pendingOrders', 'completedOrders'],
+                                });
+                            }}
+                            placeholder="Select barge"
+                            searchPlaceholder="Search barge name or IMO"
+                            emptyText="No barges available."
+                        />
+                    )}
                 </div>
 
                 <section className="flex flex-col gap-4">
                     <h2 className="text-xl font-semibold tracking-tight">
-                        Pending Orders (next 3 days)
+                        Pending Orders (next 7 days)
                     </h2>
                     <TableFrame>
                         <Table>
@@ -173,47 +231,29 @@ export default function SurveyorDashboard({
                                         <TableCell>
                                             {row.location ?? '—'}
                                         </TableCell>
-                                        <TableCell>
-                                            {row.vlsfo_qty ?? '—'}
-                                        </TableCell>
-                                        <TableCell>
-                                            {row.mgo_qty ?? '—'}
-                                        </TableCell>
-                                        <TableCell>
-                                            {row.hsfo_qty ?? '—'}
-                                        </TableCell>
+                                        {FUEL_GRADES.map((grade) => (
+                                            <TableCell key={grade.key}>
+                                                {row[`${grade.key}_qty`] ?? '—'}
+                                            </TableCell>
+                                        ))}
                                         <TableCell>
                                             {shortDate(row.eta)}
                                         </TableCell>
                                         <TableCell>
                                             {shortTime(row.eta)}
                                         </TableCell>
-                                        <TableCell>—</TableCell>
+                                        <TableCell className="max-w-md align-top whitespace-normal">
+                                            <OperationalInstruction row={row} />
+                                        </TableCell>
                                         <TableCell className="text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                >
-                                                    Upload
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        setBdnOrderId(row.id)
-                                                    }
-                                                >
-                                                    BDN
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        handleComplete(row.id)
-                                                    }
-                                                >
-                                                    Submit
-                                                </Button>
-                                            </div>
+                                            <Button
+                                                size="sm"
+                                                onClick={() =>
+                                                    setBdnOrderId(row.id)
+                                                }
+                                            >
+                                                BDN
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}

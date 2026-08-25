@@ -32,16 +32,23 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($demoUsers as $data) {
-            if (! User::where('email', $data['email'])->exists()) {
-                User::create([
-                    'user_id' => $data['user_id'],
-                    'name' => $data['name'],
-                    'type' => $data['type'],
-                    'email' => $data['email'],
-                    'password' => Hash::make('password'),
-                    'is_active' => true,
-                ]);
+            $existingUser = User::query()
+                ->where('user_id', $data['user_id'])
+                ->orWhere('email', $data['email'])
+                ->exists();
+
+            if ($existingUser) {
+                continue;
             }
+
+            User::create([
+                'user_id' => $data['user_id'],
+                'name' => $data['name'],
+                'type' => $data['type'],
+                'email' => $data['email'],
+                'password' => Hash::make('password'),
+                'is_active' => true,
+            ]);
         }
 
         // Remove the old test user if it still exists (pre-ULID migration).

@@ -2,11 +2,100 @@ import type { InertiaLinkProps } from '@inertiajs/react';
 import { clsx } from 'clsx';
 import type { ClassValue } from 'clsx';
 import type { DateRange } from 'react-day-picker';
-import { twMerge } from 'tailwind-merge';
+import { extendTailwindMerge } from 'tailwind-merge';
 import type { EnumOption } from '@/types';
+
+
+const twMerge = extendTailwindMerge({
+    extend: {
+        theme: {
+            colors: [
+                'input',
+                'ring',
+                'background',
+                'foreground',
+                'border',
+                'destructive',
+                'primary',
+                'secondary',
+                'muted',
+                'accent',
+                'popover',
+                'card',
+            ],
+        },
+    },
+});
 
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
+}
+
+const PORT_COLOR_CLASSES = [
+    {
+        card: 'bg-sky-50',
+        accent: 'from-sky-500 to-blue-600',
+        icon: 'bg-sky-100 text-sky-700',
+    },
+    {
+        card: 'bg-emerald-50',
+        accent: 'from-emerald-500 to-teal-600',
+        icon: 'bg-emerald-100 text-emerald-700',
+    },
+    {
+        card: 'bg-amber-50',
+        accent: 'from-amber-500 to-orange-600',
+        icon: 'bg-amber-100 text-amber-800',
+    },
+    {
+        card: 'bg-rose-50',
+        accent: 'from-rose-500 to-red-600',
+        icon: 'bg-rose-100 text-rose-700',
+    },
+    {
+        card: 'bg-violet-50',
+        accent: 'from-violet-500 to-indigo-600',
+        icon: 'bg-violet-100 text-violet-700',
+    },
+    {
+        card: 'bg-cyan-50',
+        accent: 'from-cyan-500 to-sky-600',
+        icon: 'bg-cyan-100 text-cyan-700',
+    },
+    {
+        card: 'bg-lime-50',
+        accent: 'from-lime-500 to-green-600',
+        icon: 'bg-lime-100 text-lime-800',
+    },
+    {
+        card: 'bg-fuchsia-50',
+        accent: 'from-fuchsia-500 to-pink-600',
+        icon: 'bg-fuchsia-100 text-fuchsia-700',
+    },
+] as const;
+
+const NEUTRAL_PORT_COLOR_CLASSES = {
+    card: 'bg-white',
+    accent: 'from-slate-400 to-slate-700',
+    icon: 'bg-slate-100 text-slate-700',
+} as const;
+
+function stableColorIndex(value: string): number {
+    let hash = 0;
+
+    for (const character of value) {
+        hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+    }
+
+    return hash % PORT_COLOR_CLASSES.length;
+}
+
+export function portColorClasses(portKey: string | number | null | undefined) {
+    if (portKey === null || portKey === undefined || portKey === '') {
+        return NEUTRAL_PORT_COLOR_CLASSES;
+    }
+
+    return PORT_COLOR_CLASSES[stableColorIndex(String(portKey))];
 }
 
 /**
@@ -38,7 +127,10 @@ export function emptyToNull<T extends object>(
     ) as { [K in keyof T]: T[K] | null };
 }
 
-/** Format a decimal string as money (2dp), or an em dash when absent. */
+/**
+ * Format a decimal string as money (2dp), or an em dash when absent.
+ * The locale is pinned so grouping doesn't vary with the browser's.
+ */
 export function formatMoney(value: string | number | null): string {
     if (value === null || value === '') {
         return '—';
@@ -48,7 +140,7 @@ export function formatMoney(value: string | number | null): string {
 
     return Number.isNaN(number)
         ? String(value)
-        : number.toLocaleString(undefined, {
+        : number.toLocaleString('en-US', {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
           });
@@ -97,6 +189,7 @@ export function shortDateTime(value: string | null): string {
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
+        hour12: false,
     });
 }
 
@@ -146,3 +239,4 @@ export function toDateRange(from: string, to: string): DateRange | undefined {
 
     return { from: dateOnlyToDate(from), to: dateOnlyToDate(to) };
 }
+

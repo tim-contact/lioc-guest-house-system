@@ -4,9 +4,61 @@
     <meta charset="utf-8">
     <title>eBDN</title>
     <style>
-        * {
-            box-sizing: border-box;
+        .confidential {
+            font-size: 8px;
+            line-height: 1.35;
+            color: #374151;
+            page-break-inside: avoid;
         }
+
+        .confidential p {
+            margin: 0 0 3px;
+            text-align: justify;
+        }
+
+        .confidential-lead {
+            font-weight: 700;
+        }
+
+        .confidential-top {
+            margin: 6px 0 8px;
+        }
+
+        .confidential-bottom {
+            margin-top: 8px;
+            padding-top: 4px;
+            border-top: 1px solid #d1d5db;
+        }
+
+        .confidential-check,
+        .confidential-item {
+            display: table;
+            width: 100%;
+            margin-bottom: 2px;
+        }
+
+        .confidential-check > span,
+        .confidential-item > span {
+            display: table-cell;
+            vertical-align: top;
+        }
+
+        .confidential-check-box {
+            width: 14px;
+        }
+
+        .confidential-check-box .checkbox {
+            margin-left: 0;
+        }
+
+        .confidential-list {
+            margin: 2px 0 4px 16px;
+        }
+
+        .confidential-item-num {
+            width: 14px;
+        }
+
 
         body {
             margin: 0;
@@ -14,11 +66,58 @@
             font-size: 9px;
             line-height: 1.35;
             color: #111827;
-            -webkit-print-color-adjust: exact;
+        }
+
+        .doc-header {
+            display: table;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .doc-header > div {
+            display: table-cell;
+            vertical-align: top;
+        }
+
+        .doc-header p {
+            margin: 0;
+        }
+
+        .doc-header-serial {
+            font-size: 7px;
+            line-height: 1.3;
+        }
+
+        .doc-header .title {
+            margin: 5px 0 0;
+        }
+
+        .doc-header-details {
+            padding-right: 8px;
+            text-align: right;
+            font-size: 7px;
+            line-height: 1.3;
+        }
+
+        .doc-header-name {
+            margin-bottom: 2px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .doc-header-logo {
+            width: 80px;
+            text-align: right;
+        }
+
+        .doc-header-logo img {
+            width: 76px;
+            height: 76px;
         }
 
         .serial {
-            margin-bottom: 4px;
+            margin-bottom: 3px;
+            font-size: 9px;
             font-weight: 700;
         }
 
@@ -27,7 +126,7 @@
             font-size: 14px;
             font-weight: 700;
             letter-spacing: 0.06em;
-            text-align: center;
+            text-align: left;
             text-transform: uppercase;
         }
 
@@ -39,6 +138,7 @@
 
         .grid td {
             width: 33.33%;
+            height: 22px;
             border: 1px solid #d1d5db;
             padding: 3px 5px;
             vertical-align: top;
@@ -52,6 +152,16 @@
             letter-spacing: 0.05em;
             text-transform: uppercase;
             color: #6b7280;
+        }
+
+        .field-value {
+            display: block;
+            min-height: 12px;
+        }
+
+        /* keeps an empty value from collapsing its line box */
+        .field-value::after {
+            content: '\00a0';
         }
 
         .specs {
@@ -89,46 +199,51 @@
         }
 
         .declaration-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 8px;
+            display: table;
+            width: 100%;
             padding: 2px 0;
             border-bottom: 1px dotted #d1d5db;
         }
 
+        .declaration-row > span {
+            display: table-cell;
+        }
+
         .declaration-value {
+            text-align: right;
             font-weight: 700;
             white-space: nowrap;
         }
 
-        .sampling-method {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin: 6px 0 8px;
-            padding: 3px 0;
-            border-top: 1px solid #111827;
+        .sampling-method-row {
             font-weight: 700;
         }
 
+        .sampling-method-row > span {
+            vertical-align: middle;
+        }
+
         .sampling-method-option {
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
+            display: inline-block;
+            margin-left: 10px;
+            vertical-align: middle;
             font-weight: 400;
         }
 
         .checkbox {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+            display: inline-block;
             width: 10px;
             height: 10px;
+            margin-left: 3px;
             border: 1px solid #111827;
+            text-align: center;
+            line-height: 8px;
+            vertical-align: middle;
         }
 
         .checkbox.checked::after {
             content: '\2714';
+            font-family: 'DejaVu Sans', sans-serif;
             font-size: 10px;
             font-weight: 700;
             line-height: 1;
@@ -137,6 +252,7 @@
         .seals {
             width: 100%;
             border-collapse: collapse;
+            margin-top: 8px;
             margin-bottom: 8px;
         }
 
@@ -147,26 +263,59 @@
             text-align: left;
         }
 
+        .seal-line {
+            display: table;
+            width: 100%;
+        }
+
+        .seal-line > span {
+            display: table-cell;
+        }
+
         .seals .rotated-label {
-            width: 1%;
+            width: 36px;
+            padding: 3px 2px;
+            text-align: center;
+        }
+
+        .rotate-wrapper {
+            /* DOMPDF has no writing-mode support, so vertical text is faked by
+               rotating a fixed-width horizontal block. Rotating in place would
+               overflow the table cell (a rotated box isn't reflowed), so the
+               text is absolutely positioned inside a fixed-height relative
+               wrapper matching the cell, anchored at its own bottom-left
+               corner and rotated -90deg — that keeps the rotated box pinned
+               inside the wrapper's bounds instead of spilling into the row above.
+               The text itself wraps to multiple lines (width below is the
+               wrap width, becoming the vertical length after rotation; the
+               label's own td width is the wrapped block's thickness).
+            */
+            position: relative;
+            height: 50px;
         }
 
         .rotated-text {
-            /* Explicit height (not auto) makes the vertical text wrap into extra
-               columns instead of growing the row height without bound. */
-            height: 92px;
-            margin: 0 auto;
-            writing-mode: vertical-rl;
-            transform: rotate(180deg);
+            position: absolute;
+            left: 0;
+            top: 100%;
+            width: 50px;
+            height: 32px;
+            transform-origin: left top;
+            transform: rotate(-90deg);
             text-align: center;
             font-weight: 700;
             font-size: 7px;
-            line-height: 1.1;
+            line-height: 1.25;
             letter-spacing: 0.03em;
+        }
+
+        .seals .seal-value {
+            text-align: right;
         }
 
         .seals .counter-value {
             width: 40%;
+            text-align: right;
         }
 
         .signatures {
@@ -209,37 +358,33 @@
 </head>
 <body>
     <div class="ebdn">
-        <div class="serial">Serial No: {{ $bdn?->bdn_number }}</div>
-
-        @include('pdf.partials.bdn-confidential', ['section' => 'top'])
-
-        <h1 class="title">Bunker Delivery Note</h1>
+        @include('pdf.partials.header')
 
         <table class="grid">
             <tr>
-                <td><span class="field-label">Delivery Date</span>{{ $bdn?->delivery_date?->format('d M Y') }}</td>
-                <td><span class="field-label">Delivery Port</span>{{ $order->port?->name }}</td>
-                <td><span class="field-label">Delivery Location</span>{{ $deliveryLocationLabel }}</td>
+                <td><span class="field-label">Delivery Date</span><span class="field-value">{{ $bdn?->delivery_date?->format('d M Y') }}</span></td>
+                <td><span class="field-label">Delivery Port</span><span class="field-value">{{ $order->port?->name }}</span></td>
+                <td><span class="field-label">Delivery Location</span><span class="field-value">{{ $deliveryLocationLabel }}</span></td>
             </tr>
             <tr>
-                <td><span class="field-label">Vessel Name</span>{{ $order->vessel_name }}</td>
-                <td><span class="field-label">IMO / Flag No</span>{{ $order->vessel_id }} / {{ $bdn?->vessel_flag }}</td>
-                <td><span class="field-label">Gross Tonnage</span>{{ $bdn?->grt }}</td>
+                <td><span class="field-label">Vessel Name</span><span class="field-value">{{ $order->vessel_name }}</span></td>
+                <td><span class="field-label">IMO / Flag No</span><span class="field-value">{{ $order->vessel_id }} / {{ $bdn?->vessel_flag }}</span></td>
+                <td><span class="field-label">Gross Tonnage</span><span class="field-value">{{ $bdn?->grt }}</span></td>
             </tr>
             <tr>
-                <td><span class="field-label">Vessel's P&amp;I Club</span>{{ $bdn?->pi_club }}</td>
-                <td><span class="field-label">Vessel Agent</span>{{ $bdn?->agent?->name }}</td>
-                <td><span class="field-label">Owner / Operator</span>{{ $bdn?->owner_operator }}</td>
+                <td><span class="field-label">Vessel's P&amp;I Club</span><span class="field-value">{{ $bdn?->pi_club }}</span></td>
+                <td><span class="field-label">Vessel Agent</span><span class="field-value">{{ $bdn?->agent?->name }}</span></td>
+                <td><span class="field-label">Owner / Operator</span><span class="field-value">{{ $bdn?->owner_operator }}</span></td>
             </tr>
             <tr>
-                <td><span class="field-label">Barge Alongside</span>{{ $bdn?->barge_alongside_at?->format('d M Y H:i') }}</td>
-                <td><span class="field-label">Last Port of Call</span>{{ $bdn?->last_port_of_call }}</td>
-                <td><span class="field-label">Destination Port</span>{{ $bdn?->destination_port }}</td>
+                <td><span class="field-label">Barge Alongside</span><span class="field-value">{{ $bdn?->barge_alongside_at?->format('d M Y H:i') }}</span></td>
+                <td><span class="field-label">Last Port of Call</span><span class="field-value">{{ $bdn?->last_port_of_call }}</span></td>
+                <td><span class="field-label">Destination Port</span><span class="field-value">{{ $bdn?->destination_port }}</span></td>
             </tr>
             <tr>
-                <td><span class="field-label">Delivery Method</span>{{ $deliveryMethodLabel }}</td>
-                <td><span class="field-label">Barge Name</span>{{ $bdn?->barge?->name }}</td>
-                <td><span class="field-label">Barge IMO No / Flag</span>{{ $bdn?->barge_id }}</td>
+                <td><span class="field-label">Delivery Method</span><span class="field-value">{{ $deliveryMethodLabel }}</span></td>
+                <td><span class="field-label">Barge Name</span><span class="field-value">{{ $bdn?->barge?->name }}</span></td>
+                <td><span class="field-label">Barge IMO No / Flag</span><span class="field-value">{{ $bdn?->barge_id }}</span></td>
             </tr>
         </table>
 
@@ -326,6 +471,8 @@
             </tbody>
         </table>
 
+        @include('pdf.partials.bdn-confidential', ['section' => 'top'])
+
         <div class="declarations">
             @foreach ([
                 ["Ship's Chief Engineer Invited to Witness Sounding / Ullages", $bdn?->chief_engineer_invited],
@@ -354,29 +501,30 @@
             ];
         @endphp
 
-        <div class="sampling-method">
-            <span>Samples Method:</span>
-            @foreach ($samplingMethodOptions as [$case, $label])
-                <span class="sampling-method-option">
-                    {{ $label }}
-                    <span class="checkbox {{ $bdn?->sampling_method === $case ? 'checked' : '' }}"></span>
-                </span>
-            @endforeach
-        </div>
-
         <table class="seals">
             <tbody>
+                <tr>
+                    <td colspan="4" class="sampling-method-row">
+                        <span>Samples Method:</span>{{--
+                        --}}@foreach ($samplingMethodOptions as [$case, $label])<span class="sampling-method-option">{{ $label }}<span class="checkbox {{ $bdn?->sampling_method === $case ? 'checked' : '' }}"></span></span>@endforeach
+                    </td>
+                </tr>
                 @foreach ($sealTypes as $i => [$prefix, $label])
                     <tr>
                         @if ($i === 0)
                             <td class="rotated-label" rowspan="{{ count($sealTypes) }}">
-                                <div class="rotated-text">Samples were taken, sealed, distributed as follows</div>
+                                <div class="rotate-wrapper"><div class="rotated-text">Samples were taken, sealed, distributed as follows</div></div>
                             </td>
                         @endif
-                        <td>{{ $label }} : {{ $bdn?->{"{$prefix}_seal_number"} }}</td>
+                        <td>
+                            <div class="seal-line">
+                                <span>{{ $label }} :</span>
+                                <span class="seal-value">{{ $bdn?->{"{$prefix}_seal_number"} }}</span>
+                            </div>
+                        </td>
                         @if ($i === 0)
                             <td class="rotated-label" rowspan="{{ count($sealTypes) }}">
-                                <div class="rotated-text">Counter Seal No (if any)</div>
+                                <div class="rotate-wrapper"><div class="rotated-text">Counter Seal No (if any)</div></div>
                             </td>
                         @endif
                         <td class="counter-value">{{ $bdn?->{"{$prefix}_counter_seal_number"} }}</td>

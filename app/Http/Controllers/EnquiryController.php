@@ -38,13 +38,9 @@ class EnquiryController extends Controller
             ->latest()
             ->get();
 
-        $creditAvailable = CreditService::availableByCustomer(
-            $enquiries
-                ->flatMap(fn (Enquiry $enquiry) => $enquiry->enquiryCustomers)
-                ->map(fn (EnquiryCustomer $row): string => $row->customer_id)
-                ->unique()
-                ->all(),
-        );
+        $customers = Customer::orderBy('name')->get(['sap_id', 'name', 'credit_limit']);
+
+        $creditAvailable = CreditService::availableByCustomer($customers->pluck('sap_id')->all());
 
         $rows = $enquiries
             ->map(fn (Enquiry $enquiry): array => [
@@ -79,8 +75,6 @@ class EnquiryController extends Controller
                     'id' => $row->id,
                     'customer_id' => $row->customer_id,
                     'name' => $row->customer?->name,
-                    'credit_limit' => $row->customer?->credit_limit,
-                    'credit_available' => $creditAvailable[$row->customer_id] ?? null,
                     'credit_terms' => $row->credit_terms?->value,
                     'status' => $row->status->value,
                     'vlsfo_initial_offer' => $row->vlsfo_initial_offer,
@@ -97,7 +91,16 @@ class EnquiryController extends Controller
 
         return Inertia::render('enquiries/index', [
             'enquiries' => $rows,
-            'customers' => Customer::orderBy('name')->get(['sap_id', 'name']),
+            'customers' => $customers->map(fn (Customer $customer): array => [
+                'sap_id' => $customer->sap_id,
+                'name' => $customer->name,
+            ]),
+            'creditByCustomer' => $customers->mapWithKeys(fn (Customer $customer): array => [
+                $customer->sap_id => [
+                    'credit_limit' => $customer->credit_limit,
+                    'credit_available' => $creditAvailable[$customer->sap_id] ?? null,
+                ],
+            ]),
             'ports' => Port::orderBy('name')->get(['id', 'name']),
             'agents' => Agent::orderBy('name')->get(['id', 'name', 'address']),
             'supplyLocationOptions' => $this->enumOptions(SupplyLocation::cases()),

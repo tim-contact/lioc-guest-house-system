@@ -320,21 +320,28 @@ test('ebdn renders the order and bdn data onto the pdf', function () {
     $this->get(route('bdns.ebdn', $order))->assertOk();
 
     Pdf::assertRespondedWithPdf(function (PdfBuilder $pdf) use ($bdn): bool {
-        if ($pdf->viewName !== 'pdf.bdn') {
-            return false;
-        }
+        expect($pdf->viewName)->toBe('pdf.bdn');
 
         $html = $pdf->getHtml();
 
-        return str_contains($html, $bdn->bdn_number)
-            && str_contains($html, 'MV Test Vessel')
-            && str_contains($html, 'IMO1234567')
-            && str_contains($html, 'Blue Agents')
-            && str_contains($html, 'MT Bunker One')
-            && str_contains($html, 'Test Owner Co')
-            && str_contains($html, 'Test PI Club')
-            && str_contains($html, '0.9410')
-            && str_contains($html, '04.08.2026 at 19:30 hrs')
-            && ! str_contains($html, 'null');
+        foreach ([
+            $bdn->bdn_number,
+            'MV Test Vessel',
+            'IMO1234567',
+            'Blue Agents',
+            'MT Bunker One',
+            'Test Owner Co',
+            'Test PI Club',
+            '0.9410',
+            '04.08.2026 at 19:30 hrs',
+        ] as $needle) {
+            expect($html)->toContain($needle);
+        }
+
+        // Only a null that fills a cell on its own; the terms and conditions
+        // legitimately read "null and void".
+        expect($html)->not->toMatch('/>\s*null\s*</i');
+
+        return true;
     });
 });

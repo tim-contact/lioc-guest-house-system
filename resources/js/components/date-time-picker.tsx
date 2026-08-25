@@ -3,13 +3,13 @@ import { CalendarIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { Input } from '@/components/ui/input';
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn, dateOnlyToDate, dateToDateOnly } from '@/lib/utils';
+import { TimeField } from './time-field';
 
 interface DateTimePickerProps {
     id?: string;
@@ -58,14 +58,10 @@ export function DateTimePicker({
                     autoFocus
                 />
                 <div className="border-t p-3">
-                    <Input
-                        type="time"
+                    <TimeField
                         value={timePart}
-                        onChange={(e) =>
-                            commit(
-                                datePart || dateToDateOnly(new Date()),
-                                e.target.value,
-                            )
+                        onChange={(next) =>
+                            commit(datePart || dateToDateOnly(new Date()), next)
                         }
                     />
                 </div>

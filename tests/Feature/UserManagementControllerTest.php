@@ -212,6 +212,97 @@ test('master cannot promote a user to super admin', function () {
     expect($salesUser->refresh()->type)->toBe(UserType::Sales);
 });
 
+// ─── Master cannot manage other master users ──────────────────────────────────
+
+test('master cannot create a master user', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Master]));
+
+    $this->post(route('users.store'), [
+        'name' => 'Another Master',
+        'email' => 'another-master@example.com',
+        'type' => UserType::Master->value,
+        'password' => 'Password123!',
+        'password_confirmation' => 'Password123!',
+    ])->assertForbidden();
+
+    expect(User::where('email', 'another-master@example.com')->exists())->toBeFalse();
+});
+
+test('master cannot update another master user', function () {
+    $otherMaster = User::factory()->create(['type' => UserType::Master]);
+
+    $this->actingAs(User::factory()->create(['type' => UserType::Master]));
+
+    $this->patch(route('users.update', $otherMaster), [
+        'name' => 'Hacked Master Name',
+    ])->assertForbidden();
+
+    expect($otherMaster->refresh()->name)->not->toBe('Hacked Master Name');
+});
+
+test('master cannot deactivate another master user', function () {
+    $otherMaster = User::factory()->create(['type' => UserType::Master]);
+
+    $this->actingAs(User::factory()->create(['type' => UserType::Master]));
+
+    $this->patch(route('users.deactivate', $otherMaster))
+        ->assertForbidden();
+
+    expect($otherMaster->refresh()->is_active)->toBeTrue();
+});
+
+test('master cannot delete another master user', function () {
+    $otherMaster = User::factory()->create(['type' => UserType::Master]);
+
+    $this->actingAs(User::factory()->create(['type' => UserType::Master]));
+
+    $this->delete(route('users.destroy', $otherMaster))
+        ->assertForbidden();
+
+    expect(User::find($otherMaster->id))->not->toBeNull();
+});
+
+test('master cannot promote a user to master', function () {
+    $salesUser = User::factory()->create(['type' => UserType::Sales]);
+
+    $this->actingAs(User::factory()->create(['type' => UserType::Master]));
+
+    $this->patch(route('users.update', $salesUser), [
+        'type' => UserType::Master->value,
+    ])->assertForbidden();
+
+    expect($salesUser->refresh()->type)->toBe(UserType::Sales);
+});
+
+test('master roleOptions excludes super_admin and master', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Master]));
+
+    $response = $this->get(route('users.index'))->assertOk();
+
+    $roleOptions = $response->inertiaProps('roleOptions');
+    expect($roleOptions)->toBeArray();
+
+    $values = array_column($roleOptions, 'value');
+    expect($values)->not->toContain(UserType::SuperAdmin->value);
+    expect($values)->not->toContain(UserType::Master->value);
+    expect($values)->toContain(UserType::Sales->value);
+    expect($values)->toContain(UserType::Operations->value);
+    expect($values)->toContain(UserType::Surveyor->value);
+    expect($values)->toContain(UserType::Finance->value);
+});
+
+test('super admin roleOptions includes all roles', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $response = $this->get(route('users.index'))->assertOk();
+
+    $roleOptions = $response->inertiaProps('roleOptions');
+    $values = array_column($roleOptions, 'value');
+    expect($values)->toContain(UserType::SuperAdmin->value);
+    expect($values)->toContain(UserType::Master->value);
+    expect($values)->toContain(UserType::Sales->value);
+});
+
 // ─── First super admin protections ───────────────────────────────────────────
 
 test('first super admin cannot be deleted', function () {

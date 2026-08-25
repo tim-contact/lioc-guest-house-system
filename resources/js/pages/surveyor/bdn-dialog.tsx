@@ -1,4 +1,5 @@
-import { useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 import { update } from '@/actions/App/Http/Controllers/BdnController';
 import { DatePicker } from '@/components/date-picker';
 import { DateTimePicker } from '@/components/date-time-picker';
@@ -14,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -32,6 +34,7 @@ import { useAutosave } from '@/hooks/use-autosave';
 import type { AutosaveStatus } from '@/hooks/use-autosave';
 import { QUALITY_FIELDS, SEALS, TIMESHEET_FIELDS } from '@/lib/bdn-fields';
 import { cn, dateOnlyToDate, dateToDateOnly } from '@/lib/utils';
+import { complete } from '@/routes/surveyor';
 import type { AgentOption, EnumOption } from '@/types';
 import type { BargeOption, PendingRow } from './dashboard';
 
@@ -195,26 +198,57 @@ export function BdnDialog({
     samplingMethodOptions: EnumOption[];
 }) {
     const form = useForm<BdnFormData>(buildFormData(order));
+    const [confirming, setConfirming] = useState(false);
+
+    // Defaults have to be the payload that was sent, not the current data,
+    // or keystrokes made mid-request are marked clean and never saved.
+    const saveBdn = (submitted: BdnFormData, onSaved?: () => void) =>
+        form.submit(update(order.id), {
+            preserveScroll: true,
+            preserveState: true,
+            only: ['pendingOrders'],
+            onSuccess: () => {
+                form.setDefaults(submitted);
+                onSaved?.();
+            },
+        });
 
     const { status, flush } = useAutosave({
         data: form.data,
         dirty: form.isDirty,
         processing: form.processing,
         hasErrors: form.hasErrors,
-        // Defaults have to be the payload that was sent, not the current data,
-        // or keystrokes made mid-request are marked clean and never saved.
-        save: (submitted) =>
-            form.submit(update(order.id), {
-                preserveScroll: true,
-                preserveState: true,
-                only: ['pendingOrders'],
-                onSuccess: () => form.setDefaults(submitted),
-            }),
+        save: saveBdn,
     });
 
     function close() {
         flush();
         onOpenChange(false);
+    }
+
+    function completeOrder() {
+        router.patch(
+            complete(order.id).url,
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: () => onOpenChange(false),
+            },
+        );
+    }
+
+    function submit() {
+        setConfirming(false);
+
+        // Inertia runs one visit at a time, so an unsaved BDN has to finish
+        // saving before the completion patch starts or it would cancel it.
+        if (form.isDirty) {
+            saveBdn(form.data, completeOrder);
+
+            return;
+        }
+
+        completeOrder();
     }
 
     const set = (field: string) => (value: string) =>
@@ -228,7 +262,7 @@ export function BdnDialog({
     return (
         <Dialog open={open} onOpenChange={(next) => !next && close()}>
             <DialogContent
-                className="max-h-[88vh] overflow-y-auto sm:max-w-4xl"
+                className="sm:max-w-4xl"
                 onInteractOutside={(e) => e.preventDefault()}
             >
                 <SummaryBand>
@@ -530,7 +564,37 @@ export function BdnDialog({
                     <Button type="button" variant="outline" onClick={close}>
                         Close
                     </Button>
+                    <Button type="button" onClick={() => setConfirming(true)}>
+                        Submit
+                    </Button>
                 </DialogFooter>
+
+                <Dialog open={confirming} onOpenChange={setConfirming}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>
+                                Submit BDN{' '}
+                                {order.bdn?.bdn_number ?? order.order_number}?
+                            </DialogTitle>
+                            <DialogDescription>
+                                This marks the order as delivered and generates
+                                the invoice from the BDN quantities and rates.
+                                It cannot be undone from this page.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => setConfirming(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button disabled={form.processing} onClick={submit}>
+                                Submit
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </DialogContent>
         </Dialog>
     );

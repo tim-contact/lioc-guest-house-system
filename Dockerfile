@@ -60,8 +60,11 @@ RUN apk add --no-cache \
         chromium \
         curl \
         freetype \
+        freetype-dev \
         harfbuzz \
         icu-dev \
+        libjpeg-turbo-dev \
+        libpng-dev \
         libzip-dev \
         nginx \
         nodejs \
@@ -71,8 +74,12 @@ RUN apk add --no-cache \
         supervisor \
         font-freefont \
         $PHPIZE_DEPS \
+    && docker-php-ext-configure gd \
+        --with-freetype \
+        --with-jpeg \
     && docker-php-ext-install \
         bcmath \
+        gd \
         intl \
         opcache \
         pcntl \
