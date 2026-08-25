@@ -1,5 +1,5 @@
 import { Head, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { NoneSelect } from '@/components/none-select';
 import { Button } from '@/components/ui/button';
@@ -53,6 +53,20 @@ export default function EnquiriesIndex({
 }: EnquiriesIndexProps) {
     const [creating, setCreating] = useState(false);
     const rowRef = useDragScroll<HTMLDivElement>();
+    const scrollbarRef = useRef<HTMLDivElement>(null);
+    const scrollWidth = `calc(${enquiries.length} * 36rem + ${Math.max(enquiries.length - 1, 0)} * 1.25rem)`;
+
+    function syncScrollbar(event: React.UIEvent<HTMLDivElement>) {
+        if (scrollbarRef.current) {
+            scrollbarRef.current.scrollLeft = event.currentTarget.scrollLeft;
+        }
+    }
+
+    function syncCards(event: React.UIEvent<HTMLDivElement>) {
+        if (rowRef.current) {
+            rowRef.current.scrollLeft = event.currentTarget.scrollLeft;
+        }
+    }
 
     return (
         <>
@@ -81,35 +95,55 @@ export default function EnquiriesIndex({
                         No enquiries yet.
                     </div>
                 ) : (
-                    <div
-                        ref={rowRef}
-                        tabIndex={0}
-                        aria-label="Enquiries"
-                        className="flex min-h-0 flex-1 cursor-grab items-start gap-4 overflow-x-auto overflow-y-hidden px-1 pt-1 pb-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:gap-5"
-                    >
-                        {enquiries.map((enquiry) => (
+                    <>
+                        <div
+                            ref={rowRef}
+                            tabIndex={0}
+                            data-horizontal-wheel-scroll
+                            aria-label="Enquiries"
+                            onScroll={syncScrollbar}
+                            className="flex min-h-0 flex-1 cursor-grab [scrollbar-width:none] items-start gap-5 overflow-x-scroll overflow-y-hidden px-1 pt-1 pb-2 [-ms-overflow-style:none] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-scrollbar]:hidden"
+                        >
+                            {enquiries.map((enquiry) => (
+                                <div
+                                    key={enquiry.id}
+                                    className="w-[36rem] shrink-0 cursor-auto"
+                                >
+                                    <EnquiryCard
+                                        enquiry={enquiry}
+                                        customers={customers}
+                                        creditByCustomer={creditByCustomer}
+                                        ports={ports}
+                                        agents={agents}
+                                        supplyLocationOptions={
+                                            supplyLocationOptions
+                                        }
+                                        productTypeOptions={productTypeOptions}
+                                        deliveryModeOptions={
+                                            deliveryModeOptions
+                                        }
+                                        creditTermsOptions={creditTermsOptions}
+                                        samplingOptions={samplingOptions}
+                                        qualityClaimOptions={
+                                            qualityClaimOptions
+                                        }
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        <div
+                            ref={scrollbarRef}
+                            aria-label="Scroll enquiries horizontally"
+                            onScroll={syncCards}
+                            className="sticky bottom-0 z-30 [scrollbar-gutter:stable] overflow-x-scroll overflow-y-hidden rounded-md bg-[#f6f9fc]/90 py-2 backdrop-blur [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-thumb]:rounded-md [&::-webkit-scrollbar-thumb]:bg-slate-400/80 [&::-webkit-scrollbar-thumb:hover]:bg-slate-500 [&::-webkit-scrollbar-track]:rounded-md [&::-webkit-scrollbar-track]:bg-slate-200"
+                        >
                             <div
-                                key={enquiry.id}
-                                className="w-[36rem] shrink-0 cursor-auto"
-                            >
-                                <EnquiryCard
-                                    enquiry={enquiry}
-                                    customers={customers}
-                                    creditByCustomer={creditByCustomer}
-                                    ports={ports}
-                                    agents={agents}
-                                    supplyLocationOptions={
-                                        supplyLocationOptions
-                                    }
-                                    productTypeOptions={productTypeOptions}
-                                    deliveryModeOptions={deliveryModeOptions}
-                                    creditTermsOptions={creditTermsOptions}
-                                    samplingOptions={samplingOptions}
-                                    qualityClaimOptions={qualityClaimOptions}
-                                />
-                            </div>
-                        ))}
-                    </div>
+                                aria-hidden="true"
+                                className="h-px"
+                                style={{ width: scrollWidth }}
+                            />
+                        </div>
+                    </>
                 )}
             </div>
 
