@@ -1,7 +1,7 @@
 import { addWeeks, endOfWeek, isWithinInterval, startOfWeek } from 'date-fns';
 import { Stat } from '@/components/edit-panel/fields';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { dateOnlyToDate, formatMoney } from '@/lib/utils';
+import { dateOnlyToDate, formatMoney, toDateInput } from '@/lib/utils';
 import type { CompletedRow } from './dashboard';
 
 interface Bucket {
@@ -10,19 +10,11 @@ interface Bucket {
     amount: number;
 }
 
-function balance(row: CompletedRow): number {
-    const invoiceValue = Number(row.invoice_value ?? 0);
-    const amountReceived = Number(row.amount_received ?? 0);
-    const value = invoiceValue - amountReceived;
-
-    return Number.isFinite(value) ? value : 0;
-}
-
 function bucket(label: string, rows: CompletedRow[]): Bucket {
     return {
         label,
         count: rows.length,
-        amount: rows.reduce((total, row) => total + balance(row), 0),
+        amount: rows.reduce((total, row) => total + row.amount_remaining, 0),
     };
 }
 
@@ -32,9 +24,7 @@ function dueWithin(
     end: Date,
 ): CompletedRow[] {
     return rows.filter((row) => {
-        const due = row.payment_due_date
-            ? dateOnlyToDate(row.payment_due_date)
-            : undefined;
+        const due = dateOnlyToDate(toDateInput(row.payment_due_date));
 
         return due ? isWithinInterval(due, { start, end }) : false;
     });
@@ -45,7 +35,7 @@ export function FinanceSummaryCards({
 }: {
     completedOrders: CompletedRow[];
 }) {
-    const pending = completedOrders.filter((row) => !row.paid_in_full);
+    const pending = completedOrders.filter((row) => row.amount_remaining > 0);
 
     const today = new Date();
     const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 });

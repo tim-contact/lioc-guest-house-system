@@ -239,6 +239,43 @@ test('closing a delivered order that is paid in full sets it to closed', functio
     expect($order->refresh()->status)->toBe(OrderStatus::Closed);
 });
 
+test('a delivered order with a zero-value invoice can be closed', function () {
+    $this->actingAs(User::factory()->create());
+
+    $order = createFinanceOrder([
+        'status' => OrderStatus::Delivered,
+        'invoice_value' => 0,
+        'amount_received' => null,
+    ]);
+
+    $this->get(route('finance'))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('completedOrders.0.paid_in_full', false)
+            ->where('completedOrders.0.can_close', true));
+
+    $this->patch(route('finance.close', $order))->assertRedirect();
+
+    expect($order->refresh()->status)->toBe(OrderStatus::Closed);
+});
+
+test('a delivered order without an invoice cannot be closed', function () {
+    $this->actingAs(User::factory()->create());
+
+    $order = createFinanceOrder([
+        'status' => OrderStatus::Delivered,
+        'invoice_value' => null,
+        'amount_received' => null,
+    ]);
+
+    $this->get(route('finance'))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('completedOrders.0.can_close', false));
+
+    $this->patch(route('finance.close', $order))->assertRedirect();
+
+    expect($order->refresh()->status)->toBe(OrderStatus::Delivered);
+});
+
 test('a delivered order that is not paid in full cannot be closed', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
