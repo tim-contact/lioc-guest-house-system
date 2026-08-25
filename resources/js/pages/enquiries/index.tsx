@@ -1,5 +1,6 @@
 import { Head, useForm } from '@inertiajs/react';
 import { useRef, useState } from 'react';
+import Dot from '@/components/animata/background/dot';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { NoneSelect } from '@/components/none-select';
 import { Button } from '@/components/ui/button';
@@ -72,8 +73,23 @@ export default function EnquiriesIndex({
         <>
             <Head title="Enquiries" />
 
-            <div className="flex min-h-0 flex-1 flex-col gap-5 bg-[#f6f9fc] p-4 md:p-6">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative isolate flex min-h-0 flex-1 flex-col gap-5 overflow-hidden bg-[#f6f9fc] p-4 md:p-6">
+                <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 z-0 opacity-70"
+                >
+                    <Dot
+                        color="rgba(71, 85, 105, 0.24)"
+                        size={1}
+                        spacing={14}
+                        className="h-full w-full"
+                        style={{ backgroundColor: 'transparent' }}
+                    >
+                        <div className="h-full w-full" />
+                    </Dot>
+                </div>
+
+                <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
                         <h1 className="text-2xl font-semibold tracking-normal text-slate-950">
                             Enquiries
@@ -91,7 +107,7 @@ export default function EnquiriesIndex({
                 </div>
 
                 {enquiries.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+                    <div className="relative z-10 rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
                         No enquiries yet.
                     </div>
                 ) : (
@@ -102,7 +118,7 @@ export default function EnquiriesIndex({
                             data-horizontal-wheel-scroll
                             aria-label="Enquiries"
                             onScroll={syncScrollbar}
-                            className="flex min-h-0 flex-1 cursor-grab [scrollbar-width:none] items-start gap-5 overflow-x-scroll overflow-y-hidden px-1 pt-1 pb-2 [-ms-overflow-style:none] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-scrollbar]:hidden"
+                            className="relative z-10 flex min-h-0 flex-1 cursor-grab [scrollbar-width:none] items-start gap-5 overflow-x-scroll overflow-y-hidden bg-transparent px-1 pt-1 pb-2 [-ms-overflow-style:none] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-scrollbar]:hidden"
                         >
                             {enquiries.map((enquiry) => (
                                 <div

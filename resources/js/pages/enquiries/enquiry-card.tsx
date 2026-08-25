@@ -16,6 +16,7 @@ import {
     store as addCustomer,
     update as updateCustomer,
 } from '@/actions/App/Http/Controllers/EnquiryCustomerController';
+import Dot from '@/components/animata/background/dot';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { DetailRow } from '@/components/edit-panel/fields';
 import { MoneyInput } from '@/components/money-input';
@@ -729,9 +730,23 @@ export function EnquiryCard({
             className={`relative overflow-hidden rounded-[14px] ring-0 ${portColor.card} ${statusStyle.card}`}
         >
             <div
-                className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${portColor.accent}`}
+                className={`absolute inset-x-0 top-0 z-[2] h-1 bg-gradient-to-r ${portColor.accent}`}
             />
-            <CardHeader className="pt-4">
+            <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 z-0 opacity-35"
+            >
+                <Dot
+                    color="rgba(71, 85, 105, 0.18)"
+                    size={1}
+                    spacing={13}
+                    className="h-full w-full"
+                    style={{ backgroundColor: 'transparent' }}
+                >
+                    <div className="h-full w-full" />
+                </Dot>
+            </div>
+            <CardHeader className="relative z-[1] pt-4">
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                         <div className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-500">
@@ -759,7 +774,7 @@ export function EnquiryCard({
                 </div>
             </CardHeader>
 
-            <CardContent className="flex flex-col gap-5">
+            <CardContent className="relative z-[1] flex flex-col gap-5">
                 {/* ---- Core details ---- */}
                 <form onSubmit={saveCore} className="flex flex-col gap-5">
                     <div className="relative z-[1] grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4 shadow-[0_2px_8px_rgba(16,24,40,0.05)] sm:grid-cols-2">
