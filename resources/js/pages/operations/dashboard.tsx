@@ -49,7 +49,10 @@ export default function OperationsDashboard({
             <Head title="Operations" />
 
             <div className="p-4 pb-0">
-                <PortSummaryCards orders={pendingOrders} />
+                <PortSummaryCards
+                    pendingOrders={pendingOrders}
+                    completedOrders={completedOrders}
+                />
             </div>
 
             <OrderDashboard

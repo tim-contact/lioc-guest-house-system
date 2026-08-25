@@ -4,9 +4,9 @@ import type { OrderRow } from '@/components/order-dashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FUEL_GRADES } from '@/lib/domain';
 import type { FuelGradeKey } from '@/lib/domain';
+import { cn } from '@/lib/utils';
 
 interface Summary {
-    label: string;
     count: number;
     volumes: Record<FuelGradeKey, number>;
 }
@@ -17,7 +17,7 @@ function formatVolume(value: number): string {
         : value.toLocaleString(undefined, { maximumFractionDigits: 3 });
 }
 
-/** The delivered quantity once known, else the upper bound of the ordered range. */
+/** The final quantity once known, else the upper or lower ordered bound. */
 function orderVolume(row: OrderRow, product: FuelGradeKey): number {
     const quantity =
         row[`${product}_final_qty`] ??
@@ -29,9 +29,8 @@ function orderVolume(row: OrderRow, product: FuelGradeKey): number {
     return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function summarise(label: string, rows: OrderRow[]): Summary {
+function summarise(rows: OrderRow[]): Summary {
     return {
-        label,
         count: rows.length,
         volumes: Object.fromEntries(
             FUEL_GRADES.map((product) => [
@@ -45,35 +44,106 @@ function summarise(label: string, rows: OrderRow[]): Summary {
     };
 }
 
-export function PortSummaryCards({ orders }: { orders: OrderRow[] }) {
-    const total = summarise('All Ports', orders);
-
-    const byPort = PORTS.map((port) =>
-        summarise(
-            port,
-            orders.filter((order) => order.port === port),
-        ),
+function SummarySection({
+    label,
+    summary,
+    className,
+}: {
+    label: string;
+    summary: Summary;
+    className?: string;
+}) {
+    return (
+        <div className={cn('flex flex-col gap-2', className)}>
+            <span className="text-xs font-medium text-gold">{label}</span>
+            <div className="flex flex-col gap-1.5 text-sm">
+                <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-muted-foreground">Orders</span>
+                    <span className="font-medium tabular-nums">
+                        {summary.count}
+                    </span>
+                </div>
+                {FUEL_GRADES.map((product) => (
+                    <div
+                        key={product.key}
+                        className="flex items-baseline justify-between gap-2"
+                    >
+                        <span className="text-muted-foreground">
+                            Volume {product.label}
+                        </span>
+                        <span className="font-medium tabular-nums">
+                            {formatVolume(summary.volumes[product.key])}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </div>
     );
+}
+
+/** The same figures as SummarySection, sized for the All Ports banner. */
+function SummaryStats({
+    label,
+    summary,
+    className,
+}: {
+    label: string;
+    summary: Summary;
+    className?: string;
+}) {
+    return (
+        <div className={cn('flex flex-col gap-2', className)}>
+            <span className="text-xs font-medium text-gold">{label}</span>
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+                <Stat label="Orders" value={String(summary.count)} />
+                {FUEL_GRADES.map((product) => (
+                    <Stat
+                        key={product.key}
+                        label={`Volume ${product.label}`}
+                        value={formatVolume(summary.volumes[product.key])}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+export function PortSummaryCards({
+    pendingOrders,
+    completedOrders,
+}: {
+    pendingOrders: OrderRow[];
+    completedOrders: OrderRow[];
+}) {
+    const total = {
+        pending: summarise(pendingOrders),
+        completed: summarise(completedOrders),
+    };
+
+    const byPort = PORTS.map((port) => ({
+        label: port,
+        pending: summarise(
+            pendingOrders.filter((order) => order.port === port),
+        ),
+        completed: summarise(
+            completedOrders.filter((order) => order.port === port),
+        ),
+    }));
 
     return (
         <div className="flex flex-col gap-4 pl-2">
             <Card className="gap-0 rounded-2xl bg-gold/10 py-4 shadow-none ring-gold/30">
-                <CardContent className="flex flex-wrap items-center justify-between gap-x-8 gap-y-3">
+                <CardContent className="flex flex-col gap-4 lg:flex-row lg:items-center">
                     <CardTitle className="text-xl font-medium text-gold sm:text-2xl">
-                        {total.label}
+                        All Ports
                     </CardTitle>
-                    <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-                        <Stat
-                            label="Pending orders"
-                            value={String(total.count)}
+                    <div className="grid flex-1 gap-4 sm:grid-cols-2">
+                        <SummaryStats label="Pending" summary={total.pending} />
+                        <SummaryStats
+                            label="Completed"
+                            summary={total.completed}
+                            className="border-t border-gold-border/70 pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4"
                         />
-                        {FUEL_GRADES.map((product) => (
-                            <Stat
-                                key={product.key}
-                                label={`Volume ${product.label}`}
-                                value={formatVolume(total.volumes[product.key])}
-                            />
-                        ))}
                     </div>
                 </CardContent>
             </Card>
@@ -89,30 +159,16 @@ export function PortSummaryCards({ orders }: { orders: OrderRow[] }) {
                                 {summary.label}
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="flex flex-col gap-1.5 text-sm">
-                            <div className="flex items-baseline justify-between gap-2">
-                                <span className="text-muted-foreground">
-                                    Pending orders
-                                </span>
-                                <span className="font-medium tabular-nums">
-                                    {summary.count}
-                                </span>
-                            </div>
-                            {FUEL_GRADES.map((product) => (
-                                <div
-                                    key={product.key}
-                                    className="flex items-baseline justify-between gap-2"
-                                >
-                                    <span className="text-muted-foreground">
-                                        Volume {product.label}
-                                    </span>
-                                    <span className="font-medium tabular-nums">
-                                        {formatVolume(
-                                            summary.volumes[product.key],
-                                        )}
-                                    </span>
-                                </div>
-                            ))}
+                        <CardContent className="flex flex-col gap-3">
+                            <SummarySection
+                                label="Pending"
+                                summary={summary.pending}
+                            />
+                            <SummarySection
+                                label="Completed"
+                                summary={summary.completed}
+                                className="border-t border-gold-border/70 pt-3"
+                            />
                         </CardContent>
                     </Card>
                 ))}
