@@ -1,4 +1,6 @@
 import { Head, router, usePage } from '@inertiajs/react';
+import { CheckCircle2, Clock3, Ship, Waves } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Fragment, useState } from 'react';
 import { SearchableCombobox } from '@/components/searchable-combobox';
 import { TableFrame } from '@/components/table-frame';
@@ -12,7 +14,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { FUEL_GRADES } from '@/lib/domain';
-import { shortDate } from '@/lib/utils';
+import { cn, shortDate } from '@/lib/utils';
 import { ebdn } from '@/routes/bdns';
 import { complete as completeOrder } from '@/routes/surveyor';
 import type { AgentOption, EnumOption, SupplyLocationOption } from '@/types';
@@ -114,6 +116,87 @@ function picLabel({ pic, mobile_no }: PendingRow): string {
     return mobile_no ? `${pic} (${mobile_no})` : pic;
 }
 
+function BargeOverviewStrip({
+    barge,
+    pendingCount,
+    completedCount,
+    children,
+}: {
+    barge: BargeOption | null;
+    pendingCount: number;
+    completedCount: number;
+    children?: ReactNode;
+}) {
+    const stats = [
+        {
+            label: 'Pending',
+            value: pendingCount,
+            icon: Clock3,
+            tone: 'text-[#1d4ed8]',
+        },
+        {
+            label: 'Completed',
+            value: completedCount,
+            icon: CheckCircle2,
+            tone: 'text-[#15803d]',
+        },
+    ];
+
+    return (
+        <section className="overflow-hidden rounded-xl border border-[#dfe3e8] bg-white shadow-[0_10px_28px_rgba(38,42,48,0.06),0_2px_5px_rgba(38,42,48,0.04)]">
+            <div className="grid gap-4 bg-[linear-gradient(135deg,#102a4c_0%,#164a73_58%,#1e7b83_100%)] p-4 text-white md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:p-5">
+                <div className="flex min-w-0 items-center gap-3">
+                    <span
+                        className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/14 text-white ring-1 ring-white/20"
+                        aria-hidden="true"
+                    >
+                        <Ship className="size-6" />
+                    </span>
+                    <div className="min-w-0">
+                        <p className="text-xs font-semibold tracking-[0.08em] text-white/75 uppercase">
+                            Selected barge
+                        </p>
+                        <h1 className="mt-1 truncate text-xl leading-tight font-bold md:text-2xl">
+                            {barge?.name ?? 'Select a barge'}
+                        </h1>
+                        <p className="mt-1 flex items-center gap-1.5 text-sm text-white/78">
+                            <Waves className="size-4" aria-hidden="true" />
+                            <span className="truncate">
+                                {barge?.imo
+                                    ? `IMO ${barge.imo}`
+                                    : 'No barge selected'}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                    {stats.map(({ label, value, icon: Icon, tone }) => (
+                        <div
+                            key={label}
+                            className="min-w-[7rem] rounded-lg border border-white/18 bg-white/92 px-3 py-2 text-[#102a4c] shadow-[0_8px_18px_rgba(0,0,0,0.08)]"
+                        >
+                            <div className="flex items-center gap-2 text-xs font-medium text-[#657185]">
+                                <Icon className={cn('size-4', tone)} />
+                                {label}
+                            </div>
+                            <div className="mt-1 text-xl font-bold tabular-nums">
+                                {value}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {children && (
+                <div className="border-t border-[#e2e0dc] bg-[#faf9f7] p-3 sm:p-4">
+                    {children}
+                </div>
+            )}
+        </section>
+    );
+}
+
 function OperationalInstruction({ row }: { row: PendingRow }) {
     const pairs: [string, string][] = [
         ['Sampling', row.sampling ?? '—'],
@@ -166,6 +249,10 @@ export default function SurveyorDashboard({
         assignedBarge?.imo ?? '',
     );
     const [bdnOrderId, setBdnOrderId] = useState<number | null>(null);
+    const selectedBargeDetails =
+        assignedBarge ??
+        barges.find((barge) => barge.imo === selectedBarge) ??
+        null;
 
     // Derived, so the open dialog sees the BDN number its own first save assigned.
     const bdnOrder = pendingOrders.find((row) => row.id === bdnOrderId);
@@ -175,34 +262,44 @@ export default function SurveyorDashboard({
             <Head title="Surveyor" />
 
             <div className="flex flex-col gap-6 p-4">
-                <div className="max-w-xs">
+                <BargeOverviewStrip
+                    barge={selectedBargeDetails}
+                    pendingCount={pendingOrders.length}
+                    completedCount={completedOrders.length}
+                >
                     {isSurveyor && assignedBarge ? (
-                        <div className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-                            <span className="text-muted-foreground">Assigned barge:</span>
-                            <span className="font-medium">{assignedBarge.name}</span>
-                            <span className="text-xs text-muted-foreground">({assignedBarge.imo})</span>
+                        <div className="text-sm text-[#657185]">
+                            Assigned to{' '}
+                            <span className="font-semibold text-[#102a4c]">
+                                {assignedBarge.name}
+                            </span>
                         </div>
                     ) : (
-                        <SearchableCombobox
-                            items={barges.map((barge) => ({
-                                value: barge.imo,
-                                label: barge.name,
-                                sublabel: barge.imo,
-                            }))}
-                            value={selectedBarge}
-                            onChange={(value) => {
-                                setSelectedBarge(value);
-                                router.reload({
-                                    data: { barge: value },
-                                    only: ['pendingOrders', 'completedOrders'],
-                                });
-                            }}
-                            placeholder="Select barge"
-                            searchPlaceholder="Search barge name or IMO"
-                            emptyText="No barges available."
-                        />
+                        <div className="max-w-xs">
+                            <SearchableCombobox
+                                items={barges.map((barge) => ({
+                                    value: barge.imo,
+                                    label: barge.name,
+                                    sublabel: barge.imo,
+                                }))}
+                                value={selectedBarge}
+                                onChange={(value) => {
+                                    setSelectedBarge(value);
+                                    router.reload({
+                                        data: { barge: value },
+                                        only: [
+                                            'pendingOrders',
+                                            'completedOrders',
+                                        ],
+                                    });
+                                }}
+                                placeholder="Select barge"
+                                searchPlaceholder="Search barge name or IMO"
+                                emptyText="No barges available."
+                            />
+                        </div>
                     )}
-                </div>
+                </BargeOverviewStrip>
 
                 <section className="flex flex-col gap-4">
                     <h2 className="text-xl font-semibold tracking-tight">

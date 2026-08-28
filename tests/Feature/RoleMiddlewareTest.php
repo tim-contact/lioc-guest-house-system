@@ -22,6 +22,11 @@ $adminGetRoutes = [
     'surveyors.edit',
 ];
 
+$superAdminOnlyGetRoutes = [
+    'launch.index',
+    'launch.screen',
+];
+
 $salesGetRoutes = [
     'sales-dashboard',
     'credit-management',
@@ -47,6 +52,7 @@ $financeGetRoutes = [
 
 $allProtectedGetRoutes = array_merge(
     $adminGetRoutes,
+    $superAdminOnlyGetRoutes,
     $salesGetRoutes,
     $operationsGetRoutes,
     $surveyorGetRoutes,
@@ -96,14 +102,23 @@ test('super_admin can access all protected routes', function (string $route) {
 })->with(array_combine($allProtectedGetRoutes, $allProtectedGetRoutes));
 
 // ============================================================
-// 4. master can access all role-group routes
+// 4. master can access all shared role-group routes
 // ============================================================
 
-test('master can access all role-group routes', function (string $route) {
+test('master can access shared role-group routes', function (string $route) {
     $user = User::factory()->create(['type' => UserType::Master]);
 
     $this->actingAs($user)->get(route($route))->assertOk();
-})->with(array_combine($allProtectedGetRoutes, $allProtectedGetRoutes));
+})->with(array_combine(
+    array_diff($allProtectedGetRoutes, $superAdminOnlyGetRoutes),
+    array_diff($allProtectedGetRoutes, $superAdminOnlyGetRoutes),
+));
+
+test('master is redirected away from super admin only get routes', function (string $route) {
+    $user = User::factory()->create(['type' => UserType::Master]);
+
+    $this->actingAs($user)->get(route($route))->assertRedirect(route('admin', absolute: false));
+})->with(array_combine($superAdminOnlyGetRoutes, $superAdminOnlyGetRoutes));
 
 // ============================================================
 // 5. Sales: allowed routes

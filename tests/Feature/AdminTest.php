@@ -22,6 +22,8 @@ test('every admin dashboard card route resolves', function () {
     $routes = [
         'enquiries.edit',
         'reports.analytics',
+        'launch.index',
+        'launch.screen',
         'customers.index',
         'agents.index',
         'agent-pics.index',
