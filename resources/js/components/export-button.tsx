@@ -1,4 +1,3 @@
-import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { exportToXlsx } from '@/lib/export-xlsx';
 import type { ExportColumn } from '@/lib/export-xlsx';
@@ -20,7 +19,12 @@ export function ExportButton<T>({
             onClick={() => exportToXlsx(rows, columns, filename)}
             disabled={rows.length === 0}
         >
-            <Download className="mr-2 h-4 w-4" />
+            <img
+                src="/images/icons/excel-file.png"
+                alt=""
+                aria-hidden="true"
+                className="mr-2 h-4 w-4 shrink-0"
+            />
             Export to Excel
         </Button>
     );

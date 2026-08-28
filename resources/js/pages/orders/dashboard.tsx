@@ -105,6 +105,7 @@ export default function OrdersDashboard({
     ];
 
     const completedActions: RowAction<OrderEditRow>[] = [disputeAction];
+    const portNames = ports.map((port) => port.name);
 
     return (
         <>
@@ -112,12 +113,14 @@ export default function OrdersDashboard({
 
             <div className="p-4 pb-0">
                 <PortSummaryCards
+                    ports={portNames}
                     pendingOrders={pendingOrders}
                     completedOrders={completedOrders}
                 />
             </div>
 
             <OrderDashboard
+                ports={portNames}
                 pendingOrders={pendingOrders}
                 completedOrders={completedOrders}
                 pendingActions={pendingActions}

@@ -1,8 +1,9 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import type { CSSProperties } from 'react';
-import { ArrowRight, CalendarDays, FileText, LayoutGrid } from 'lucide-react';
+import { ArrowRight, FileText, LayoutGrid } from 'lucide-react';
+import { WorkspaceHero } from '@/components/workspace-hero';
 import { navGroups } from '@/lib/navigation';
-import type { Auth, NavItem } from '@/types';
+import type { NavItem } from '@/types';
 
 /* Hallmark pre-emit critique: P4 H5 E4 S5 R5 V4 */
 // Adjust this value to manually reposition the banner image crop.
@@ -46,52 +47,6 @@ const cards =
     adminGroup && 'items' in adminGroup
         ? adminGroup.items.filter((item) => item.description)
         : [];
-
-type PageProps = {
-    auth: Auth;
-};
-
-function formatBannerDate(): string {
-    return new Intl.DateTimeFormat(undefined, {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-    }).format(new Date());
-}
-
-function AdminHero() {
-    const { auth } = usePage<PageProps>().props;
-    const displayName = auth.user?.name ?? 'Super Admin';
-
-    return (
-        <section
-            className="relative mx-auto min-h-[320px] w-full max-w-[1500px] overflow-hidden rounded-[18px] border border-white/45 bg-cover bg-no-repeat shadow-[0_18px_44px_rgba(38,42,48,0.10)] sm:min-h-[330px] sm:rounded-3xl lg:min-h-[300px] xl:min-h-[320px]"
-            style={{
-                backgroundImage:
-                    "linear-gradient(90deg, rgba(18,31,48,0.76) 0%, rgba(28,39,52,0.51) 38%, rgba(28,39,52,0.16) 68%, rgba(28,39,52,0.04) 100%), url('/images/oil_tanker_dreamy_background.png')",
-                backgroundPosition: HERO_BACKGROUND_POSITION,
-            }}
-        >
-            <div className="absolute top-4 right-4 z-10 inline-flex min-h-9 items-center gap-2 rounded-[9px] border border-white/25 bg-[#112337]/85 px-3.5 text-[13px] font-medium text-white shadow-[0_6px_18px_rgba(10,20,30,0.14)] sm:top-6 sm:right-6">
-                <CalendarDays className="size-4" aria-hidden="true" />
-                {formatBannerDate()}
-            </div>
-
-            <div className="relative z-10 flex min-h-[320px] max-w-[720px] flex-col items-start justify-end px-6 pt-24 pb-8 sm:min-h-[330px] sm:justify-center sm:px-9 sm:py-10 lg:min-h-[300px] lg:py-9 xl:min-h-[320px]">
-                <p className="text-sm font-semibold tracking-[0.04em] text-white/95 uppercase">
-                    Admin workspace
-                </p>
-                <h1 className="mt-3 text-[clamp(1.875rem,2.6vw,2.625rem)] leading-[1.12] font-bold tracking-[-0.025em] text-white">
-                    Good morning, {displayName}
-                </h1>
-                <p className="mt-4 max-w-2xl text-base leading-7 text-white/90">
-                    Manage users, master data, sales records and operational
-                    setup from one secure place.
-                </p>
-            </div>
-        </section>
-    );
-}
 
 function AdminCard({ card, index }: { card: NavItem; index: number }) {
     const style = CARD_STYLES[index % CARD_STYLES.length];
@@ -175,7 +130,13 @@ export default function Admin() {
 
             <div className="min-h-[calc(100dvh-2.75rem)] bg-background font-sans text-[#102a4c]">
                 <main className="mx-auto w-full max-w-[1480px] px-4 py-5 pb-10 sm:px-6 sm:py-6 sm:pb-10 lg:px-8 lg:py-6 lg:pb-10">
-                    <AdminHero />
+                    <WorkspaceHero
+                        eyebrow="Admin workspace"
+                        description="Manage users, master data, sales records and operational setup from one secure place."
+                        imagePosition={HERO_BACKGROUND_POSITION}
+                        className="mx-auto w-full max-w-[1500px] border border-white/45 shadow-[0_18px_44px_rgba(38,42,48,0.10)]"
+                        contentClassName="max-w-[720px]"
+                    />
                     <AdminQuickAccess />
                 </main>
             </div>

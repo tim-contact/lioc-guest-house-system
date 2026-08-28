@@ -1,17 +1,16 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import {
     ArrowRight,
-    CalendarDays,
     ClipboardList,
     FileText,
     Scale,
     Wallet,
 } from 'lucide-react';
+import { WorkspaceHero } from '@/components/workspace-hero';
 import { creditManagement, disputes, orders } from '@/routes';
 import { index as enquiriesIndex } from '@/routes/enquiries';
-import type { Auth } from '@/types';
 
 /* Hallmark pre-emit critique: P4 H5 E4 S5 R5 V4 */
 // Adjust this value to manually reposition the banner image crop.
@@ -68,52 +67,6 @@ const MODULES: {
         focusRing: 'rgba(235, 138, 0, 0.3)',
     },
 ];
-
-type PageProps = {
-    auth: Auth;
-};
-
-function formatBannerDate(): string {
-    return new Intl.DateTimeFormat(undefined, {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-    }).format(new Date());
-}
-
-function WorkspaceHero() {
-    const { auth } = usePage<PageProps>().props;
-    const displayName = auth.user?.name ?? 'Super Admin';
-
-    return (
-        <section
-            className="relative min-h-[320px] overflow-hidden rounded-[18px] bg-cover bg-no-repeat sm:min-h-[330px] sm:rounded-3xl lg:-mx-20 lg:min-h-[300px] xl:min-h-[320px]"
-            style={{
-                backgroundImage:
-                    "linear-gradient(90deg, rgba(18,31,48,0.76) 0%, rgba(28,39,52,0.51) 38%, rgba(28,39,52,0.16) 68%, rgba(28,39,52,0.04) 100%), url('/images/oil_tanker_dreamy_background.png')",
-                backgroundPosition: HERO_BACKGROUND_POSITION,
-            }}
-        >
-            <div className="absolute top-4 right-4 z-10 inline-flex min-h-9 items-center gap-2 rounded-[9px] border border-white/25 bg-[#112337]/85 px-3.5 text-[13px] font-medium text-white shadow-[0_6px_18px_rgba(10,20,30,0.14)] sm:top-6 sm:right-6">
-                <CalendarDays className="size-4" aria-hidden="true" />
-                {formatBannerDate()}
-            </div>
-
-            <div className="relative z-10 flex min-h-[320px] max-w-[680px] flex-col items-start justify-end px-6 pt-24 pb-8 sm:min-h-[330px] sm:justify-center sm:px-9 sm:py-10 lg:min-h-[300px] lg:py-9 xl:min-h-[320px]">
-                <p className="text-sm font-semibold tracking-[0.04em] text-white/95 uppercase">
-                    Sales workspace
-                </p>
-                <h1 className="mt-3 text-[clamp(1.875rem,2.6vw,2.625rem)] leading-[1.12] font-bold tracking-[-0.025em] text-white">
-                    Good morning, {displayName}
-                </h1>
-                <p className="mt-4 max-w-xl text-base leading-7 text-white/90">
-                    Manage enquiries, orders, disputes and customer credit from
-                    one place.
-                </p>
-            </div>
-        </section>
-    );
-}
 
 function ModuleCard({
     title,
@@ -195,8 +148,13 @@ export default function SalesDashboard() {
             <Head title="Sales Dashboard" />
 
             <div className="min-h-[calc(100dvh-2.75rem)] bg-[#f2f1ef] font-sans text-[#102a4c] lg:h-[calc(100dvh-2.75rem)] lg:overflow-hidden">
-                <main className="mx-auto h-full w-full max-w-[1480px] px-4 py-5 pb-10 sm:px-6 sm:py-6 sm:pb-10 lg:px-8 lg:py-6 lg:pb-6">
-                    <WorkspaceHero />
+                <main className="mx-auto w-full max-w-[1480px] px-4 py-5 pb-10 sm:px-6 sm:py-6 sm:pb-10 lg:px-8 lg:py-6 lg:pb-10">
+                    <WorkspaceHero
+                        eyebrow="Sales workspace"
+                        description="Manage enquiries, orders, disputes and customer credit from one place."
+                        imagePosition={HERO_BACKGROUND_POSITION}
+                        className="mx-auto w-full max-w-[1500px] border border-white/45 shadow-[0_18px_44px_rgba(38,42,48,0.10)]"
+                    />
                     <QuickAccessSection />
                 </main>
             </div>
