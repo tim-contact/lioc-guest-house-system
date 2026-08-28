@@ -1,4 +1,5 @@
 import { Form, Head } from '@inertiajs/react';
+import { Lock, Mail, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
@@ -21,7 +22,9 @@ type Props = {
     canResetPassword: boolean;
 };
 
-export default function Login({ status, canResetPassword }: Props) {
+const currentYear = new Date().getFullYear();
+
+export default function Login({ status }: Props) {
     const [forgotOpen, setForgotOpen] = useState(false);
     const [showForgotPassword, setShowForgotPassword] = useState(false);
 
@@ -29,142 +32,245 @@ export default function Login({ status, canResetPassword }: Props) {
         <>
             <Head title="Log in" />
 
-            <Form
-                action={store.url()}
-                method="post"
-                resetOnSuccess={['password']}
-                className="flex flex-col gap-4 sm:gap-5"
+            <main
+                className="relative min-h-svh w-full overflow-x-clip bg-cover bg-center bg-no-repeat px-4 py-4 text-white sm:px-6 sm:py-5 lg:bg-[center_center] lg:px-10"
+                style={{
+                    backgroundImage:
+                        "linear-gradient(90deg, rgba(3, 16, 29, 0.32) 0%, rgba(3, 16, 29, 0.12) 45%, rgba(3, 16, 29, 0.42) 100%), url('/images/tanker_background.png')",
+                }}
             >
-                {({ processing, errors }) => (
-                    <>
-                        <div className="grid gap-4 sm:gap-5">
-                            {/* Email */}
-                            <div className="grid gap-1 sm:gap-1.5">
-                                <Label
-                                    htmlFor="email"
-                                    className="text-[11px] font-semibold tracking-wide text-slate-900 sm:text-xs"
-                                >
-                                    Email address
-                                </Label>
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    name="email"
-                                    required
-                                    autoFocus
-                                    tabIndex={1}
-                                    autoComplete="email"
-                                    placeholder=""
-                                    className="h-11 sm:h-10"
+                <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-[48%] bg-[linear-gradient(90deg,rgba(3,16,29,0.62),rgba(3,16,29,0.18),rgba(3,16,29,0))] lg:block" />
+
+                <div className="relative z-10 grid min-h-[calc(100svh-2.5rem)] items-center gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(360px,520px)]">
+                    <section className="hidden max-w-[520px] pl-4 lg:block xl:pl-12">
+                        <h1 className="text-[clamp(2.4rem,3.2vw,4rem)] leading-[1.05] font-bold tracking-normal text-white">
+                            Command every
+                            <br />
+                            bunkering operation.
+                        </h1>
+                        <div className="mt-6 h-[3px] w-12 rounded-full bg-[#f36f21]" />
+                        <p className="mt-6 text-lg font-medium text-white/82">
+                            Secure. Connected. In control.
+                        </p>
+                    </section>
+
+                    <section className="mx-auto w-full max-w-[520px] lg:mr-[6vw]">
+                        <div className="rounded-[22px] border border-[#bad7eb]/42 bg-[linear-gradient(145deg,rgba(4,31,53,0.94),rgba(3,22,40,0.88))] px-5 py-5 shadow-[0_28px_70px_rgba(0,10,24,0.42),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[18px] sm:px-8 sm:py-7">
+                            <div className="flex flex-col items-center text-center">
+                                <img
+                                    alt="BOSS"
+                                    className="max-h-[60px] w-[min(62vw,190px)] object-contain"
+                                    src="/images/boss_logo.png"
                                 />
-                                <InputError message={errors.email} />
+                                <p className="mt-3 text-xs font-semibold tracking-[0.08em] text-[#d8e7f2] uppercase">
+                                    Bunker Operations and Sales System
+                                </p>
+                                <div className="mt-3 h-[3px] w-12 rounded-full bg-[#f36f21]" />
+                                <h2 className="mt-5 text-2xl font-bold tracking-normal text-white sm:text-[1.75rem]">
+                                    Welcome back
+                                </h2>
+                                <p className="mt-1.5 text-sm text-[#b8ccd9] sm:text-[0.95rem]">
+                                    Sign in to continue to BOSS
+                                </p>
                             </div>
 
-                            {/* Password */}
-                            <div className="grid gap-1 sm:gap-1.5">
-                                <Label
-                                    htmlFor="password"
-                                    className="text-[11px] font-semibold tracking-wide text-slate-900 sm:text-xs"
-                                >
-                                    Password
-                                </Label>
-                                <PasswordInput
-                                    id="password"
-                                    name="password"
-                                    required
-                                    tabIndex={2}
-                                    autoComplete="current-password"
-                                    placeholder=""
-                                    onFocus={() => setShowForgotPassword(true)}
-                                />
-                                <InputError message={errors.password} />
-                            </div>
+                            <Form
+                                action={store.url()}
+                                method="post"
+                                resetOnSuccess={['password']}
+                                className="mt-6 flex flex-col gap-4"
+                            >
+                                {({ processing, errors }) => (
+                                    <div className="grid gap-4">
+                                        <div className="grid gap-1.5">
+                                            <Label
+                                                htmlFor="email"
+                                                className="text-sm font-medium text-white/88"
+                                            >
+                                                Email address
+                                            </Label>
+                                            <div className="relative">
+                                                <Mail
+                                                    aria-hidden="true"
+                                                    className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-[#dce8f1]/65"
+                                                />
+                                                <Input
+                                                    id="email"
+                                                    type="email"
+                                                    name="email"
+                                                    required
+                                                    autoFocus
+                                                    tabIndex={1}
+                                                    autoComplete="email"
+                                                    placeholder="name@lankaioc.com"
+                                                    className="h-[46px] rounded-[11px] border-[#b0cde1]/38 bg-[#021322]/55 pr-4 pl-10 text-base text-white placeholder:text-[#dce8f1]/60 focus-visible:border-[#f36f21] focus-visible:ring-[3px] focus-visible:ring-[#f36f21]/16 md:text-sm"
+                                                />
+                                            </div>
+                                            <InputError
+                                                message={errors.email}
+                                                className="text-[#ffb4a8]"
+                                            />
+                                        </div>
 
-                            {/* Forgot password — hidden on first paint, revealed after password field interaction */}
-                            {showForgotPassword && (
-                                <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
-                                    <button
-                                        type="button"
-                                        className="self-start text-[11px] font-medium text-slate-700 underline decoration-slate-400 underline-offset-4 transition-colors hover:text-slate-950 hover:decoration-slate-700 sm:text-xs"
-                                        tabIndex={5}
-                                        onClick={() => setForgotOpen(true)}
-                                    >
-                                        Forgot your password?
-                                    </button>
-                                    <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-sm">
-                                        <DialogHeader>
-                                            <DialogTitle>Forgot Password</DialogTitle>
-                                            <DialogDescription className="space-y-4 pt-2">
-                                                <p>
-                                                    Please contact the system
-                                                    administrator for password
-                                                    reset assistance:
-                                                </p>
-                                                <div className="space-y-1 text-sm font-medium">
-                                                    <p>
-                                                        <a
-                                                            href="mailto:timothy@lankaioc.com"
-                                                            className="underline hover:no-underline"
-                                                        >
-                                                            timothy@lankaioc.com
-                                                        </a>
-                                                    </p>
-                                                    <p>
-                                                        <a
-                                                            href="mailto:ninuka@lankaioc.com"
-                                                            className="underline hover:no-underline"
-                                                        >
-                                                            ninuka@lankaioc.com
-                                                        </a>
-                                                    </p>
-                                                </div>
-                                            </DialogDescription>
-                                        </DialogHeader>
-                                    </DialogContent>
-                                </Dialog>
+                                        <div className="grid gap-1.5">
+                                            <Label
+                                                htmlFor="password"
+                                                className="text-sm font-medium text-white/88"
+                                            >
+                                                Password
+                                            </Label>
+                                            <div className="relative [&_button]:rounded-r-[11px] [&_button]:text-[#dce8f1]/65 [&_button]:transition-colors [&_button]:hover:text-[#f36f21] [&_button]:focus-visible:ring-[#f36f21]/35">
+                                                <Lock
+                                                    aria-hidden="true"
+                                                    className="pointer-events-none absolute top-1/2 left-3.5 z-10 size-4 -translate-y-1/2 text-[#dce8f1]/65"
+                                                />
+                                                <PasswordInput
+                                                    id="password"
+                                                    name="password"
+                                                    required
+                                                    tabIndex={2}
+                                                    autoComplete="current-password"
+                                                    placeholder="Enter your password"
+                                                    onFocus={() =>
+                                                        setShowForgotPassword(
+                                                            true,
+                                                        )
+                                                    }
+                                                    className="h-[46px] rounded-[11px] border-[#b0cde1]/38 bg-[#021322]/55 pr-11 pl-10 text-base text-white placeholder:text-[#dce8f1]/60 focus-visible:border-[#f36f21] focus-visible:ring-[3px] focus-visible:ring-[#f36f21]/16 md:text-sm"
+                                                />
+                                            </div>
+                                            <InputError
+                                                message={errors.password}
+                                                className="text-[#ffb4a8]"
+                                            />
+                                        </div>
+
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="flex items-center space-x-3">
+                                                <Checkbox
+                                                    id="remember"
+                                                    name="remember"
+                                                    tabIndex={3}
+                                                    className="border-[#f36f21]/70 bg-[#021322]/45 text-white focus-visible:ring-[#f36f21]/35 data-checked:border-[#f36f21] data-checked:bg-[#f36f21]"
+                                                />
+                                                <Label
+                                                    htmlFor="remember"
+                                                    className="text-sm font-medium text-[#d8e7f2]"
+                                                >
+                                                    Remember me
+                                                </Label>
+                                            </div>
+
+                                            {showForgotPassword && (
+                                                <Dialog
+                                                    open={forgotOpen}
+                                                    onOpenChange={setForgotOpen}
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        className="text-sm font-semibold text-[#f36f21] underline-offset-4 transition-colors hover:text-[#ff944f] hover:underline focus-visible:ring-2 focus-visible:ring-[#f36f21]/45 focus-visible:outline-none"
+                                                        tabIndex={5}
+                                                        onClick={() =>
+                                                            setForgotOpen(true)
+                                                        }
+                                                    >
+                                                        Forgot password?
+                                                    </button>
+                                                    <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-sm">
+                                                        <DialogHeader>
+                                                            <DialogTitle>
+                                                                Forgot Password
+                                                            </DialogTitle>
+                                                            <DialogDescription className="space-y-4 pt-2">
+                                                                <p>
+                                                                    Please
+                                                                    contact the
+                                                                    system
+                                                                    administrator
+                                                                    for password
+                                                                    reset
+                                                                    assistance:
+                                                                </p>
+                                                                <div className="space-y-1 text-sm font-medium">
+                                                                    <p>
+                                                                        <a
+                                                                            href="mailto:timothy@lankaioc.com"
+                                                                            className="underline hover:no-underline"
+                                                                        >
+                                                                            timothy@lankaioc.com
+                                                                        </a>
+                                                                    </p>
+                                                                    <p>
+                                                                        <a
+                                                                            href="mailto:ninuka@lankaioc.com"
+                                                                            className="underline hover:no-underline"
+                                                                        >
+                                                                            ninuka@lankaioc.com
+                                                                        </a>
+                                                                    </p>
+                                                                </div>
+                                                            </DialogDescription>
+                                                        </DialogHeader>
+                                                    </DialogContent>
+                                                </Dialog>
+                                            )}
+                                        </div>
+
+                                        <Button
+                                            type="submit"
+                                            className="mt-1 h-[46px] w-full rounded-[11px] bg-[linear-gradient(90deg,#f36f21,#e85c00)] text-base font-bold text-white shadow-[0_10px_24px_rgba(232,92,0,0.24)] transition-[transform,filter,box-shadow] duration-200 hover:translate-y-[-1px] hover:shadow-[0_14px_30px_rgba(232,92,0,0.32)] hover:brightness-[1.06] focus-visible:ring-2 focus-visible:ring-[#f36f21]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#031628] active:translate-y-0 disabled:translate-y-0 disabled:opacity-65"
+                                            tabIndex={4}
+                                            disabled={processing}
+                                            data-test="login-button"
+                                        >
+                                            {processing && <Spinner />}
+                                            Sign in securely
+                                        </Button>
+                                    </div>
+                                )}
+                            </Form>
+
+                            {status && (
+                                <div className="mt-4 text-center text-sm font-medium text-[#9ff6c9]">
+                                    {status}
+                                </div>
                             )}
 
-                            {/* Remember me */}
-                            <div className="flex items-center space-x-3 pt-0 sm:pt-1">
-                                <Checkbox
-                                    id="remember"
-                                    name="remember"
-                                    tabIndex={3}
-                                />
-                                <Label
-                                    htmlFor="remember"
-                                    className="text-[13px] font-medium text-slate-800 sm:text-sm"
-                                >
-                                    Remember me
-                                </Label>
+                            <div className="mt-6 border-t border-white/12 pt-4">
+                                <div className="flex items-center justify-center gap-3">
+                                    <img
+                                        alt="Lanka IOC"
+                                        className="size-11 object-contain"
+                                        src="/images/lanka-ioc-logo.png"
+                                    />
+                                    <p className="text-sm font-medium text-[#d8e7f2]">
+                                        Powered by{' '}
+                                        <span className="font-bold text-[#03045e]">
+                                            Lanka
+                                        </span>{' '}
+                                        <span className="font-bold text-[#f36f21]">
+                                            IOC
+                                        </span>
+                                    </p>
+                                </div>
+                                <div className="mt-3 flex items-center justify-center gap-2 text-xs font-medium text-[#b8ccd9]">
+                                    <ShieldCheck
+                                        aria-hidden="true"
+                                        className="size-4 text-[#f36f21]"
+                                    />
+                                    Authorised personnel only
+                                </div>
                             </div>
-
-                            {/* Submit — restrained deep green accent */}
-                            <Button
-                                type="submit"
-                                className="mt-1 h-11 w-full bg-orange-900 text-white hover:bg-orange-800 focus-visible:ring-2 focus-visible:ring-orange-700 focus-visible:ring-offset-2 sm:mt-2 sm:h-10"
-                                tabIndex={4}
-                                disabled={processing}
-                                data-test="login-button"
-                            >
-                                {processing && <Spinner />}
-                                Log in
-                            </Button>
                         </div>
-                    </>
-                )}
-            </Form>
 
-            {status && (
-                <div className="mt-2 text-center text-xs font-medium text-green-700 sm:text-sm">
-                    {status}
+                        <p className="mt-3 text-center text-xs font-medium text-white/72">
+                            © {currentYear} Lanka IOC PLC. All rights reserved.
+                        </p>
+                    </section>
                 </div>
-            )}
+            </main>
         </>
     );
 }
 
-Login.layout = {
-    title: 'Log in to your account',
-    description: 'Enter your email and password below to log in',
-};
+Login.layout = null;

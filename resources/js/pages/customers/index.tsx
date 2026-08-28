@@ -124,12 +124,7 @@ const config: CrudConfig<Customer> = {
         { name: 'contact_phone', label: 'Contact Phone' },
         { name: 'mail_id', label: 'Mail ID', type: 'email' },
         { name: 'invoice_mail_ids', label: 'Mails IDs for Invoice' },
-        {
-            name: 'credit_limit',
-            label: 'Credit limit',
-            type: 'number',
-            step: '0.01',
-        },
+        { name: 'credit_limit', label: 'Credit limit', type: 'currency' },
     ],
     toFormData: (customer) => ({
         sap_id: customer?.sap_id ?? '',

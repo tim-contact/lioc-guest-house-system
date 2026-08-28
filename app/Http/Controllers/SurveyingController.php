@@ -50,7 +50,7 @@ class SurveyingController extends Controller
         }
 
         $pendingOrders = fn (): array => $barge
-            ? OrderService::pending(dueWithinDays: 3)
+            ? OrderService::pending(dueWithinDays: 7)
                 ->where('barge_id', $barge)
                 ->load(['bdn', 'enquiry'])
                 ->map(fn (Order $order): array => [
@@ -70,7 +70,6 @@ class SurveyingController extends Controller
                     'sampling' => $order->enquiry?->sampling?->label(),
                     'quality_claim' => $order->enquiry?->quality_claim?->label(),
                     'instructions' => $order->enquiry?->instructions,
-                    'barging_cost' => $order->enquiry?->barging_cost,
                     'vlsfo_qty' => $order->vlsfo_final_qty,
                     'mgo_qty' => $order->mgo_final_qty,
                     'hsfo_qty' => $order->hsfo_final_qty,
@@ -88,20 +87,16 @@ class SurveyingController extends Controller
         $completedOrders = fn (): array => $barge
             ? OrderService::completedWithin()
                 ->where('barge_id', $barge)
-                ->flatMap(fn (Order $order): array => collect(FuelGrade::cases())
-                    ->map(fn (FuelGrade $grade): array => [
-                        'id' => "{$order->id}-{$grade->value}",
-                        'order_id' => $order->id,
-                        'vessel_name' => $order->vessel_name,
-                        'port' => $order->port?->name,
-                        'location' => $order->delivery_location?->label(),
-                        'product' => $grade->label(),
-                        'qty' => $order->{"{$grade->value}_bdn_qty"} ?? $order->{"{$grade->value}_final_qty"},
-                        'eta' => $order->eta,
-                    ])
-                    ->filter(fn (array $row): bool => filled($row['qty']))
-                    ->values()
-                    ->all())
+                ->map(fn (Order $order): array => [
+                    'id' => $order->id,
+                    'vessel_name' => $order->vessel_name,
+                    'port' => $order->port?->name,
+                    'location' => $order->delivery_location?->label(),
+                    'vlsfo_qty' => $order->vlsfo_bdn_qty ?? $order->vlsfo_final_qty,
+                    'mgo_qty' => $order->mgo_bdn_qty ?? $order->mgo_final_qty,
+                    'hsfo_qty' => $order->hsfo_bdn_qty ?? $order->hsfo_final_qty,
+                    'eta' => $order->eta,
+                ])
                 ->values()
                 ->all()
             : [];

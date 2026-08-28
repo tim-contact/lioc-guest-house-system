@@ -269,16 +269,16 @@ export function DisputeEditDialog({
                         placeholder="Select type of dispute"
                         error={form.errors.type_of_dispute}
                     />
-                    <LabeledField
-                        id="dispute-value"
-                        label="Dispute Value"
-                        type="number"
-                        step="0.01"
-                        value={form.data.dispute_value}
+                    <LabeledSelect
+                        label="Proposed Action Plan"
+                        value={form.data.proposed_action_plan}
+                        options={proposedActionPlanOptions}
                         onChange={(value) =>
-                            form.setData('dispute_value', value)
+                            form.setData('proposed_action_plan', value)
                         }
-                        placeholder="N/A"
+                        placeholder="Select proposed action plan"
+                        clearable
+                        error={form.errors.proposed_action_plan}
                     />
                 </FormSection>
 
@@ -317,16 +317,15 @@ export function DisputeEditDialog({
                 <Separator />
 
                 <FormSection title="Resolution">
-                    <LabeledSelect
-                        label="Proposed Action Plan"
-                        value={form.data.proposed_action_plan}
-                        options={proposedActionPlanOptions}
+                    <LabeledField
+                        id="dispute-value"
+                        label="Dispute Value (LKR)"
+                        type="currency"
+                        value={form.data.dispute_value}
                         onChange={(value) =>
-                            form.setData('proposed_action_plan', value)
+                            form.setData('dispute_value', value)
                         }
-                        placeholder="Select proposed action plan"
-                        clearable
-                        error={form.errors.proposed_action_plan}
+                        placeholder="N/A"
                     />
                     <LabeledSelect
                         label="Action Status"

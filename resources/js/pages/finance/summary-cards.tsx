@@ -1,7 +1,7 @@
 import { addWeeks, endOfWeek, isWithinInterval, startOfWeek } from 'date-fns';
-import { Stat } from '@/components/edit-panel/fields';
+import { CalendarClock, CircleDollarSign, ReceiptText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { dateOnlyToDate, formatMoney } from '@/lib/utils';
+import { dateOnlyToDate, formatMoney, toDateInput } from '@/lib/utils';
 import type { CompletedRow } from './dashboard';
 
 interface Bucket {
@@ -10,19 +10,11 @@ interface Bucket {
     amount: number;
 }
 
-function balance(row: CompletedRow): number {
-    const invoiceValue = Number(row.invoice_value ?? 0);
-    const amountReceived = Number(row.amount_received ?? 0);
-    const value = invoiceValue - amountReceived;
-
-    return Number.isFinite(value) ? value : 0;
-}
-
 function bucket(label: string, rows: CompletedRow[]): Bucket {
     return {
         label,
         count: rows.length,
-        amount: rows.reduce((total, row) => total + balance(row), 0),
+        amount: rows.reduce((total, row) => total + row.amount_remaining, 0),
     };
 }
 
@@ -32,12 +24,23 @@ function dueWithin(
     end: Date,
 ): CompletedRow[] {
     return rows.filter((row) => {
-        const due = row.payment_due_date
-            ? dateOnlyToDate(row.payment_due_date)
-            : undefined;
+        const due = dateOnlyToDate(toDateInput(row.payment_due_date));
 
         return due ? isWithinInterval(due, { start, end }) : false;
     });
+}
+
+function CommandMetric({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="min-w-0">
+            <p className="truncate text-xs font-semibold tracking-[0.035em] text-slate-200/82 uppercase">
+                {label}
+            </p>
+            <p className="mt-1 text-[clamp(1.45rem,2vw,2rem)] leading-tight font-bold text-white tabular-nums">
+                {value}
+            </p>
+        </div>
+    );
 }
 
 export function FinanceSummaryCards({
@@ -45,7 +48,7 @@ export function FinanceSummaryCards({
 }: {
     completedOrders: CompletedRow[];
 }) {
-    const pending = completedOrders.filter((row) => !row.paid_in_full);
+    const pending = completedOrders.filter((row) => row.amount_remaining > 0);
 
     const today = new Date();
     const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 });
@@ -66,27 +69,43 @@ export function FinanceSummaryCards({
     ];
 
     return (
-        <Card className="gap-0 rounded-2xl bg-info/10 py-4 shadow-none ring-info/30">
-            <CardHeader>
-                <CardTitle className="text-xl font-medium text-info sm:text-2xl">
-                    Invoices Pending
-                </CardTitle>
+        <Card className="relative overflow-hidden rounded-[18px] border border-[rgba(96,165,250,0.24)] bg-[linear-gradient(120deg,rgba(8,43,91,0.98),rgba(5,39,84,0.98),rgba(6,51,108,0.96))] py-0 text-white shadow-[0_14px_32px_rgba(15,45,90,0.16)]">
+            <div className="pointer-events-none absolute inset-0 [background-image:radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.8)_1px,transparent_1px)] [background-size:18px_18px] opacity-[0.08]" />
+            <CardHeader className="relative flex flex-row items-center gap-3 border-b border-white/14 px-5 py-5">
+                <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/10">
+                    <ReceiptText className="size-6 text-white" />
+                </span>
+                <div className="min-w-0">
+                    <CardTitle className="text-xs font-bold tracking-[0.14em] text-slate-200 uppercase">
+                        Invoices Pending
+                    </CardTitle>
+                    <p className="mt-1 text-sm font-medium text-slate-300">
+                        Finance collection summary
+                    </p>
+                </div>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-6 sm:grid-cols-3 sm:divide-x sm:divide-info/20">
+            <CardContent className="relative grid grid-cols-1 gap-5 p-5 md:grid-cols-3 md:divide-x md:divide-white/14">
                 {buckets.map((summary) => (
                     <div
                         key={summary.label}
-                        className="flex flex-col gap-2 sm:pl-6 sm:first:pl-0"
+                        className="min-w-0 space-y-3 md:pl-5 md:first:pl-0"
                     >
-                        <span className="text-xs font-medium tracking-wide text-info/70 uppercase">
-                            {summary.label}
-                        </span>
-                        <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
-                            <Stat
+                        <div className="flex items-center gap-2">
+                            {summary.label === 'Total Invoices Pending' ? (
+                                <CircleDollarSign className="size-4 text-[#2DD4BF]" />
+                            ) : (
+                                <CalendarClock className="size-4 text-[#F36F21]" />
+                            )}
+                            <span className="text-xs font-bold tracking-[0.035em] text-slate-100 uppercase">
+                                {summary.label}
+                            </span>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-1 xl:grid-cols-2">
+                            <CommandMetric
                                 label="Invoices"
                                 value={String(summary.count)}
                             />
-                            <Stat
+                            <CommandMetric
                                 label="Amount Pending"
                                 value={formatMoney(summary.amount)}
                             />

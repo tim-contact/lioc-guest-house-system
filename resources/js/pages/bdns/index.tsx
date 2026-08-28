@@ -24,7 +24,7 @@ interface Bdn {
     last_port_of_call: string | null;
     destination_port: string | null;
     delivery_method: string | null;
-    barge_id: string | null;
+    barge_id: number | null;
     barge_name: string | null;
     barge_alongside_at: string | null;
     chief_engineer_invited: boolean | null;
@@ -224,9 +224,6 @@ export default function BdnsIndex({
                 cell: (b) => shortDateTime(b.created_at),
             },
         ],
-        fields: [],
-        toFormData: () => ({}),
-        routes: {},
     };
 
     return <ResourceCrudPage rows={bdns} config={config} />;

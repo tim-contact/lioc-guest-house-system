@@ -1,5 +1,6 @@
 import {
     Banknote,
+    BarChart3,
     ClipboardCheck,
     ClipboardList,
     Contact,
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 import { edit as enquiriesEdit } from '@/actions/App/Http/Controllers/EnquiryController';
 import { table as ordersTable } from '@/actions/App/Http/Controllers/OrderController';
+import { index as reportsAnalytics } from '@/actions/App/Http/Controllers/ReportAnalyticsController';
 import {
     admin,
     creditManagement,
@@ -47,25 +49,19 @@ export const navGroups: NavGroup[] = [
     {
         title: 'Admin',
         items: [
-            { title: 'Admin Dashboard', href: admin(), icon: LayoutGrid },
             {
-                title: 'Users',
-                href: usersIndex(),
-                icon: Users,
-                description: 'Manage user accounts',
+                title: 'Admin Dashboard',
+                href: admin(),
+                icon: LayoutGrid,
+                description: 'Overview of system activity',
             },
             {
-                title: 'Enquiries',
-                href: enquiriesEdit(),
-                icon: FileText,
-                description: 'View and manage enquiries',
+                title: 'Reports',
+                href: reportsAnalytics(),
+                icon: BarChart3,
+                description: 'Analytics and conversion metrics',
             },
-            {
-                title: 'Customers',
-                href: customersIndex(),
-                icon: Users,
-                description: 'View and manage customers',
-            },
+
             {
                 title: 'Agencies',
                 href: agentsIndex(),
@@ -77,6 +73,54 @@ export const navGroups: NavGroup[] = [
                 href: agentPicsIndex(),
                 icon: Contact,
                 description: 'View and manage agency PICs',
+            },
+            {
+                title: 'Barges',
+                href: bargesEdit(),
+                icon: Ship,
+                description: 'View and manage barges',
+            },
+            {
+                title: 'BDNs',
+                href: bdnsIndex(),
+                icon: FileCheck,
+                description: 'View bunker delivery notes',
+            },
+            {
+                title: 'Customers',
+                href: customersIndex(),
+                icon: Users,
+                description: 'View and manage customers',
+            },
+            {
+                title: 'Disputes',
+                href: disputesTable(),
+                icon: Scale,
+                description: 'View and manage disputes',
+            },
+            {
+                title: 'Enquiries',
+                href: enquiriesEdit(),
+                icon: FileText,
+                description: 'View and manage enquiries',
+            },
+            {
+                title: 'Invoices',
+                href: invoicesIndex(),
+                icon: Receipt,
+                description: 'View and correct invoices',
+            },
+            {
+                title: 'Orders',
+                href: ordersTable(),
+                icon: ClipboardList,
+                description: 'View all order details',
+            },
+            {
+                title: 'Payments',
+                href: paymentsIndex(),
+                icon: CreditCard,
+                description: 'View, edit and delete payments',
             },
             {
                 title: 'Ports',
@@ -91,40 +135,10 @@ export const navGroups: NavGroup[] = [
                 description: 'View and manage surveyors',
             },
             {
-                title: 'Barges',
-                href: bargesEdit(),
-                icon: Ship,
-                description: 'View and manage barges',
-            },
-            {
-                title: 'Orders',
-                href: ordersTable(),
-                icon: ClipboardList,
-                description: 'View all order details',
-            },
-            {
-                title: 'Disputes',
-                href: disputesTable(),
-                icon: Scale,
-                description: 'View and manage disputes',
-            },
-            {
-                title: 'BDNs',
-                href: bdnsIndex(),
-                icon: FileCheck,
-                description: 'View bunker delivery notes',
-            },
-            {
-                title: 'Invoices',
-                href: invoicesIndex(),
-                icon: Receipt,
-                description: 'View and correct invoices',
-            },
-            {
-                title: 'Payments',
-                href: paymentsIndex(),
-                icon: CreditCard,
-                description: 'View, edit and delete payments',
+                title: 'Users',
+                href: usersIndex(),
+                icon: Users,
+                description: 'Manage user accounts',
             },
         ],
     },
@@ -135,20 +149,52 @@ export const navGroups: NavGroup[] = [
                 title: 'Sales Dashboard',
                 href: salesDashboard(),
                 icon: TrendingUp,
+                description: 'Track sales pipeline activity',
             },
-            { title: 'Enquiries', href: enquiriesIndex(), icon: FileText },
-            { title: 'Orders', href: orders(), icon: ClipboardList },
-            { title: 'Disputes', href: disputes(), icon: Scale },
+            {
+                title: 'Enquiries',
+                href: enquiriesIndex(),
+                icon: FileText,
+                description: 'Create and manage enquiries',
+            },
+            {
+                title: 'Orders',
+                href: orders(),
+                icon: ClipboardList,
+                description: 'Review active order work',
+            },
+            {
+                title: 'Disputes',
+                href: disputes(),
+                icon: Scale,
+                description: 'Track customer dispute cases',
+            },
             {
                 title: 'Credit Management',
                 href: creditManagement(),
                 icon: Wallet,
+                description: 'Review limits and balances',
             },
         ],
     },
-    { title: 'Operations', href: operations(), icon: Wrench },
-    { title: 'Surveyor', href: surveyor(), icon: ClipboardCheck },
-    { title: 'Finance', href: finance(), icon: Banknote },
+    {
+        title: 'Operations',
+        href: operations(),
+        icon: Wrench,
+        description: 'Coordinate operational work',
+    },
+    {
+        title: 'Surveyor',
+        href: surveyor(),
+        icon: ClipboardCheck,
+        description: 'Review surveyor assignments',
+    },
+    {
+        title: 'Finance',
+        href: finance(),
+        icon: Banknote,
+        description: 'Monitor finance activity',
+    },
 ];
 
 /**
@@ -171,6 +217,7 @@ export function visibleNavGroups(userType: string): NavGroup[] {
     };
 
     const sectionTitle = roleSection[userType];
+
     if (!sectionTitle) {
         return [];
     }

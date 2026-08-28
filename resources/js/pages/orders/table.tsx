@@ -467,8 +467,7 @@ export default function OrdersTable({
                 {
                     name: `${product.key}_rate`,
                     label: 'Rate',
-                    type: 'number' as const,
-                    step: '0.01',
+                    type: 'currency' as const,
                     section: product.label,
                 },
                 {
@@ -489,9 +488,9 @@ export default function OrdersTable({
             {
                 name: 'invoice_value',
                 label: 'Invoice Value',
-                type: 'number',
-                step: '0.01',
+                type: 'currency',
                 section: 'Invoicing',
+                disabledOnEdit: true,
             },
             {
                 name: 'invoice_date',
@@ -508,8 +507,7 @@ export default function OrdersTable({
             {
                 name: 'amount_received',
                 label: 'Amount Received',
-                type: 'number',
-                step: '0.01',
+                type: 'currency',
                 section: 'Invoicing',
             },
             {

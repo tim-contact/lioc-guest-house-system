@@ -30,6 +30,7 @@ export interface BargeOption {
 interface OperationsDashboardProps {
     pendingOrders: OpsEditRow[];
     completedOrders: OpsEditRow[];
+    ports: string[];
     barges: BargeOption[];
     agents: AgentOption[];
     agentPics: AgentPicOption[];
@@ -39,6 +40,7 @@ interface OperationsDashboardProps {
 export default function OperationsDashboard({
     pendingOrders,
     completedOrders,
+    ports,
     barges,
     agents,
     agentPics,
@@ -54,16 +56,23 @@ export default function OperationsDashboard({
         <>
             <Head title="Operations" />
 
-            <div className="p-4 pb-0">
-                <PortSummaryCards orders={pendingOrders} />
-            </div>
+            <main className="min-h-[calc(100svh-4.25rem)] overflow-x-clip bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.045),transparent_32%),#F4F7FA] px-3 py-4 sm:px-4 md:px-6">
+                <div className="flex w-full flex-col gap-4">
+                    <PortSummaryCards
+                        ports={ports}
+                        pendingOrders={pendingOrders}
+                        completedOrders={completedOrders}
+                    />
 
-            <OrderDashboard
-                pendingOrders={pendingOrders}
-                completedOrders={completedOrders}
-                pendingActions={rowActions}
-                completedActions={rowActions}
-            />
+                    <OrderDashboard
+                        ports={ports}
+                        pendingOrders={pendingOrders}
+                        completedOrders={completedOrders}
+                        pendingActions={rowActions}
+                        completedActions={rowActions}
+                    />
+                </div>
+            </main>
 
             {editing && (
                 <OrderEditDialog

@@ -12,7 +12,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { FUEL_GRADES } from '@/lib/domain';
-import { formatMoney, shortDate } from '@/lib/utils';
+import { shortDate } from '@/lib/utils';
 import { ebdn } from '@/routes/bdns';
 import { complete as completeOrder } from '@/routes/surveyor';
 import type { AgentOption, EnumOption, SupplyLocationOption } from '@/types';
@@ -41,7 +41,6 @@ export interface PendingRow {
     sampling: string | null;
     quality_claim: string | null;
     instructions: string | null;
-    barging_cost: string | null;
     vlsfo_qty: string | null;
     mgo_qty: string | null;
     hsfo_qty: string | null;
@@ -54,13 +53,13 @@ export interface PendingRow {
 }
 
 interface CompletedRow {
-    id: string;
-    order_id: number;
+    id: number;
     vessel_name: string | null;
     port: string | null;
     location: string | null;
-    product: string;
-    qty: string | null;
+    vlsfo_qty: string | null;
+    mgo_qty: string | null;
+    hsfo_qty: string | null;
     eta: string | null;
 }
 
@@ -90,11 +89,10 @@ const COMPLETED_COLUMNS = [
     'Vessel Name',
     'Port',
     'Supply Location',
-    'Product',
-    'Qty',
+    ...FUEL_GRADES.map((grade) => `${grade.label} Qty`),
     'ETA Date',
     'ETA Time',
-] as const;
+];
 
 function shortTime(value: string | null): string {
     if (!value) {
@@ -104,6 +102,7 @@ function shortTime(value: string | null): string {
     return new Date(value).toLocaleTimeString(undefined, {
         hour: '2-digit',
         minute: '2-digit',
+        hour12: false,
     });
 }
 
@@ -116,19 +115,20 @@ function picLabel({ pic, mobile_no }: PendingRow): string {
 }
 
 function OperationalInstruction({ row }: { row: PendingRow }) {
-    const details: [string, string][] = [
-        ['PIC', picLabel(row)],
+    const pairs: [string, string][] = [
         ['Sampling', row.sampling ?? '—'],
         ['Claim', row.quality_claim ?? '—'],
-        ['Barging', formatMoney(row.barging_cost)],
     ];
 
     return (
-        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-3 text-xs">
-            {details.map(([label, value]) => (
+        <div className="grid grid-cols-[auto_1fr_auto_1fr] items-baseline gap-x-3 gap-y-1 text-xs">
+            <span className="text-muted-foreground">PIC</span>
+            <span className="col-span-3 break-words">{picLabel(row)}</span>
+
+            {pairs.map(([label, value]) => (
                 <Fragment key={label}>
                     <span className="text-muted-foreground">{label}</span>
-                    <span>{value}</span>
+                    <span className="break-words">{value}</span>
                 </Fragment>
             ))}
 
@@ -136,7 +136,7 @@ function OperationalInstruction({ row }: { row: PendingRow }) {
                 <>
                     <span className="text-muted-foreground">Notes</span>
                     <span
-                        className="col-span-3 line-clamp-2"
+                        className="col-span-3 line-clamp-2 break-words"
                         title={row.instructions}
                     >
                         {row.instructions}
@@ -169,9 +169,6 @@ export default function SurveyorDashboard({
 
     // Derived, so the open dialog sees the BDN number its own first save assigned.
     const bdnOrder = pendingOrders.find((row) => row.id === bdnOrderId);
-
-    const handleComplete = (id: number) =>
-        router.patch(completeOrder(id).url, {}, { preserveScroll: true });
 
     return (
         <>
@@ -209,7 +206,7 @@ export default function SurveyorDashboard({
 
                 <section className="flex flex-col gap-4">
                     <h2 className="text-xl font-semibold tracking-tight">
-                        Pending Orders (next 3 days)
+                        Pending Orders (next 7 days)
                     </h2>
                     <TableFrame>
                         <Table>
@@ -250,30 +247,14 @@ export default function SurveyorDashboard({
                                             <OperationalInstruction row={row} />
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                >
-                                                    Upload
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        setBdnOrderId(row.id)
-                                                    }
-                                                >
-                                                    BDN
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        handleComplete(row.id)
-                                                    }
-                                                >
-                                                    Submit
-                                                </Button>
-                                            </div>
+                                            <Button
+                                                size="sm"
+                                                onClick={() =>
+                                                    setBdnOrderId(row.id)
+                                                }
+                                            >
+                                                BDN
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -321,8 +302,11 @@ export default function SurveyorDashboard({
                                         <TableCell>
                                             {row.location ?? '—'}
                                         </TableCell>
-                                        <TableCell>{row.product}</TableCell>
-                                        <TableCell>{row.qty ?? '—'}</TableCell>
+                                        {FUEL_GRADES.map((grade) => (
+                                            <TableCell key={grade.key}>
+                                                {row[`${grade.key}_qty`] ?? '—'}
+                                            </TableCell>
+                                        ))}
                                         <TableCell>
                                             {shortDate(row.eta)}
                                         </TableCell>
@@ -336,9 +320,7 @@ export default function SurveyorDashboard({
                                                 asChild
                                             >
                                                 <a
-                                                    href={
-                                                        ebdn(row.order_id).url
-                                                    }
+                                                    href={ebdn(row.id).url}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                 >

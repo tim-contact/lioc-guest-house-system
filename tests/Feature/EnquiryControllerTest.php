@@ -73,7 +73,7 @@ test('index reports each customer credit limit less their open orders and invoic
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->has('enquiries', 1)
-            ->where('enquiries.0.customers.0.credit_available', 400000));
+            ->where("creditByCustomer.{$customer->sap_id}.credit_available", 400000));
 });
 
 test('index excludes won and lost enquiries', function () {

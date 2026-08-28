@@ -1,5 +1,6 @@
 import { Head, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import Dot from '@/components/animata/background/dot';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { NoneSelect } from '@/components/none-select';
 import { Button } from '@/components/ui/button';
@@ -17,11 +18,17 @@ import { dateToDateOnly, toDateRange } from '@/lib/utils';
 import { store } from '@/routes/enquiries';
 import type { AgentOption, EnumOption, SupplyLocationOption } from '@/types';
 import { EnquiryCard } from './enquiry-card';
-import type { CustomerOption, EnquiryRow, PortOption } from './enquiry-card';
+import type {
+    CustomerCredit,
+    CustomerOption,
+    EnquiryRow,
+    PortOption,
+} from './enquiry-card';
 
 interface EnquiriesIndexProps {
     enquiries: EnquiryRow[];
     customers: CustomerOption[];
+    creditByCustomer: Record<string, CustomerCredit>;
     ports: PortOption[];
     agents: AgentOption[];
     supplyLocationOptions: SupplyLocationOption[];
@@ -35,6 +42,7 @@ interface EnquiriesIndexProps {
 export default function EnquiriesIndex({
     enquiries,
     customers,
+    creditByCustomer,
     ports,
     agents,
     supplyLocationOptions,
@@ -46,50 +54,112 @@ export default function EnquiriesIndex({
 }: EnquiriesIndexProps) {
     const [creating, setCreating] = useState(false);
     const rowRef = useDragScroll<HTMLDivElement>();
+    const scrollbarRef = useRef<HTMLDivElement>(null);
+    const scrollWidth = `calc(${enquiries.length} * 36rem + ${Math.max(enquiries.length - 1, 0)} * 1.25rem)`;
+
+    function syncScrollbar(event: React.UIEvent<HTMLDivElement>) {
+        if (scrollbarRef.current) {
+            scrollbarRef.current.scrollLeft = event.currentTarget.scrollLeft;
+        }
+    }
+
+    function syncCards(event: React.UIEvent<HTMLDivElement>) {
+        if (rowRef.current) {
+            rowRef.current.scrollLeft = event.currentTarget.scrollLeft;
+        }
+    }
 
     return (
         <>
             <Head title="Enquiries" />
 
-            <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
-                <div className="flex items-center justify-end">
-                    <Button onClick={() => setCreating(true)}>
+            <div className="relative isolate flex min-h-0 flex-1 flex-col gap-5 overflow-hidden bg-background p-4 md:p-6">
+                <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 z-0 opacity-70"
+                >
+                    <Dot
+                        color="rgba(172, 106, 68, 0.18)"
+                        size={1}
+                        spacing={14}
+                        className="h-full w-full"
+                        style={{ backgroundColor: 'transparent' }}
+                    >
+                        <div className="h-full w-full" />
+                    </Dot>
+                </div>
+
+                <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-2xl font-semibold tracking-normal text-slate-950">
+                            Enquiries
+                        </h1>
+                        <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-600 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                            {enquiries.length}
+                        </span>
+                    </div>
+                    <Button
+                        onClick={() => setCreating(true)}
+                        className="w-full bg-[#315cfd] text-white shadow-[0_1px_2px_rgba(49,92,253,0.24)] hover:bg-[#254be6] sm:w-auto"
+                    >
                         + New Enquiry
                     </Button>
                 </div>
 
                 {enquiries.length === 0 ? (
-                    <p className="text-muted-foreground">No enquiries yet.</p>
-                ) : (
-                    <div
-                        ref={rowRef}
-                        tabIndex={0}
-                        aria-label="Enquiries"
-                        className="flex min-h-0 flex-1 cursor-grab items-start gap-4 overflow-x-auto pt-2 pr-2 pb-4 pl-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                        {enquiries.map((enquiry) => (
-                            <div
-                                key={enquiry.id}
-                                data-drag-scroll-ignore
-                                className="w-[min(90vw,36rem)] shrink-0 cursor-auto"
-                            >
-                                <EnquiryCard
-                                    enquiry={enquiry}
-                                    customers={customers}
-                                    ports={ports}
-                                    agents={agents}
-                                    supplyLocationOptions={
-                                        supplyLocationOptions
-                                    }
-                                    productTypeOptions={productTypeOptions}
-                                    deliveryModeOptions={deliveryModeOptions}
-                                    creditTermsOptions={creditTermsOptions}
-                                    samplingOptions={samplingOptions}
-                                    qualityClaimOptions={qualityClaimOptions}
-                                />
-                            </div>
-                        ))}
+                    <div className="relative z-10 rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+                        No enquiries yet.
                     </div>
+                ) : (
+                    <>
+                        <div
+                            ref={rowRef}
+                            tabIndex={0}
+                            data-horizontal-wheel-scroll
+                            aria-label="Enquiries"
+                            onScroll={syncScrollbar}
+                            className="relative z-10 flex min-h-0 flex-1 cursor-grab [scrollbar-width:none] items-start gap-5 overflow-x-scroll overflow-y-hidden bg-transparent px-1 pt-1 pb-2 [-ms-overflow-style:none] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-scrollbar]:hidden"
+                        >
+                            {enquiries.map((enquiry) => (
+                                <div
+                                    key={enquiry.id}
+                                    className="w-[36rem] shrink-0 cursor-auto"
+                                >
+                                    <EnquiryCard
+                                        enquiry={enquiry}
+                                        customers={customers}
+                                        creditByCustomer={creditByCustomer}
+                                        ports={ports}
+                                        agents={agents}
+                                        supplyLocationOptions={
+                                            supplyLocationOptions
+                                        }
+                                        productTypeOptions={productTypeOptions}
+                                        deliveryModeOptions={
+                                            deliveryModeOptions
+                                        }
+                                        creditTermsOptions={creditTermsOptions}
+                                        samplingOptions={samplingOptions}
+                                        qualityClaimOptions={
+                                            qualityClaimOptions
+                                        }
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        <div
+                            ref={scrollbarRef}
+                            aria-label="Scroll enquiries horizontally"
+                            onScroll={syncCards}
+                            className="sticky bottom-0 z-30 [scrollbar-gutter:stable] overflow-x-scroll overflow-y-hidden rounded-md bg-background/90 py-2 backdrop-blur [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-thumb]:rounded-md [&::-webkit-scrollbar-thumb]:bg-slate-400/80 [&::-webkit-scrollbar-thumb:hover]:bg-slate-500 [&::-webkit-scrollbar-track]:rounded-md [&::-webkit-scrollbar-track]:bg-brand-surface"
+                        >
+                            <div
+                                aria-hidden="true"
+                                className="h-px"
+                                style={{ width: scrollWidth }}
+                            />
+                        </div>
+                    </>
                 )}
             </div>
 

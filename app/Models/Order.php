@@ -148,6 +148,13 @@ class Order extends Model
         return (float) $this->invoice_value > 0 && $this->balance_amount <= 0;
     }
 
+    public function canBeClosed(): bool
+    {
+        return $this->status === OrderStatus::Delivered
+            && $this->invoice_value !== null
+            && $this->balance_amount <= 0;
+    }
+
     /**
      * Refresh the cached amount received (sum of payments) and receipt date
      * (most recent payment) from this order's payments.

@@ -105,12 +105,7 @@ const config: CrudConfig<Invoice> = {
         },
     ],
     fields: [
-        {
-            name: 'invoice_value',
-            label: 'Invoice Value',
-            type: 'number',
-            step: '0.01',
-        },
+        { name: 'invoice_value', label: 'Invoice Value', type: 'currency' },
         { name: 'invoice_date', label: 'Invoice Date', type: 'date' },
         { name: 'payment_due_date', label: 'Payment Due Date', type: 'date' },
     ],

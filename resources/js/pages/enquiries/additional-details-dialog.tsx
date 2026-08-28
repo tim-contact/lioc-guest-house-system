@@ -1,6 +1,7 @@
 import { useForm } from '@inertiajs/react';
 import { useEffect, useMemo } from 'react';
 import { updateDetails } from '@/actions/App/Http/Controllers/EnquiryController';
+import { MoneyInput } from '@/components/money-input';
 import { SearchableCombobox } from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,7 +11,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -240,12 +240,11 @@ export function AdditionalDetailsDialog({
                         <Label htmlFor={`barging-cost-${enquiry.id}`}>
                             Barging Cost
                         </Label>
-                        <Input
+                        <MoneyInput
                             id={`barging-cost-${enquiry.id}`}
-                            type="number"
                             value={form.data.barging_cost}
-                            onChange={(e) =>
-                                form.setData('barging_cost', e.target.value)
+                            onChange={(value) =>
+                                form.setData('barging_cost', value)
                             }
                         />
                     </div>

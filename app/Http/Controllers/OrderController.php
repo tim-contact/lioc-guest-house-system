@@ -41,7 +41,7 @@ class OrderController extends Controller
 
         $pendingOrders = OrderService::pending()->load('disputes')->map($mapOrder);
 
-        $completedOrders = OrderService::completedWithin()->load('disputes')->map($mapOrder);
+        $completedOrders = OrderService::completedWithin(keepOpenDisputes: true)->load('disputes')->map($mapOrder);
 
         return Inertia::render('orders/dashboard', [
             'pendingOrders' => $pendingOrders,
@@ -146,7 +146,6 @@ class OrderController extends Controller
             'product_type' => ['nullable', Rule::enum(ProductType::class)],
             'credit_terms' => ['nullable', Rule::enum(CreditTerms::class)],
             'status' => ['required', Rule::enum(OrderStatus::class)],
-            'invoice_value' => ['nullable', 'numeric', 'min:0'],
             'invoice_date' => ['nullable', 'date'],
             'payment_due_date' => ['nullable', 'date', 'after_or_equal:invoice_date'],
             'amount_received' => ['nullable', 'numeric', 'min:0'],

@@ -7,6 +7,7 @@ export type CrudFieldType =
     | 'text'
     | 'email'
     | 'number'
+    | 'currency'
     | 'date'
     | 'datetime-local'
     | 'select'
@@ -43,11 +44,14 @@ export interface CrudConfig<T> {
     defaultSortKey: keyof T & string;
     columns: CrudColumn<T>[];
     exportColumns: ExportColumn<T>[];
-    fields: CrudField[];
+    /** Omit on a read-only page, or one whose editing lives in `rowActions`. */
+    fields?: CrudField[];
     formColumns?: 1 | 2;
     dialogClassName?: string;
     /** Initial form values; called with null for the create form. */
-    toFormData: (row: T | null) => Record<string, string>;
+    toFormData?: (row: T | null) => Record<string, string>;
+    /** Extra buttons rendered before Edit/Delete in each row's Actions cell. */
+    rowActions?: (row: T) => ReactNode;
     editTitle?: (row: T) => string;
     /** Names the row in the delete confirmation; defaults to its primary key. */
     deleteLabel?: (row: T) => string;
@@ -57,7 +61,7 @@ export interface CrudConfig<T> {
     canEdit?: boolean;
     /** Defaults to true. Set false to hide the per-row Delete button and dialog. */
     canDelete?: boolean;
-    routes: {
+    routes?: {
         store?: () => RouteDefinition<'post'>;
         update?: (
             id: string | number,

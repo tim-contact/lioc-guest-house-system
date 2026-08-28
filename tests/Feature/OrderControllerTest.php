@@ -2,12 +2,14 @@
 
 use App\Enums\CreditTerms;
 use App\Enums\DeliveryMode;
+use App\Enums\DisputeStatus;
 use App\Enums\OrderStatus;
 use App\Enums\UserType;
 use App\Models\Agent;
 use App\Models\AgentPic;
 use App\Models\Barge;
 use App\Models\Customer;
+use App\Models\Dispute;
 use App\Models\Enquiry;
 use App\Models\Order;
 use App\Models\Port;
@@ -49,6 +51,7 @@ test('index renders pending and completed orders grouped by port', function () {
         'vessel_name' => 'MV Delivered Recently',
         'status' => OrderStatus::Delivered,
         'invoice_date' => now()->subDays(10),
+        'vlsfo_final_qty' => 375,
     ]);
 
     createOrder([
@@ -70,7 +73,41 @@ test('index renders pending and completed orders grouped by port', function () {
             ->has('pendingOrders', 1)
             ->where('pendingOrders.0.vessel_name', 'MV Pending')
             ->has('completedOrders', 1)
-            ->where('completedOrders.0.vessel_name', 'MV Delivered Recently'));
+            ->where('completedOrders.0.vessel_name', 'MV Delivered Recently')
+            ->where('completedOrders.0.port', 'Colombo')
+            ->where('completedOrders.0.vlsfo_final_qty', '375.000'));
+});
+
+test('old delivered orders stay on the completed list while a dispute is open', function () {
+    $this->actingAs(User::factory()->create());
+
+    $disputed = createOrder([
+        'vessel_name' => 'MV Disputed',
+        'status' => OrderStatus::Delivered,
+        'invoice_date' => now()->subDays(45),
+    ]);
+
+    Dispute::factory()->create([
+        'order_id' => $disputed->id,
+        'dispute_status' => DisputeStatus::Open,
+    ]);
+
+    $settled = createOrder([
+        'vessel_name' => 'MV Settled',
+        'status' => OrderStatus::Delivered,
+        'invoice_date' => now()->subDays(45),
+    ]);
+
+    Dispute::factory()->create([
+        'order_id' => $settled->id,
+        'dispute_status' => DisputeStatus::Closed,
+    ]);
+
+    $this->get(route('orders'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('completedOrders', 1)
+            ->where('completedOrders.0.vessel_name', 'MV Disputed'));
 });
 
 test('order rows include port, customer and fuel grade quantities', function () {
@@ -435,6 +472,28 @@ test('table update saves every section of the order, unlike the narrower dashboa
     expect($fresh->vlsfo_qty_range)->toBe('100 - 200');
     expect((float) $fresh->amount_received)->toBe(45000.0);
     expect($fresh->payment_receipt_date->toDateString())->toBe('2026-02-10');
+    expect((float) $fresh->invoice_value)->toBe(75000.0);
+});
+
+test('table update ignores a submitted invoice value and recomputes it from bdn quantity and rate', function () {
+    $this->actingAs(User::factory()->create());
+
+    $order = createOrder([
+        'status' => OrderStatus::Delivered,
+        'vlsfo_bdn_qty' => 100,
+        'vlsfo_rate' => 500,
+        'invoice_value' => 50000,
+    ]);
+
+    $this->patch(route('orders.table.update', $order), [
+        'order_number' => $order->order_number,
+        'enquiry_id' => $order->enquiry_id,
+        'customer_id' => $order->customer_id,
+        'status' => OrderStatus::Delivered->value,
+        'invoice_value' => 999999,
+    ])->assertRedirect();
+
+    expect((float) $order->refresh()->invoice_value)->toBe(50000.0);
 });
 
 test('table update rejects a duplicate order number', function () {

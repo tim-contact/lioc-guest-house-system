@@ -1,23 +1,22 @@
-import { Stat } from '@/components/edit-panel/fields';
-import { PORTS } from '@/components/order-dashboard';
+import { Anchor, CheckCircle2, Clock3, Ship } from 'lucide-react';
 import type { OrderRow } from '@/components/order-dashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FUEL_GRADES } from '@/lib/domain';
 import type { FuelGradeKey } from '@/lib/domain';
+import { cn } from '@/lib/utils';
 
 interface Summary {
-    label: string;
     count: number;
     volumes: Record<FuelGradeKey, number>;
 }
 
 function formatVolume(value: number): string {
     return value === 0
-        ? '—'
+        ? '-'
         : value.toLocaleString(undefined, { maximumFractionDigits: 3 });
 }
 
-/** The delivered quantity once known, else the upper bound of the ordered range. */
+/** The final quantity once known, else the upper or lower ordered bound. */
 function orderVolume(row: OrderRow, product: FuelGradeKey): number {
     const quantity =
         row[`${product}_final_qty`] ??
@@ -29,9 +28,8 @@ function orderVolume(row: OrderRow, product: FuelGradeKey): number {
     return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function summarise(label: string, rows: OrderRow[]): Summary {
+function summarise(rows: OrderRow[]): Summary {
     return {
-        label,
         count: rows.length,
         volumes: Object.fromEntries(
             FUEL_GRADES.map((product) => [
@@ -45,77 +43,221 @@ function summarise(label: string, rows: OrderRow[]): Summary {
     };
 }
 
-export function PortSummaryCards({ orders }: { orders: OrderRow[] }) {
-    const total = summarise('All Ports', orders);
-
-    const byPort = PORTS.map((port) =>
-        summarise(
-            port,
-            orders.filter((order) => order.port === port),
-        ),
+function PortMetricRow({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[#475569]">{label}</span>
+            <span className="font-semibold text-[#0F172A] tabular-nums">
+                {value}
+            </span>
+        </div>
     );
+}
+
+function SummarySection({
+    label,
+    summary,
+    tone,
+    className,
+}: {
+    label: string;
+    summary: Summary;
+    tone: 'pending' | 'completed';
+    className?: string;
+}) {
+    return (
+        <div className={cn('flex flex-col gap-2', className)}>
+            <span
+                className={cn(
+                    'text-xs font-bold tracking-[0.035em] uppercase',
+                    tone === 'pending' ? 'text-[#F36F21]' : 'text-[#0F766E]',
+                )}
+            >
+                {label}
+            </span>
+            <div className="flex flex-col gap-1.5 text-sm">
+                <PortMetricRow label="Orders" value={String(summary.count)} />
+                {FUEL_GRADES.map((product) => (
+                    <PortMetricRow
+                        key={product.key}
+                        label={`Volume ${product.label}`}
+                        value={formatVolume(summary.volumes[product.key])}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function CommandMetric({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="min-w-0">
+            <p className="truncate text-xs font-semibold tracking-[0.035em] text-slate-200/82 uppercase">
+                {label}
+            </p>
+            <p className="mt-1 text-[clamp(1.5rem,2vw,2rem)] leading-tight font-bold text-white tabular-nums">
+                {value}
+            </p>
+        </div>
+    );
+}
+
+function CommandSummaryStats({
+    label,
+    summary,
+    tone,
+    className,
+}: {
+    label: string;
+    summary: Summary;
+    tone: 'pending' | 'completed';
+    className?: string;
+}) {
+    const Icon = tone === 'pending' ? Clock3 : CheckCircle2;
+    const accentClassName =
+        tone === 'pending' ? 'text-[#F36F21]' : 'text-[#2DD4BF]';
 
     return (
-        <div className="flex flex-col gap-4 pl-2">
-            <Card className="gap-0 rounded-2xl bg-gold/10 py-4 shadow-none ring-gold/30">
-                <CardContent className="flex flex-wrap items-center justify-between gap-x-8 gap-y-3">
-                    <CardTitle className="text-xl font-medium text-gold sm:text-2xl">
-                        {total.label}
-                    </CardTitle>
-                    <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-                        <Stat
-                            label="Pending orders"
-                            value={String(total.count)}
-                        />
-                        {FUEL_GRADES.map((product) => (
-                            <Stat
-                                key={product.key}
-                                label={`Volume ${product.label}`}
-                                value={formatVolume(total.volumes[product.key])}
-                            />
-                        ))}
+        <div className={cn('min-w-0 space-y-3', className)}>
+            <div className="flex items-center gap-2">
+                <Icon className={cn('size-4', accentClassName)} />
+                <span
+                    className={cn(
+                        'text-xs font-bold tracking-[0.035em] uppercase',
+                        accentClassName,
+                    )}
+                >
+                    {label}
+                </span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <CommandMetric label="Orders" value={String(summary.count)} />
+                {FUEL_GRADES.map((product) => (
+                    <CommandMetric
+                        key={product.key}
+                        label={`Volume ${product.label}`}
+                        value={formatVolume(summary.volumes[product.key])}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+export function PortSummaryCards({
+    ports,
+    pendingOrders,
+    completedOrders,
+}: {
+    ports: string[];
+    pendingOrders: OrderRow[];
+    completedOrders: OrderRow[];
+}) {
+    const total = {
+        pending: summarise(pendingOrders),
+        completed: summarise(completedOrders),
+    };
+
+    const byPort = ports.map((port) => ({
+        label: port,
+        pending: summarise(
+            pendingOrders.filter((order) => order.port === port),
+        ),
+        completed: summarise(
+            completedOrders.filter((order) => order.port === port),
+        ),
+    }));
+
+    return (
+        <div className="flex flex-col gap-4">
+            <Card className="relative overflow-hidden rounded-[18px] border border-[rgba(96,165,250,0.24)] bg-[linear-gradient(120deg,rgba(8,43,91,0.98),rgba(5,39,84,0.98),rgba(6,51,108,0.96))] py-0 text-white shadow-[0_14px_32px_rgba(15,45,90,0.16)]">
+                <div className="pointer-events-none absolute inset-0 [background-image:radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.8)_1px,transparent_1px)] [background-size:18px_18px] opacity-[0.08]" />
+                <CardContent className="relative grid gap-5 p-5 md:grid-cols-[minmax(150px,0.7fr)_minmax(0,2.3fr)_minmax(0,2.3fr)] md:items-center">
+                    <div className="flex items-center gap-3">
+                        <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/10">
+                            <Ship className="size-6 text-white" />
+                        </span>
+                        <div className="min-w-0">
+                            <CardTitle className="text-xs font-bold tracking-[0.14em] text-slate-200 uppercase">
+                                All Ports
+                            </CardTitle>
+                            <p className="mt-1 text-sm font-medium text-slate-300">
+                                Operations summary
+                            </p>
+                        </div>
                     </div>
+                    <CommandSummaryStats
+                        label="Pending"
+                        summary={total.pending}
+                        tone="pending"
+                        className="border-t border-white/14 pt-4 md:border-t-0 md:border-l md:pt-0 md:pl-5"
+                    />
+                    <CommandSummaryStats
+                        label="Completed"
+                        summary={total.completed}
+                        tone="completed"
+                        className="border-t border-white/14 pt-4 md:border-t-0 md:border-l md:pt-0 md:pl-5"
+                    />
                 </CardContent>
             </Card>
 
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] gap-4">
-                {byPort.map((summary) => (
-                    <Card
-                        key={summary.label}
-                        className="gap-3 rounded-2xl border-gold-border/70 bg-gold-surface py-5 shadow-none"
-                    >
-                        <CardHeader>
-                            <CardTitle className="text-xl font-medium text-gold sm:text-2xl">
-                                {summary.label}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="flex flex-col gap-1.5 text-sm">
-                            <div className="flex items-baseline justify-between gap-2">
-                                <span className="text-muted-foreground">
-                                    Pending orders
-                                </span>
-                                <span className="font-medium tabular-nums">
-                                    {summary.count}
-                                </span>
-                            </div>
-                            {FUEL_GRADES.map((product) => (
-                                <div
-                                    key={product.key}
-                                    className="flex items-baseline justify-between gap-2"
-                                >
-                                    <span className="text-muted-foreground">
-                                        Volume {product.label}
-                                    </span>
-                                    <span className="font-medium tabular-nums">
-                                        {formatVolume(
-                                            summary.volumes[product.key],
+            <div className="grid auto-cols-[minmax(13rem,1fr)] grid-flow-col gap-4 overflow-x-auto pb-1">
+                {byPort.map((summary) => {
+                    const hasActivity =
+                        summary.pending.count > 0 ||
+                        summary.completed.count > 0;
+
+                    return (
+                        <Card
+                            key={summary.label}
+                            className={cn(
+                                'gap-3 rounded-[17px] border border-[#E3EAF2] bg-white py-4 shadow-[0_8px_24px_rgba(15,23,42,0.055),0_1px_2px_rgba(15,23,42,0.04)] transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-[rgba(37,99,235,0.25)] hover:shadow-[0_14px_30px_rgba(15,23,42,0.09)] motion-reduce:transition-none motion-reduce:hover:translate-y-0',
+                                hasActivity &&
+                                    'border-t-[3px] border-t-[#2563EB]',
+                            )}
+                        >
+                            <CardHeader className="px-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="flex min-w-0 items-center gap-2.5">
+                                        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#EEF2FF] text-[#2455E6]">
+                                            <Anchor className="size-4" />
+                                        </span>
+                                        <CardTitle className="truncate text-lg font-bold text-[#0F172A]">
+                                            {summary.label}
+                                        </CardTitle>
+                                    </div>
+                                    <span
+                                        className={cn(
+                                            'size-2.5 shrink-0 rounded-full',
+                                            hasActivity
+                                                ? 'bg-[#2563EB]'
+                                                : 'bg-[#CBD5E1]',
                                         )}
-                                    </span>
+                                        aria-label={
+                                            hasActivity
+                                                ? 'Contains order activity'
+                                                : 'No current order activity'
+                                        }
+                                        role="img"
+                                    />
                                 </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-                ))}
+                            </CardHeader>
+                            <CardContent className="flex flex-col gap-3 px-4">
+                                <SummarySection
+                                    label="Pending"
+                                    summary={summary.pending}
+                                    tone="pending"
+                                />
+                                <SummarySection
+                                    label="Completed"
+                                    summary={summary.completed}
+                                    tone="completed"
+                                    className="border-t border-[#E7EDF4] pt-3"
+                                />
+                            </CardContent>
+                        </Card>
+                    );
+                })}
             </div>
         </div>
     );

@@ -1,8 +1,10 @@
 import { useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
+import { DateTimePicker } from '@/components/date-time-picker';
 import { ReadOnlyValue } from '@/components/edit-panel/fields';
 import { SummaryBand } from '@/components/edit-panel/summary-band';
 import InputError from '@/components/input-error';
+import { MoneyInput } from '@/components/money-input';
 import { Button } from '@/components/ui/button';
 import {
     DialogFooter,
@@ -65,6 +67,16 @@ function FieldControl({
         );
     }
 
+    if ((field.type as string) === 'currency') {
+        return <MoneyInput id={field.name} value={value} onChange={onChange} />;
+    }
+
+    if (field.type === 'datetime-local') {
+        return (
+            <DateTimePicker id={field.name} value={value} onChange={onChange} />
+        );
+    }
+
     return (
         <Input
             id={field.name}
@@ -121,7 +133,9 @@ export function ResourceForm<T>({
     row: T | null;
     onDone: () => void;
 }) {
-    const form = useForm<Record<string, string>>(config.toFormData(row));
+    const form = useForm<Record<string, string>>(
+        config.toFormData?.(row) ?? {},
+    );
     const isEdit = row !== null;
     const isLocked = (field: CrudField) => isEdit && !!field.disabledOnEdit;
     const isDisabled = (field: CrudField) => !!field.disabledWhen?.(form.data);
@@ -135,8 +149,8 @@ export function ResourceForm<T>({
         event.preventDefault();
 
         const action = isEdit
-            ? config.routes.update?.(config.pk(row))
-            : config.routes.store?.();
+            ? config.routes?.update?.(config.pk(row))
+            : config.routes?.store?.();
 
         if (!action) {
             return;
@@ -177,7 +191,7 @@ export function ResourceForm<T>({
                 header
             )}
 
-            <div className="max-h-[65vh] overflow-y-auto pr-1">
+            <div>
                 {groupFields(editableFields).map((section) => (
                     <div key={section.name} className="mb-4 last:mb-0">
                         {section.name && (

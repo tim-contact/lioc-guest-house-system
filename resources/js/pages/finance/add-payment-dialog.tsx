@@ -73,7 +73,7 @@ export function AddPaymentDialog({
                 <LabeledField
                     id="payment-amount"
                     label="Amount"
-                    type="number"
+                    type="currency"
                     value={form.data.amount}
                     onChange={(value) => form.setData('amount', value)}
                 />
