@@ -97,7 +97,10 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
+    --color-paper: oklch(97% 0.012 95);
+    --color-paper-2: oklch(94% 0.016 95);
+    --color-paper-3: oklch(91% 0.02 95);
+    --background: var(--color-paper);
     --foreground: oklch(0.145 0 0);
     --card: oklch(1 0 0);
     --card-foreground: oklch(0.145 0 0);
@@ -120,8 +123,8 @@
     --warning: oklch(0.62 0.13 72);
     --warning-foreground: oklch(0.99 0.02 72);
     --brand: oklch(0.45 0.09 240);
-    --brand-surface: oklch(0.972 0.012 240);
-    --brand-border: oklch(0.86 0.035 240);
+    --brand-surface: var(--color-paper-2);
+    --brand-border: var(--color-paper-3);
     --gold: oklch(0.62 0.055 78);
     --gold-surface: oklch(0.978 0.016 88);
     --gold-border: oklch(0.91 0.028 82);
@@ -207,7 +210,7 @@
 
 @layer components {
     [data-slot='table-header'] {
-        background-color: color-mix(in oklab, var(--success) 15%, transparent);
+        background-color: #edf3fa;
     }
 }
 
