@@ -21,21 +21,9 @@ test('non admin users cannot view the launch mode screen', function () {
     $this->get(route('launch.index'))->assertRedirect(route('sales-dashboard'));
 });
 
-test('master users cannot view the launch mode screen', function () {
+test('privileged users can view the launch mode screen', function (UserType $type) {
     $this->actingAs(User::factory()->create([
-        'type' => UserType::Master,
-    ]));
-
-    $this->get(route('launch.index'))->assertRedirect(route('admin', absolute: false));
-    $this->get(route('launch.screen'))->assertRedirect(route('admin', absolute: false));
-    $this->patch(route('launch.update'), [
-        'enabled' => true,
-    ])->assertForbidden();
-});
-
-test('super admin users can view the launch mode screen', function () {
-    $this->actingAs(User::factory()->create([
-        'type' => UserType::SuperAdmin,
+        'type' => $type,
     ]));
 
     $this->get(route('launch.index'))
@@ -43,22 +31,28 @@ test('super admin users can view the launch mode screen', function () {
         ->assertInertia(fn ($page) => $page
             ->component('launch/index')
             ->where('launchModeEnabled', false));
-});
+})->with([
+    UserType::SuperAdmin,
+    UserType::Master,
+]);
 
-test('super admin users can view the launch screen', function () {
+test('privileged users can view the launch screen', function (UserType $type) {
     $this->actingAs(User::factory()->create([
-        'type' => UserType::SuperAdmin,
+        'type' => $type,
     ]));
 
     $this->get(route('launch.screen'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('launch/screen'));
-});
+})->with([
+    UserType::SuperAdmin,
+    UserType::Master,
+]);
 
-test('super admin users can update launch mode', function () {
+test('privileged users can update launch mode', function (UserType $type) {
     $this->actingAs(User::factory()->create([
-        'type' => UserType::SuperAdmin,
+        'type' => $type,
     ]));
 
     $this->patch(route('launch.update'), [
@@ -73,4 +67,7 @@ test('super admin users can update launch mode', function () {
     ))->toMatchArray([
         'enabled' => true,
     ]);
-});
+})->with([
+    UserType::SuperAdmin,
+    UserType::Master,
+]);

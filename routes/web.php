@@ -69,8 +69,8 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::resource('surveyors', SurveyorController::class)->only(['store', 'update', 'destroy']);
     });
 
-    // --- Launch section: super_admin only ---
-    Route::middleware('role:super_admin')->group(function () {
+    // --- Launch section: super_admin and master only ---
+    Route::middleware('role:super_admin,master')->group(function () {
         Route::get('launch', [LaunchModeController::class, 'index'])->name('launch.index');
         Route::get('launch-screen', [LaunchModeController::class, 'screen'])->name('launch.screen');
         Route::patch('launch', [LaunchModeController::class, 'update'])->name('launch.update');

@@ -68,14 +68,14 @@ export const navGroups: NavGroup[] = [
                 href: launchIndex(),
                 icon: Rocket,
                 description: 'Control webapp launch screen',
-                roles: ['super_admin'],
+                roles: ['super_admin', 'master'],
             },
             {
                 title: 'Launch Screen',
                 href: launchScreen(),
                 icon: Rocket,
                 description: 'Open the launch-day splash screen',
-                roles: ['super_admin'],
+                roles: ['super_admin', 'master'],
             },
 
             {
