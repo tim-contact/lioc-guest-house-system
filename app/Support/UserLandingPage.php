@@ -10,7 +10,7 @@ class UserLandingPage
     /**
      * Return the first authorized page for the user's role.
      */
-    public static function routeNameFor(User $user): string
+    public static function routeNameFor(User $user): ?string
     {
         return match ($user->type) {
             UserType::SuperAdmin, UserType::Master => 'admin',
@@ -18,14 +18,17 @@ class UserLandingPage
             UserType::Operations => 'operations',
             UserType::Surveyor => 'surveyor',
             UserType::Finance => 'finance',
+            default => null,
         };
     }
 
     /**
      * Return the relative URL for the user's landing page.
      */
-    public static function pathFor(User $user): string
+    public static function pathFor(User $user): ?string
     {
-        return route(self::routeNameFor($user), absolute: false);
+        $routeName = self::routeNameFor($user);
+
+        return $routeName ? route($routeName, absolute: false) : null;
     }
 }

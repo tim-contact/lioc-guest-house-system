@@ -21,6 +21,10 @@ class LoginResponse implements LoginResponseContract
         /** @var User $user */
         $user = $request->user();
 
-        return redirect(UserLandingPage::pathFor($user));
+        $path = UserLandingPage::pathFor($user);
+
+        abort_unless($path, 403);
+
+        return redirect($path);
     }
 }

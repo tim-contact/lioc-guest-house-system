@@ -19,7 +19,7 @@ use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
 test('guests are redirected from the enquiries page', function () {
-    $this->get(route('enquiries.index'))->assertRedirect(route('login'));
+    $this->get(route('enquiries.index'))->assertForbidden();
 });
 
 test('index lists enquiries with their customers and product details', function () {

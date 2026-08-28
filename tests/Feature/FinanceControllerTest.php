@@ -36,7 +36,7 @@ function createFinanceOrder(array $attributes = []): Order
 }
 
 test('guests are redirected from the finance page', function () {
-    $this->get(route('finance'))->assertRedirect(route('login'));
+    $this->get(route('finance'))->assertForbidden();
 });
 
 test('index lists only delivered orders regardless of age', function () {
@@ -109,7 +109,7 @@ test('paid_in_full is true only when amount received covers the invoice', functi
 test('guests cannot add a payment', function () {
     $order = createFinanceOrder();
 
-    $this->post(route('finance.payments.store', $order))->assertRedirect(route('login'));
+    $this->post(route('finance.payments.store', $order))->assertForbidden();
 });
 
 test('adding payments totals the amount received and records the latest date', function () {
@@ -225,7 +225,7 @@ test('add payment requires a non-negative amount, a date and a valid type', func
 test('guests cannot close a finance order', function () {
     $order = createFinanceOrder();
 
-    $this->patch(route('finance.close', $order))->assertRedirect(route('login'));
+    $this->patch(route('finance.close', $order))->assertForbidden();
 });
 
 test('closing a delivered order that is paid in full sets it to closed', function () {

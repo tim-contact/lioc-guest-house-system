@@ -1,14 +1,14 @@
 <?php
 
+use App\Enums\UserType;
 use App\Models\Agent;
 use App\Models\AgentPic;
-use App\Enums\UserType;
 use App\Models\Order;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
 test('guests are redirected from the agent PICs page', function () {
-    $this->get(route('agent-pics.index'))->assertRedirect(route('login'));
+    $this->get(route('agent-pics.index'))->assertForbidden();
 });
 
 test('index lists PICs grouped by agency with the agency options', function () {

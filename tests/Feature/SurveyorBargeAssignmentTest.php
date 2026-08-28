@@ -343,11 +343,11 @@ test('super_admin can assign user and barge to surveyor profile', function () {
     expect($surveyor->barge_id)->toBe($barge->imo);
 });
 
-test('non-privileged roles cannot access surveyors edit page', function () {
+test('non-privileged roles are redirected from surveyors edit page', function () {
     $salesUser = User::factory()->create(['type' => UserType::Sales]);
     $this->actingAs($salesUser);
 
-    $this->get(route('surveyors.edit'))->assertForbidden();
+    $this->get(route('surveyors.edit'))->assertRedirect(route('sales-dashboard', absolute: false));
 });
 
 test('non-privileged roles cannot create surveyor profiles', function () {

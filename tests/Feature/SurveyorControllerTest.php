@@ -39,7 +39,7 @@ function createSurveyorOrder(array $attributes = []): Order
 }
 
 test('guests are redirected from the surveyor page', function () {
-    $this->get(route('surveyor'))->assertRedirect(route('login'));
+    $this->get(route('surveyor'))->assertForbidden();
 });
 
 test('index returns no orders when no barge is selected', function () {
@@ -144,7 +144,7 @@ test('index lists pending orders due within three days and overdue ones, but not
 test('guests cannot update a surveyor order', function () {
     $order = createSurveyorOrder();
 
-    $this->patch(route('surveyor.update', $order))->assertRedirect(route('login'));
+    $this->patch(route('surveyor.update', $order))->assertForbidden();
 });
 
 test('update persists BDN quantities and leaves vessel identifiers untouched', function () {
@@ -216,7 +216,7 @@ test('update rejects a negative BDN quantity', function () {
 test('guests cannot complete a surveyor order', function () {
     $order = createSurveyorOrder();
 
-    $this->patch(route('surveyor.complete', $order))->assertRedirect(route('login'));
+    $this->patch(route('surveyor.complete', $order))->assertForbidden();
 });
 
 test('complete delivers the order and stamps the invoice from BDN quantities and rates', function () {

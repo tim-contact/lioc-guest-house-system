@@ -14,7 +14,7 @@ use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
 test('guests are redirected from the disputes page', function () {
-    $this->get(route('disputes'))->assertRedirect(route('login'));
+    $this->get(route('disputes'))->assertForbidden();
 });
 
 test('index renders disputes with their order details', function () {
@@ -50,7 +50,7 @@ test('index renders disputes with their order details', function () {
 });
 
 test('guests are redirected from the disputes table page', function () {
-    $this->get(route('disputes.table'))->assertRedirect(route('login'));
+    $this->get(route('disputes.table'))->assertForbidden();
 });
 
 test('table renders disputes with the same row shape as the dashboard', function () {
@@ -73,7 +73,7 @@ test('table renders disputes with the same row shape as the dashboard', function
 test('guests cannot create a dispute', function () {
     $order = Order::factory()->create();
 
-    $this->post(route('disputes.store', $order))->assertRedirect(route('login'));
+    $this->post(route('disputes.store', $order))->assertForbidden();
 });
 
 test('store creates a dispute for the order, defaulting the status to open', function () {
@@ -119,7 +119,7 @@ test('store creates a second dispute for the same order', function () {
 test('guests cannot update a dispute', function () {
     $dispute = Dispute::factory()->create();
 
-    $this->patch(route('disputes.update', $dispute))->assertRedirect(route('login'));
+    $this->patch(route('disputes.update', $dispute))->assertForbidden();
 });
 
 test('update saves the dispute fields', function () {
@@ -196,7 +196,7 @@ test('update requires a dispute type', function () {
 test('guests cannot close a dispute', function () {
     $dispute = Dispute::factory()->create();
 
-    $this->patch(route('disputes.close', $dispute))->assertRedirect(route('login'));
+    $this->patch(route('disputes.close', $dispute))->assertForbidden();
 });
 
 test('close requires a closure remark', function () {
@@ -245,7 +245,7 @@ test('reopen sets a closed dispute back to open', function () {
 test('guests cannot delete a dispute', function () {
     $dispute = Dispute::factory()->create();
 
-    $this->delete(route('disputes.destroy', $dispute))->assertRedirect(route('login'));
+    $this->delete(route('disputes.destroy', $dispute))->assertForbidden();
 });
 
 test('destroy deletes the dispute', function () {
