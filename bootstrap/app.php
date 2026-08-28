@@ -6,6 +6,7 @@ use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\User;
 use App\Support\UserLandingPage;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -33,7 +34,11 @@ return Application::configure(basePath: dirname(__DIR__))
             $user = $request->user();
 
             if ($user instanceof User) {
-                return UserLandingPage::pathFor($user);
+                $path = UserLandingPage::pathFor($user);
+
+                abort_unless($path, 403);
+
+                return $path;
             }
 
             return config('fortify.home');
@@ -53,4 +58,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        $exceptions->render(function (AuthenticationException $exception, Request $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+
+            return response('Forbidden', 403);
+        });
     })->create();

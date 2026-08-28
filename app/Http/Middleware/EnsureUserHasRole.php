@@ -3,6 +3,8 @@
 namespace App\Http\Middleware;
 
 use App\Enums\UserType;
+use App\Models\User;
+use App\Support\UserLandingPage;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,16 +14,15 @@ class EnsureUserHasRole
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     * @param  string  ...$roles
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = $request->user();
 
         if (! $user) {
-            return $next($request);
+            abort(403);
         }
 
         $userType = $user->type;
@@ -38,6 +39,14 @@ class EnsureUserHasRole
             }
         }
 
-        abort(403);
+        if (! $request->isMethodSafe()) {
+            abort(403);
+        }
+
+        $path = UserLandingPage::pathFor($user);
+
+        abort_unless($path, 403);
+
+        return redirect($path);
     }
 }

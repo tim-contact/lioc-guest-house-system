@@ -9,7 +9,7 @@ use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
 test('guests are redirected from the payments page', function () {
-    $this->get(route('payments.index'))->assertRedirect(route('login'));
+    $this->get(route('payments.index'))->assertForbidden();
 });
 
 test('index lists payments with their order and customer', function () {
@@ -37,7 +37,7 @@ test('index lists payments with their order and customer', function () {
 test('guests cannot update a payment', function () {
     $payment = Payment::factory()->create();
 
-    $this->put(route('payments.update', $payment))->assertRedirect(route('login'));
+    $this->put(route('payments.update', $payment))->assertForbidden();
 });
 
 test('update recomputes the order amount received and payment receipt date', function () {
@@ -94,7 +94,7 @@ test('update rejects a negative amount, a missing date and an unknown type', fun
 test('guests cannot delete a payment', function () {
     $payment = Payment::factory()->create();
 
-    $this->delete(route('payments.destroy', $payment))->assertRedirect(route('login'));
+    $this->delete(route('payments.destroy', $payment))->assertForbidden();
 });
 
 test('destroy removes the payment and recomputes the order totals', function () {

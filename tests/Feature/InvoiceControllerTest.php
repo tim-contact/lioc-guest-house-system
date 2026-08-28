@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia;
 
 test('guests are redirected from the invoices page', function () {
-    $this->get(route('invoices.index'))->assertRedirect(route('login'));
+    $this->get(route('invoices.index'))->assertForbidden();
 });
 
 test('index lists only orders that have been invoiced', function () {
@@ -41,7 +41,7 @@ test('index lists only orders that have been invoiced', function () {
 test('guests cannot update an invoice', function () {
     $order = Order::factory()->create(['invoice_date' => now()]);
 
-    $this->put(route('invoices.update', $order))->assertRedirect(route('login'));
+    $this->put(route('invoices.update', $order))->assertForbidden();
 });
 
 test('update saves the invoice value, invoice date and payment due date', function () {

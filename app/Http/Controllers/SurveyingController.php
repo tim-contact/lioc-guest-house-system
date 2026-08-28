@@ -91,7 +91,7 @@ class SurveyingController extends Controller
                     'id' => $order->id,
                     'vessel_name' => $order->vessel_name,
                     'port' => $order->port?->name,
-                    'location' => $order->delivery_location?->label(),
+                    'location' => $order->deliveryLocation?->name,
                     'vlsfo_qty' => $order->vlsfo_bdn_qty ?? $order->vlsfo_final_qty,
                     'mgo_qty' => $order->mgo_bdn_qty ?? $order->mgo_final_qty,
                     'hsfo_qty' => $order->hsfo_bdn_qty ?? $order->hsfo_final_qty,

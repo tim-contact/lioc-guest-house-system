@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\UserType;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -26,6 +27,7 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
+        $userType = $user?->type;
 
         return [
             ...parent::share($request),
@@ -36,8 +38,8 @@ class HandleInertiaRequests extends Middleware
                     'user_id' => $user->user_id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'type' => $user->type->value,
-                    'type_label' => $user->type->label(),
+                    'type' => $userType instanceof UserType ? $userType->value : null,
+                    'type_label' => $userType instanceof UserType ? $userType->label() : null,
                     'is_active' => $user->is_active,
                     'email_verified_at' => $user->email_verified_at,
                     'two_factor_enabled' => ! is_null($user->two_factor_confirmed_at),

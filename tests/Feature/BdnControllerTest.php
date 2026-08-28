@@ -18,7 +18,7 @@ use Spatie\LaravelPdf\Facades\Pdf;
 use Spatie\LaravelPdf\PdfBuilder;
 
 test('guests are redirected from the bdns page', function () {
-    $this->get(route('bdns.index'))->assertRedirect(route('login'));
+    $this->get(route('bdns.index'))->assertForbidden();
 });
 
 test('index lists bdns with their order, agent and barge details', function () {
@@ -52,7 +52,7 @@ test('index lists bdns with their order, agent and barge details', function () {
 test('guests cannot save a bdn', function () {
     $order = Order::factory()->create();
 
-    $this->put(route('surveyor.bdn.update', $order))->assertRedirect(route('login'));
+    $this->put(route('surveyor.bdn.update', $order))->assertForbidden();
 });
 
 test('update creates the bdn on first save and numbers it after the order', function () {
@@ -282,7 +282,7 @@ test('every sample type on the model has validated seal columns', function () {
 test('guests are redirected from the ebdn download', function () {
     $order = Order::factory()->create();
 
-    $this->get(route('bdns.ebdn', $order))->assertRedirect(route('login'));
+    $this->get(route('bdns.ebdn', $order))->assertForbidden();
 });
 
 test('ebdn responds with a pdf for the order even with no bdn yet', function () {

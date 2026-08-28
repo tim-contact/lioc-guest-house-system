@@ -36,7 +36,7 @@ function createOrder(array $attributes = []): Order
 }
 
 test('guests are redirected from the orders page', function () {
-    $this->get(route('orders'))->assertRedirect(route('login'));
+    $this->get(route('orders'))->assertForbidden();
 });
 
 test('index renders pending and completed orders grouped by port', function () {
@@ -79,7 +79,7 @@ test('index renders pending and completed orders grouped by port', function () {
 });
 
 test('old delivered orders stay on the completed list while a dispute is open', function () {
-    $this->actingAs(User::factory()->create());
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $disputed = createOrder([
         'vessel_name' => 'MV Disputed',
@@ -168,7 +168,7 @@ test('index provides customer, port, agency and PIC options and edit fields', fu
 test('guests cannot update an order', function () {
     $order = createOrder();
 
-    $this->patch(route('orders.update', $order))->assertRedirect(route('login'));
+    $this->patch(route('orders.update', $order))->assertForbidden();
 });
 
 test('update persists editable fields and leaves order number and date untouched', function () {
@@ -337,7 +337,7 @@ test('update leaves invoice value alone for a pending order', function () {
 test('guests cannot cancel an order', function () {
     $order = createOrder();
 
-    $this->patch(route('orders.cancel', $order))->assertRedirect(route('login'));
+    $this->patch(route('orders.cancel', $order))->assertForbidden();
 });
 
 test('cancel marks the order cancelled, hiding it from the dashboard but not the table', function () {
@@ -357,7 +357,7 @@ test('cancel marks the order cancelled, hiding it from the dashboard but not the
 });
 
 test('guests are redirected from the orders table page', function () {
-    $this->get(route('orders.table'))->assertRedirect(route('login'));
+    $this->get(route('orders.table'))->assertForbidden();
 });
 
 test('table renders every order with all attributes', function () {
@@ -386,7 +386,7 @@ test('table renders every order with all attributes', function () {
 test('guests cannot save an order from the admin table', function () {
     $order = createOrder();
 
-    $this->patch(route('orders.table.update', $order))->assertRedirect(route('login'));
+    $this->patch(route('orders.table.update', $order))->assertForbidden();
 });
 
 test('table update rejects a PIC belonging to another agency', function () {
@@ -476,7 +476,7 @@ test('table update saves every section of the order, unlike the narrower dashboa
 });
 
 test('table update ignores a submitted invoice value and recomputes it from bdn quantity and rate', function () {
-    $this->actingAs(User::factory()->create());
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $order = createOrder([
         'status' => OrderStatus::Delivered,

@@ -40,6 +40,18 @@ test('users can authenticate using the login screen', function (UserType $type) 
     $response->assertRedirect(UserLandingPage::pathFor($user));
 })->with(UserType::cases());
 
+test('users without a role receive forbidden after authentication', function () {
+    $user = User::factory()->create(['type' => null]);
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertAuthenticated();
+    $response->assertForbidden();
+});
+
 test('login ignores a forbidden intended url and redirects to the role landing page', function () {
     $user = User::factory()->create(['type' => UserType::Finance]);
 

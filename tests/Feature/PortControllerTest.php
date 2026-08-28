@@ -9,7 +9,7 @@ use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
 test('guests are redirected from the ports page', function () {
-    $this->get(route('ports.index'))->assertRedirect(route('login'));
+    $this->get(route('ports.index'))->assertForbidden();
 });
 
 test('index lists ports ordered by name', function () {

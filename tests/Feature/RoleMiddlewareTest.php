@@ -9,6 +9,7 @@ use App\Models\User;
 
 $adminGetRoutes = [
     'admin',
+    'reports.analytics',
     'users.index',
     'orders.table',
     'enquiries.edit',
@@ -53,17 +54,17 @@ $allProtectedGetRoutes = array_merge(
 );
 
 // ============================================================
-// 1. Guests are redirected to login
+// 1. Guests are shown forbidden
 // ============================================================
 
-test('guests are redirected to login when accessing protected routes', function (string $route) {
-    $this->get(route($route))->assertRedirect(route('login'));
+test('guests are shown forbidden when accessing protected routes', function (string $route) {
+    $this->get(route($route))->assertForbidden();
 })->with([
-    'admin'          => 'admin',
+    'admin' => 'admin',
     'sales-dashboard' => 'sales-dashboard',
-    'operations'     => 'operations',
-    'surveyor'       => 'surveyor',
-    'finance'        => 'finance',
+    'operations' => 'operations',
+    'surveyor' => 'surveyor',
+    'finance' => 'finance',
 ]);
 
 // ============================================================
@@ -77,7 +78,7 @@ test('inactive users are logged out and redirected to home when accessing a prot
 
     $response->assertRedirect(route('home'));
     $response->assertSessionHas('toast', [
-        'type'    => 'error',
+        'type' => 'error',
         'message' => 'Your account has been deactivated. Please contact an administrator.',
     ]);
 
@@ -114,15 +115,15 @@ test('sales can access sales-section routes', function (string $route) {
     $this->actingAs($user)->get(route($route))->assertOk();
 })->with(array_combine($salesGetRoutes, $salesGetRoutes));
 
-test('sales cannot access non-sales protected routes', function (string $route) {
+test('sales are redirected to their landing page when accessing non-sales protected routes', function (string $route) {
     $user = User::factory()->create(['type' => UserType::Sales]);
 
-    $this->actingAs($user)->get(route($route))->assertForbidden();
+    $this->actingAs($user)->get(route($route))->assertRedirect(route('sales-dashboard', absolute: false));
 })->with([
-    'admin'  => 'admin',
+    'admin' => 'admin',
     'operations' => 'operations',
-    'surveyor'   => 'surveyor',
-    'finance'    => 'finance',
+    'surveyor' => 'surveyor',
+    'finance' => 'finance',
 ]);
 
 // ============================================================
@@ -135,15 +136,15 @@ test('operations can access operations-section routes', function (string $route)
     $this->actingAs($user)->get(route($route))->assertOk();
 })->with(array_combine($operationsGetRoutes, $operationsGetRoutes));
 
-test('operations cannot access non-operations protected routes', function (string $route) {
+test('operations are redirected to their landing page when accessing non-operations protected routes', function (string $route) {
     $user = User::factory()->create(['type' => UserType::Operations]);
 
-    $this->actingAs($user)->get(route($route))->assertForbidden();
+    $this->actingAs($user)->get(route($route))->assertRedirect(route('operations', absolute: false));
 })->with([
-    'admin'          => 'admin',
+    'admin' => 'admin',
     'sales-dashboard' => 'sales-dashboard',
-    'surveyor'       => 'surveyor',
-    'finance'        => 'finance',
+    'surveyor' => 'surveyor',
+    'finance' => 'finance',
 ]);
 
 // ============================================================
@@ -156,15 +157,15 @@ test('surveyor can access surveyor-section routes', function (string $route) {
     $this->actingAs($user)->get(route($route))->assertOk();
 })->with(array_combine($surveyorGetRoutes, $surveyorGetRoutes));
 
-test('surveyor cannot access non-surveyor protected routes', function (string $route) {
+test('surveyor is redirected to their landing page when accessing non-surveyor protected routes', function (string $route) {
     $user = User::factory()->create(['type' => UserType::Surveyor]);
 
-    $this->actingAs($user)->get(route($route))->assertForbidden();
+    $this->actingAs($user)->get(route($route))->assertRedirect(route('surveyor', absolute: false));
 })->with([
-    'admin'          => 'admin',
+    'admin' => 'admin',
     'sales-dashboard' => 'sales-dashboard',
-    'operations'     => 'operations',
-    'finance'        => 'finance',
+    'operations' => 'operations',
+    'finance' => 'finance',
 ]);
 
 // ============================================================
@@ -177,15 +178,15 @@ test('finance can access finance-section routes', function (string $route) {
     $this->actingAs($user)->get(route($route))->assertOk();
 })->with(array_combine($financeGetRoutes, $financeGetRoutes));
 
-test('finance cannot access non-finance protected routes', function (string $route) {
+test('finance is redirected to their landing page when accessing non-finance protected routes', function (string $route) {
     $user = User::factory()->create(['type' => UserType::Finance]);
 
-    $this->actingAs($user)->get(route($route))->assertForbidden();
+    $this->actingAs($user)->get(route($route))->assertRedirect(route('finance', absolute: false));
 })->with([
-    'admin'          => 'admin',
+    'admin' => 'admin',
     'sales-dashboard' => 'sales-dashboard',
-    'operations'     => 'operations',
-    'surveyor'       => 'surveyor',
+    'operations' => 'operations',
+    'surveyor' => 'surveyor',
 ]);
 
 // ============================================================
@@ -210,3 +211,10 @@ test('settings routes are accessible to every authenticated active user regardle
     [UserType::Finance,    'profile.edit'],
     [UserType::Finance,    'appearance.edit'],
 ]);
+
+test('users without a role are shown forbidden on role protected routes', function () {
+    $user = User::factory()->create(['type' => null]);
+
+    $this->actingAs($user)->get(route('admin'))->assertForbidden();
+    $this->actingAs($user)->get(route('profile.edit'))->assertForbidden();
+});
