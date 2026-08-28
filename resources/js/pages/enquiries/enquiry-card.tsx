@@ -58,6 +58,7 @@ import {
 import { FUEL_GRADES } from '@/lib/domain';
 import type { FuelGradeKey } from '@/lib/domain';
 import {
+    cn,
     dateToDateOnly,
     emptyToNull,
     formatMoney,
@@ -137,18 +138,18 @@ export interface PortOption {
 
 const ENQUIRY_STATUS_STYLE: Record<string, { card: string; badge: string }> = {
     open: {
-        card: 'border-info/30 shadow-[0_1px_3px_rgba(16,24,40,0.06)] ring-[3px] ring-info/15',
-        badge: 'border-info/20 bg-info/10 text-info',
+        card: 'shadow-none',
+        badge: 'border-sky-700 bg-sky-700 text-white shadow-none',
     },
     completing: {
-        card: 'border-warning/35 shadow-[0_1px_3px_rgba(16,24,40,0.06)] ring-[3px] ring-warning/15',
-        badge: 'border-warning/25 bg-warning/10 text-warning',
+        card: 'shadow-none',
+        badge: 'border-amber-700 bg-amber-600 text-white shadow-none',
     },
 };
 
 const NEUTRAL_ENQUIRY_STATUS_STYLE = {
-    card: 'border-slate-200 shadow-[0_1px_3px_rgba(16,24,40,0.06)]',
-    badge: 'border-slate-200 bg-slate-100 text-slate-700',
+    card: 'shadow-none',
+    badge: 'border-slate-700 bg-slate-700 text-white shadow-none',
 };
 
 const PRICE_ROWS = [
@@ -728,17 +729,14 @@ export function EnquiryCard({
     return (
         <Card
             size="sm"
-            className={`relative overflow-hidden rounded-[14px] ring-0 ${portColor.card} ${statusStyle.card}`}
+            className={`relative z-10 overflow-hidden rounded-[14px] border-0 shadow-none ring-0 ${portColor.card} ${statusStyle.card}`}
         >
-            <div
-                className={`absolute inset-x-0 top-0 z-[2] h-1 bg-gradient-to-r ${portColor.accent}`}
-            />
             <div
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-0 z-0 opacity-35"
             >
                 <Dot
-                    color="rgba(71, 85, 105, 0.18)"
+                    color={portColor.patternColor}
                     size={1}
                     spacing={13}
                     className="h-full w-full"
@@ -750,14 +748,32 @@ export function EnquiryCard({
             <CardHeader className="relative z-[1] pt-4">
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                        <div className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-500">
+                        <div
+                            className={cn(
+                                'mb-2 flex items-center gap-2 text-xs font-semibold',
+                                portColor.mutedForeground,
+                            )}
+                        >
                             <span>Enquiry #{enquiry.id}</span>
-                            <span className="size-1 rounded-full bg-slate-300" />
+                            <span
+                                className={cn(
+                                    'size-1 rounded-full',
+                                    portColor.surfaceDot,
+                                )}
+                            />
                             <span>{shortDate(enquiry.created_at)}</span>
                         </div>
-                        <CardTitle className="flex min-w-0 items-center gap-2 text-lg font-semibold text-slate-950">
+                        <CardTitle
+                            className={cn(
+                                'flex min-w-0 items-center gap-2 text-lg font-bold',
+                                portColor.foreground,
+                            )}
+                        >
                             <span
-                                className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${portColor.icon}`}
+                                className={cn(
+                                    'flex size-8 shrink-0 items-center justify-center rounded-lg ring-1',
+                                    portColor.surfaceIcon,
+                                )}
                             >
                                 <Ship className="size-4" />
                             </span>
@@ -860,13 +876,20 @@ export function EnquiryCard({
                         </div>
                     </div>
 
-                    <Separator className="bg-slate-200" />
+                    <Separator className={portColor.surfaceDivider} />
 
                     {/* ---- Product grid ---- */}
                     <div className="relative z-[1]">
                         <div className="mb-2 flex items-center gap-2 px-1">
-                            <Fuel className="size-4 text-brand" />
-                            <span className="text-sm font-semibold text-slate-900">
+                            <Fuel
+                                className={cn('size-4', portColor.foreground)}
+                            />
+                            <span
+                                className={cn(
+                                    'text-sm font-bold',
+                                    portColor.foreground,
+                                )}
+                            >
                                 Product requirements
                             </span>
                         </div>
@@ -966,7 +989,7 @@ export function EnquiryCard({
                             type="submit"
                             size="sm"
                             disabled={!form.isDirty || form.processing}
-                            className="bg-[#315cfd] text-white hover:bg-[#254be6]"
+                            className="border border-[#1739c9] bg-[#1739c9] font-semibold text-white shadow-none hover:bg-[#0f2ea5] focus-visible:ring-[#1739c9]/35 disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-500"
                         >
                             <Save className="size-3.5" />
                             Save
@@ -976,6 +999,7 @@ export function EnquiryCard({
                                 type="button"
                                 size="sm"
                                 variant="destructive"
+                                className="border border-[#b42318] bg-[#b42318] font-semibold text-white shadow-none hover:bg-[#8f1d15] focus-visible:ring-[#b42318]/35"
                                 onClick={() => setLostOpen(true)}
                             >
                                 Lost
