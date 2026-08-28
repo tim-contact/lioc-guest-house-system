@@ -6,6 +6,7 @@ use App\Enums\UserType;
 use App\Models\Agent;
 use App\Models\Customer;
 use App\Models\Port;
+use App\Models\SupplyLocation;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -64,8 +65,60 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        foreach (['Colombo', 'Trincomalee', 'Hambantota', 'Galle'] as $name) {
-            Port::firstOrCreate(['name' => $name]);
+        $supplyLocationsByPort = [
+            'Colombo' => [
+                'ANCHORAGE',
+                'BQ BERTH',
+                'CICT BERTH',
+                'CICT - BASIN',
+                'CWIT BERTH',
+                'DIKOWITA FH',
+                'DOCK YARD',
+                'DTB BERTH',
+                'ECT BERTH',
+                'GP BERTH',
+                'JCT BERTH',
+                'NNP BERTH',
+                'OPL',
+                'PASSENGER TERMINAL',
+                'PVQ BERTH',
+                'SP BERTH',
+                'SAGT BERTH',
+                'SOUTH JETTY',
+                'UCT BERTH',
+            ],
+            'Galle' => [
+                'BERTH',
+                'OPL',
+            ],
+            'Hambantota' => [
+                'HAMBANTOTA ANCHORAGE',
+                'HAMBANTOTA BERTH',
+                'HAMBANTOTA OPL',
+            ],
+            'Kankesanthurai' => [
+                'KKS BERTH',
+            ],
+            'Trincomalee' => [
+                'ASHROFF JETTY',
+                'BACK BAY ANCHORAGE',
+                'INNER ANCHORAGR',
+                'LIOC JETTY',
+                'ROUND ISLAND',
+                'TOKYO CEMENT JETTY',
+                'PRIMA BERTH',
+            ],
+        ];
+
+        foreach ($supplyLocationsByPort as $portName => $locationNames) {
+            $port = Port::firstOrCreate(['name' => $portName]);
+
+            foreach ($locationNames as $locationName) {
+                SupplyLocation::firstOrCreate([
+                    'port_id' => $port->id,
+                    'name' => $locationName,
+                ]);
+            }
         }
 
         $agents = [

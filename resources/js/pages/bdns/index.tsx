@@ -39,7 +39,6 @@ interface Bdn {
 
 interface BdnsIndexProps {
     bdns: Bdn[];
-    supplyLocationOptions: EnumOption[];
     deliveryModeOptions: EnumOption[];
     samplingLocationOptions: EnumOption[];
     samplingMethodOptions: EnumOption[];
@@ -60,7 +59,6 @@ function field(bdn: Bdn, key: string): string | number {
 
 export default function BdnsIndex({
     bdns,
-    supplyLocationOptions,
     deliveryModeOptions,
     samplingLocationOptions,
     samplingMethodOptions,
@@ -76,8 +74,7 @@ export default function BdnsIndex({
         { header: 'Delivery Date', value: (b) => b.delivery_date ?? '' },
         {
             header: 'Delivery Location',
-            value: (b) =>
-                optionLabel(supplyLocationOptions, b.delivery_location),
+            value: (b) => b.delivery_location ?? '',
         },
         {
             header: 'Delivery Method',
@@ -185,8 +182,7 @@ export default function BdnsIndex({
             {
                 header: 'Delivery Location',
                 sortKey: 'delivery_location',
-                cell: (b) =>
-                    optionLabel(supplyLocationOptions, b.delivery_location),
+                cell: (b) => b.delivery_location ?? 'â€”',
             },
             {
                 header: 'Barge',

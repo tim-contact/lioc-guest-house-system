@@ -15,13 +15,17 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { FUEL_GRADES } from '@/lib/domain';
 import { dateOnlyToDate, dateToDateOnly } from '@/lib/utils';
-import type { AgentOption, AgentPicOption, EnumOption } from '@/types';
+import type {
+    AgentOption,
+    AgentPicOption,
+    SupplyLocationOption,
+} from '@/types';
 import type { BargeOption, OpsEditRow } from './dashboard';
 
 interface OpsFormData {
     eta_date: string;
     eta_time: string;
-    delivery_location: string;
+    delivery_location_id: string;
     barge_id: string;
     vlsfo_final_qty: string;
     mgo_final_qty: string;
@@ -46,7 +50,7 @@ export function OrderEditDialog({
     barges: BargeOption[];
     agents: AgentOption[];
     agentPics: AgentPicOption[];
-    supplyLocationOptions: EnumOption[];
+    supplyLocationOptions: SupplyLocationOption[];
 }) {
     const eta = order.eta ? new Date(order.eta) : null;
     const validEta = eta && !Number.isNaN(eta.getTime()) ? eta : null;
@@ -54,7 +58,9 @@ export function OrderEditDialog({
     const form = useForm<OpsFormData>({
         eta_date: validEta ? format(validEta, 'yyyy-MM-dd') : '',
         eta_time: validEta ? format(validEta, 'HH:mm') : '',
-        delivery_location: order.delivery_location ?? '',
+        delivery_location_id: order.delivery_location_id
+            ? String(order.delivery_location_id)
+            : '',
         barge_id: order.barge_id ?? '',
         vlsfo_final_qty: order.vlsfo_final_qty ?? '',
         mgo_final_qty: order.mgo_final_qty ?? '',
@@ -124,11 +130,15 @@ export function OrderEditDialog({
                 />
                 <LabeledSelect
                     label="Supply Location"
-                    value={form.data.delivery_location}
+                    value={form.data.delivery_location_id}
                     onChange={(value) =>
-                        form.setData('delivery_location', value)
+                        form.setData('delivery_location_id', value)
                     }
-                    options={supplyLocationOptions}
+                    options={supplyLocationOptions.filter(
+                        (option) =>
+                            order.port_id === null ||
+                            option.port_id === order.port_id,
+                    )}
                     placeholder="Select location"
                 />
 

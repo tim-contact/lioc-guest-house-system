@@ -6,7 +6,6 @@ use App\Enums\DeliveryMode;
 use App\Enums\FuelGrade;
 use App\Enums\Sampling;
 use App\Enums\SamplingMethod;
-use App\Enums\SupplyLocation;
 use App\Models\Bdn;
 use App\Models\Order;
 use App\Models\User;
@@ -29,7 +28,7 @@ class BdnController extends Controller
         $user = request()->user();
         $assignment = SurveyorAssignment::resolve($user);
 
-        $query = Bdn::with(['order.customer', 'agent', 'barge'])->latest();
+        $query = Bdn::with(['order.customer', 'deliveryLocation', 'agent', 'barge'])->latest();
 
         // Surveyor users: filter to their assigned barge.
         if ($user->type->value === 'surveyor' && ! $assignment['denied'] && $assignment['barge_id']) {
@@ -42,13 +41,14 @@ class BdnController extends Controller
                 'order_number' => $bdn->order?->order_number,
                 'customer_name' => $bdn->order?->customer?->name,
                 'vessel_name' => $bdn->order?->vessel_name,
+                'delivery_location' => $bdn->deliveryLocation?->name,
                 'agent_name' => $bdn->agent?->name,
                 'barge_name' => $bdn->barge?->name,
             ]);
 
         return Inertia::render('bdns/index', [
             'bdns' => $bdns,
-            'supplyLocationOptions' => $this->enumOptions(SupplyLocation::cases()),
+            'supplyLocationOptions' => $this->supplyLocationOptions(),
             'deliveryModeOptions' => $this->enumOptions(DeliveryMode::cases()),
             'samplingLocationOptions' => $this->enumOptions(Sampling::cases()),
             'samplingMethodOptions' => $this->enumOptions(SamplingMethod::cases()),
@@ -59,13 +59,13 @@ class BdnController extends Controller
     {
         SurveyorAssignment::authorizeOrder(request()->user(), $order->barge_id);
 
-        $order->load(['port', 'bdn.agent', 'bdn.barge']);
+        $order->load(['port', 'bdn.deliveryLocation', 'bdn.agent', 'bdn.barge']);
         $bdn = $order->bdn;
 
         return Pdf::view('pdf.bdn', [
             'order' => $order,
             'bdn' => $bdn,
-            'deliveryLocationLabel' => $bdn?->delivery_location?->label(),
+            'deliveryLocationLabel' => $bdn?->deliveryLocation?->name,
             'deliveryMethodLabel' => $bdn?->delivery_method !== null
                 ? Str::headline($bdn->delivery_method->name)
                 : null,
@@ -94,7 +94,7 @@ class BdnController extends Controller
             $order->barge_id,
         );
 
-        $validated = $request->validate($this->rules());
+        $validated = $request->validate($this->rules($order));
 
         // For surveyor users, force barge_id to their assigned barge.
         $assignment = SurveyorAssignment::resolve($request->user());
@@ -126,11 +126,11 @@ class BdnController extends Controller
      *
      * @return array<string, array<int, mixed>>
      */
-    private function rules(): array
+    private function rules(Order $order): array
     {
         $rules = [
             'delivery_date' => ['nullable', 'date'],
-            'delivery_location' => ['nullable', Rule::enum(SupplyLocation::class)],
+            'delivery_location_id' => ['nullable', $this->supplyLocationRule($order->port_id)],
             'vessel_flag' => ['nullable', 'string', 'max:255'],
             'grt' => ['nullable', 'numeric', 'min:0'],
             'pi_club' => ['nullable', 'string', 'max:255'],

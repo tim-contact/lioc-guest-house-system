@@ -4,13 +4,13 @@ use App\Enums\DeliveryMode;
 use App\Enums\OrderStatus;
 use App\Enums\Sampling;
 use App\Enums\SamplingMethod;
-use App\Enums\SupplyLocation;
+use App\Enums\UserType;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Agent;
 use App\Models\Barge;
 use App\Models\Bdn;
 use App\Models\Order;
-use App\Enums\UserType;
+use App\Models\SupplyLocation;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia;
@@ -59,10 +59,11 @@ test('update creates the bdn on first save and numbers it after the order', func
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $order = Order::factory()->create(['order_number' => 'ORD-BDN-1']);
+    $location = SupplyLocation::firstOrCreate(['port_id' => $order->port_id, 'name' => 'ANCHORAGE']);
 
     $this->put(route('surveyor.bdn.update', $order), [
         'delivery_date' => '2026-07-30',
-        'delivery_location' => SupplyLocation::Anchorage->value,
+        'delivery_location_id' => $location->id,
         'vessel_flag' => 'Panama',
         'grt' => 45000,
         'pi_club' => 'Britannia',
@@ -83,7 +84,7 @@ test('update creates the bdn on first save and numbers it after the order', func
 
     expect($order->bdn()->sole())
         ->bdn_number->toBe('BDN-ORD-BDN-1')
-        ->delivery_location->toBe(SupplyLocation::Anchorage)
+        ->delivery_location_id->toBe($location->id)
         ->vessel_flag->toBe('Panama')
         ->grt->toBe('45000.00')
         ->delivery_method->toBe(DeliveryMode::Barge)
@@ -180,7 +181,7 @@ test('update accepts a form where every field is still blank', function () {
 
     expect($order->bdn()->sole())
         ->grt->toBeNull()
-        ->delivery_location->toBeNull()
+        ->delivery_location_id->toBeNull()
         ->barge_alongside_at->toBeNull()
         ->vlsfo_hose_connected_at->toBeNull()
         ->vlsfo_metric_ton->toBeNull()

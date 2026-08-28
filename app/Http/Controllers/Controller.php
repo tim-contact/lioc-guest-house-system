@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Agent;
 use App\Models\AgentPic;
+use App\Models\SupplyLocation;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
@@ -37,6 +38,26 @@ abstract class Controller
     }
 
     /**
+     * Real supply locations, scoped by port for dependent dropdowns.
+     *
+     * @return array<int, array{value: string, label: string, port_id: int}>
+     */
+    protected function supplyLocationOptions(): array
+    {
+        return SupplyLocation::query()
+            ->join('ports', 'ports.id', '=', 'supply_locations.port_id')
+            ->orderBy('ports.name')
+            ->orderBy('supply_locations.name')
+            ->get(['supply_locations.id', 'supply_locations.name', 'supply_locations.port_id'])
+            ->map(fn (SupplyLocation $location): array => [
+                'value' => (string) $location->id,
+                'label' => $location->name,
+                'port_id' => $location->port_id,
+            ])
+            ->all();
+    }
+
+    /**
      * Agency and PIC lists backing the shared <AgentContactFields> trio.
      * Column lists mirror AgentOption / AgentPicOption in resources/js/types/ui.ts.
      *
@@ -57,6 +78,24 @@ abstract class Controller
     protected function agentPicRule(Request $request): Exists
     {
         return Rule::exists('agent_pics', 'id')->where('agent_id', $request->input('agent_id'));
+    }
+
+    /**
+     * Accept a supply location only when it belongs to the selected port.
+     */
+    protected function supplyLocationRule(int|string|null $portId = null): Exists
+    {
+        $rule = Rule::exists('supply_locations', 'id');
+
+        if (! filled($portId)) {
+            $rule->where(fn ($query) => $query->whereRaw('1 = 0'));
+
+            return $rule;
+        }
+
+        $rule->where('port_id', $portId);
+
+        return $rule;
     }
 
     /**

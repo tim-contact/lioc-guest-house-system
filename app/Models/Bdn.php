@@ -6,7 +6,6 @@ use App\Enums\DeliveryMode;
 use App\Enums\FuelGrade;
 use App\Enums\Sampling;
 use App\Enums\SamplingMethod;
-use App\Enums\SupplyLocation;
 use Database\Factories\BdnFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -21,7 +20,7 @@ use Illuminate\Support\Carbon;
  * @property int $order_id
  * @property string|null $bdn_number
  * @property Carbon|null $delivery_date
- * @property SupplyLocation|null $delivery_location
+ * @property int|null $delivery_location_id
  * @property string|null $vessel_flag
  * @property float|null $grt
  * @property string|null $pi_club
@@ -83,7 +82,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $retention_counter_seal_number
  */
 #[Fillable([
-    'order_id', 'bdn_number', 'delivery_date', 'delivery_location', 'vessel_flag', 'grt',
+    'order_id', 'bdn_number', 'delivery_date', 'delivery_location_id', 'vessel_flag', 'grt',
     'pi_club', 'agent_id', 'owner_operator', 'last_port_of_call', 'destination_port',
     'delivery_method', 'barge_id', 'barge_alongside_at',
     'vlsfo_hose_connected_at', 'vlsfo_pumping_started_at', 'vlsfo_pumping_ended_at',
@@ -149,7 +148,6 @@ class Bdn extends Model
     {
         $casts = [
             'delivery_date' => 'date',
-            'delivery_location' => SupplyLocation::class,
             'grt' => 'decimal:2',
             'delivery_method' => DeliveryMode::class,
             // Wall-clock format so the datetime-local inputs round-trip unshifted.
@@ -178,6 +176,12 @@ class Bdn extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    /** @return BelongsTo<SupplyLocation, $this> */
+    public function deliveryLocation(): BelongsTo
+    {
+        return $this->belongsTo(SupplyLocation::class, 'delivery_location_id');
     }
 
     /** @return BelongsTo<Agent, $this> */

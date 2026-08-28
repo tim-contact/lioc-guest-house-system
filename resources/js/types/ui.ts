@@ -16,6 +16,11 @@ export type EnumOption = {
     label: string;
 };
 
+/** A real supply location, scoped to a port. */
+export type SupplyLocationOption = EnumOption & {
+    port_id: number;
+};
+
 /** An agency, as sent to every page with an agent dropdown. */
 export type AgentOption = {
     id: number;

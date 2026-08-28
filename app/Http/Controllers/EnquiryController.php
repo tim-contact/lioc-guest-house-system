@@ -11,7 +11,6 @@ use App\Enums\OrderStatus;
 use App\Enums\ProductType;
 use App\Enums\QualityClaim;
 use App\Enums\Sampling;
-use App\Enums\SupplyLocation;
 use App\Models\Agent;
 use App\Models\Customer;
 use App\Models\Enquiry;
@@ -33,7 +32,7 @@ class EnquiryController extends Controller
 {
     public function index(): Response
     {
-        $enquiries = Enquiry::with(['port', 'agent', 'enquiryCustomers.customer'])
+        $enquiries = Enquiry::with(['port', 'supplyLocation', 'agent', 'enquiryCustomers.customer'])
             ->whereIn('status', EnquiryStatus::activeStatuses())
             ->latest()
             ->get();
@@ -55,7 +54,8 @@ class EnquiryController extends Controller
                 'status' => $enquiry->status->value,
                 'agent_id' => $enquiry->agent_id,
                 'sampling' => $enquiry->sampling->value,
-                'supply_location' => $enquiry->supply_location?->value,
+                'supply_location_id' => $enquiry->supply_location_id,
+                'supply_location' => $enquiry->supplyLocation?->name,
                 'quality_claim' => $enquiry->quality_claim?->value,
                 'instructions' => $enquiry->instructions,
                 'barging_cost' => $enquiry->barging_cost,
@@ -103,7 +103,7 @@ class EnquiryController extends Controller
             ]),
             'ports' => Port::orderBy('name')->get(['id', 'name']),
             'agents' => Agent::orderBy('name')->get(['id', 'name', 'address']),
-            'supplyLocationOptions' => $this->enumOptions(SupplyLocation::cases()),
+            'supplyLocationOptions' => $this->supplyLocationOptions(),
             'productTypeOptions' => $this->enumOptions(ProductType::cases()),
             'deliveryModeOptions' => $this->enumOptions(DeliveryMode::cases()),
             'creditTermsOptions' => $this->enumOptions(CreditTerms::cases()),
@@ -114,7 +114,7 @@ class EnquiryController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        Enquiry::create($request->validate($this->baseRules()));
+        Enquiry::create($request->validate($this->baseRules($request)));
 
         return $this->toast('Enquiry created.');
     }
@@ -122,7 +122,7 @@ class EnquiryController extends Controller
     public function update(Request $request, Enquiry $enquiry): RedirectResponse
     {
         $enquiry->update($request->validate([
-            ...$this->baseRules(),
+            ...$this->baseRules($request),
             ...$this->productRules(),
         ]));
 
@@ -132,12 +132,18 @@ class EnquiryController extends Controller
     public function edit(): Response
     {
         return Inertia::render('enquiries/edit', [
-            'enquiries' => Enquiry::latest()->get(),
+            'enquiries' => Enquiry::with('supplyLocation')
+                ->latest()
+                ->get()
+                ->map(fn (Enquiry $enquiry): array => [
+                    ...$enquiry->toArray(),
+                    'supply_location' => $enquiry->supplyLocation?->name,
+                ]),
             'ports' => Port::orderBy('name')->get(['id', 'name']),
             'agents' => Agent::orderBy('name')->get(['id', 'name']),
             'statusOptions' => $this->enumOptions(EnquiryStatus::cases()),
             'samplingOptions' => $this->enumOptions(Sampling::cases()),
-            'supplyLocationOptions' => $this->enumOptions(SupplyLocation::cases()),
+            'supplyLocationOptions' => $this->supplyLocationOptions(),
             'qualityClaimOptions' => $this->enumOptions(QualityClaim::cases()),
             'productTypeOptions' => $this->enumOptions(ProductType::cases()),
             'deliveryModeOptions' => $this->enumOptions(DeliveryMode::cases()),
@@ -146,7 +152,7 @@ class EnquiryController extends Controller
 
     public function editStore(Request $request): RedirectResponse
     {
-        $validated = $request->validate($this->editRules());
+        $validated = $request->validate($this->editRules($request));
         $validated['barging_cost'] ??= 0;
 
         Enquiry::create($validated);
@@ -156,7 +162,7 @@ class EnquiryController extends Controller
 
     public function editUpdate(Request $request, Enquiry $enquiry): RedirectResponse
     {
-        $validated = $request->validate($this->editRules());
+        $validated = $request->validate($this->editRules($request, $enquiry));
         $validated['barging_cost'] ??= 0;
 
         $enquiry->update($validated);
@@ -183,12 +189,13 @@ class EnquiryController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function baseRules(): array
+    private function baseRules(Request $request, ?Enquiry $enquiry = null): array
     {
         return [
             'vessel_name' => ['required', 'string', 'max:255'],
             'imo' => ['nullable', 'string', 'max:255'],
             'port_id' => ['nullable', 'exists:ports,id'],
+            'supply_location_id' => $this->supplyLocationRules($request, $enquiry),
             'laycan_from' => ['nullable', 'date'],
             'laycan_to' => ['nullable', 'date', 'after_or_equal:laycan_from'],
         ];
@@ -199,15 +206,14 @@ class EnquiryController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function editRules(): array
+    private function editRules(Request $request, ?Enquiry $enquiry = null): array
     {
         return [
-            ...$this->baseRules(),
+            ...$this->baseRules($request, $enquiry),
             'eta' => ['nullable', 'date'],
             'status' => ['required', Rule::enum(EnquiryStatus::class)],
             'agent_id' => ['nullable', 'exists:agents,id'],
             'sampling' => ['required', Rule::enum(Sampling::class)],
-            'supply_location' => ['nullable', Rule::enum(SupplyLocation::class)],
             'quality_claim' => ['nullable', Rule::enum(QualityClaim::class)],
             'instructions' => ['nullable', 'string'],
             'barging_cost' => ['nullable', 'numeric', 'min:0'],
@@ -272,7 +278,7 @@ class EnquiryController extends Controller
         $validated = $request->validate([
             'agent_id' => ['nullable', 'exists:agents,id'],
             'sampling' => ['required', Rule::enum(Sampling::class)],
-            'supply_location' => ['nullable', Rule::enum(SupplyLocation::class)],
+            'supply_location_id' => $this->supplyLocationRules($request, $enquiry),
             'quality_claim' => ['nullable', Rule::enum(QualityClaim::class)],
             'instructions' => ['nullable', 'string'],
             'barging_cost' => ['nullable', 'numeric', 'min:0'],
@@ -290,7 +296,7 @@ class EnquiryController extends Controller
             }
 
             $enquiry->update([
-                ...Arr::only($validated, ['agent_id', 'sampling', 'supply_location', 'quality_claim', 'instructions', 'barging_cost']),
+                ...Arr::only($validated, ['agent_id', 'sampling', 'supply_location_id', 'quality_claim', 'instructions', 'barging_cost']),
                 ...($generateOrder ? ['status' => EnquiryStatus::Won] : []),
             ]);
 
@@ -345,7 +351,7 @@ class EnquiryController extends Controller
             'laycan_from' => $enquiry->laycan_from,
             'laycan_to' => $enquiry->laycan_to,
             'delivery_mode' => collect($products)->map(fn (string $p) => $enquiry->{"{$p}_delivery_mode"})->first(fn ($v) => $v !== null),
-            'delivery_location' => $enquiry->supply_location?->value,
+            'delivery_location_id' => $enquiry->supply_location_id,
             'product_type' => collect($products)->map(fn (string $p) => $enquiry->{"{$p}_product_type"})->first(fn ($v) => $v !== null),
             'agent_id' => $enquiry->agent_id,
             'status' => OrderStatus::Pending,
@@ -357,5 +363,18 @@ class EnquiryController extends Controller
         $order->update([
             'order_number' => 'ORD-'.str_pad((string) $order->id, 5, '0', STR_PAD_LEFT),
         ]);
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function supplyLocationRules(Request $request, ?Enquiry $enquiry = null): array
+    {
+        $portId = $request->input('port_id', $enquiry?->port_id);
+
+        return [
+            'nullable',
+            $this->supplyLocationRule($portId),
+        ];
     }
 }

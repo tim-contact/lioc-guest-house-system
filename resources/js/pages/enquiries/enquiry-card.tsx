@@ -66,7 +66,7 @@ import {
     toDateRange,
 } from '@/lib/utils';
 import { updateStatus } from '@/routes/enquiry-customers';
-import type { AgentOption, EnumOption } from '@/types';
+import type { AgentOption, EnumOption, SupplyLocationOption } from '@/types';
 import { AdditionalDetailsDialog } from './additional-details-dialog';
 import { LostDialog } from './lost-dialog';
 
@@ -99,7 +99,8 @@ export interface EnquiryRow {
     status: string;
     agent_id: number | null;
     sampling: string; // barge_manifold | vessel_manifold
-    supply_location: string | null; // berth | anchorage | opl
+    supply_location_id: number | null;
+    supply_location: string | null;
     quality_claim: string | null; // 14_days | 30_days
     instructions: string | null;
     barging_cost: string | null;
@@ -571,7 +572,7 @@ export function EnquiryCard({
     creditByCustomer: Record<string, CustomerCredit>;
     ports: PortOption[];
     agents: AgentOption[];
-    supplyLocationOptions: EnumOption[];
+    supplyLocationOptions: SupplyLocationOption[];
     productTypeOptions: EnumOption[];
     deliveryModeOptions: EnumOption[];
     creditTermsOptions: EnumOption[];

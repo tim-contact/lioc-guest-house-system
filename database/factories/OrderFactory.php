@@ -6,7 +6,6 @@ use App\Enums\DeliveryMode;
 use App\Enums\FuelGrade;
 use App\Enums\OrderStatus;
 use App\Enums\ProductType;
-use App\Enums\SupplyLocation;
 use App\Models\Agent;
 use App\Models\Barge;
 use App\Models\Customer;
@@ -39,7 +38,7 @@ class OrderFactory extends Factory
             'laycan_from' => $enquiry->laycan_from,
             'laycan_to' => $enquiry->laycan_to,
             'delivery_mode' => fake()->randomElement(DeliveryMode::cases()),
-            'delivery_location' => fake()->randomElement(SupplyLocation::cases()),
+            'delivery_location_id' => $enquiry->supply_location_id,
             'product_type' => fake()->randomElement(ProductType::cases()),
             'barge_id' => Barge::factory(),
             'agent_id' => Agent::factory(),

@@ -1,4 +1,5 @@
 import { useForm } from '@inertiajs/react';
+import { useEffect, useMemo } from 'react';
 import { updateDetails } from '@/actions/App/Http/Controllers/EnquiryController';
 import { MoneyInput } from '@/components/money-input';
 import { SearchableCombobox } from '@/components/searchable-combobox';
@@ -19,13 +20,13 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import type { AgentOption, EnumOption } from '@/types';
+import type { AgentOption, EnumOption, SupplyLocationOption } from '@/types';
 import type { EnquiryRow } from './enquiry-card';
 
 interface DetailsFormData {
     agent_id: string;
     sampling: string;
-    supply_location: string;
+    supply_location_id: string;
     quality_claim: string;
     instructions: string;
     barging_cost: string;
@@ -45,14 +46,16 @@ export function AdditionalDetailsDialog({
     onOpenChange: (open: boolean) => void;
     enquiry: EnquiryRow;
     agents: AgentOption[];
-    supplyLocationOptions: EnumOption[];
+    supplyLocationOptions: SupplyLocationOption[];
     samplingOptions: EnumOption[];
     qualityClaimOptions: EnumOption[];
 }) {
     const form = useForm<DetailsFormData>({
         agent_id: enquiry.agent_id ? String(enquiry.agent_id) : '',
         sampling: enquiry.sampling || 'barge_manifold',
-        supply_location: enquiry.supply_location ?? '',
+        supply_location_id: enquiry.supply_location_id
+            ? String(enquiry.supply_location_id)
+            : '',
         quality_claim: enquiry.quality_claim ?? '',
         instructions: enquiry.instructions ?? '',
         barging_cost:
@@ -64,7 +67,7 @@ export function AdditionalDetailsDialog({
         form.transform((data) => ({
             ...data,
             agent_id: data.agent_id || null,
-            supply_location: data.supply_location || null,
+            supply_location_id: data.supply_location_id || null,
             quality_claim: data.quality_claim || null,
             instructions: data.instructions || null,
             barging_cost: data.barging_cost || 0,
@@ -79,6 +82,31 @@ export function AdditionalDetailsDialog({
             },
         });
     }
+
+    const selectedPortId = Number(enquiry.port_id);
+    const hasSelectedPort =
+        enquiry.port_id != null && Number.isInteger(selectedPortId);
+
+    const filteredSupplyLocationOptions = useMemo(
+        () =>
+            hasSelectedPort
+                ? supplyLocationOptions.filter(
+                      (option) => Number(option.port_id) === selectedPortId,
+                  )
+                : [],
+        [hasSelectedPort, selectedPortId, supplyLocationOptions],
+    );
+
+    useEffect(() => {
+        if (
+            form.data.supply_location_id &&
+            !filteredSupplyLocationOptions.some(
+                (option) => option.value === form.data.supply_location_id,
+            )
+        ) {
+            form.setData('supply_location_id', '');
+        }
+    }, [filteredSupplyLocationOptions, form]);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -140,16 +168,26 @@ export function AdditionalDetailsDialog({
                     <div className="grid gap-1">
                         <Label>Supply Location</Label>
                         <Select
-                            value={form.data.supply_location}
+                            value={form.data.supply_location_id}
                             onValueChange={(value) =>
-                                form.setData('supply_location', value)
+                                form.setData('supply_location_id', value)
+                            }
+                            disabled={
+                                !hasSelectedPort ||
+                                filteredSupplyLocationOptions.length === 0
                             }
                         >
                             <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select location" />
+                                <SelectValue
+                                    placeholder={
+                                        !hasSelectedPort
+                                            ? 'Select port first'
+                                            : 'Select supply location'
+                                    }
+                                />
                             </SelectTrigger>
                             <SelectContent>
-                                {supplyLocationOptions.map((option) => (
+                                {filteredSupplyLocationOptions.map((option) => (
                                     <SelectItem
                                         key={option.value}
                                         value={option.value}

@@ -3,12 +3,18 @@ import { useState } from 'react';
 import OrderDashboard from '@/components/order-dashboard';
 import type { OrderRow, RowAction } from '@/components/order-dashboard';
 import { PortSummaryCards } from '@/components/port-summary-cards';
-import type { AgentOption, AgentPicOption, EnumOption } from '@/types';
+import type {
+    AgentOption,
+    AgentPicOption,
+    SupplyLocationOption,
+} from '@/types';
 import { OrderEditDialog } from './order-edit-dialog';
 
 export interface OpsEditRow extends OrderRow {
     order_number: string;
     vessel_id: string | null;
+    port_id: number | null;
+    delivery_location_id: number | null;
     delivery_location: string | null;
     barge_id: string | null;
     agent_id: number | null;
@@ -28,7 +34,7 @@ interface OperationsDashboardProps {
     barges: BargeOption[];
     agents: AgentOption[];
     agentPics: AgentPicOption[];
-    supplyLocationOptions: EnumOption[];
+    supplyLocationOptions: SupplyLocationOption[];
 }
 
 export default function OperationsDashboard({

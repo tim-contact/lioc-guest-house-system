@@ -24,7 +24,7 @@ class OrderService
      */
     public static function pending(?int $dueWithinDays = null): Collection
     {
-        return Order::with(['customer', 'port'])
+        return Order::with(['customer', 'port', 'deliveryLocation'])
             ->whereIn('status', OrderStatus::pendingStatuses())
             ->when($dueWithinDays !== null, fn ($query) => $query->where(
                 fn ($due) => $due->whereNull('eta')
@@ -45,7 +45,7 @@ class OrderService
      */
     public static function completedWithin(int $days = 30, bool $keepOpenDisputes = false): Collection
     {
-        return Order::with(['customer', 'port'])
+        return Order::with(['customer', 'port', 'deliveryLocation'])
             ->whereIn('status', OrderStatus::completedStatuses())
             ->where(fn ($query) => $query
                 ->where('invoice_date', '>=', Carbon::now()->subDays($days))
@@ -112,7 +112,10 @@ class OrderService
             'customer_name' => $order->customer?->name,
             'vessel_name' => $order->vessel_name,
             'vessel_id' => $order->vessel_id,
+            'port_id' => $order->port_id,
             'port' => $order->port?->name,
+            'delivery_location_id' => $order->delivery_location_id,
+            'delivery_location' => $order->deliveryLocation?->name,
             'vlsfo_qty' => $order->vlsfo_final_qty ?? $order->vlsfo_qty_range,
             'mgo_qty' => $order->mgo_final_qty ?? $order->mgo_qty_range,
             'hsfo_qty' => $order->hsfo_final_qty ?? $order->hsfo_qty_range,

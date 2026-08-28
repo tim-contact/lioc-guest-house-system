@@ -14,7 +14,12 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { FUEL_GRADES } from '@/lib/domain';
 import { dateToDateOnly, shortDate, toDateRange } from '@/lib/utils';
-import type { AgentOption, AgentPicOption, EnumOption } from '@/types';
+import type {
+    AgentOption,
+    AgentPicOption,
+    EnumOption,
+    SupplyLocationOption,
+} from '@/types';
 import type { CustomerOption, OrderEditRow, PortOption } from './dashboard';
 
 interface OrderFormData {
@@ -33,6 +38,7 @@ interface OrderFormData {
     agent_pic_id: string;
     mobile_no: string;
     delivery_mode: string;
+    delivery_location_id: string;
     laycan_from: string;
     laycan_to: string;
 }
@@ -46,6 +52,7 @@ export function OrderEditDialog({
     agents,
     agentPics,
     deliveryModeOptions,
+    supplyLocationOptions,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -55,6 +62,7 @@ export function OrderEditDialog({
     agents: AgentOption[];
     agentPics: AgentPicOption[];
     deliveryModeOptions: EnumOption[];
+    supplyLocationOptions: SupplyLocationOption[];
 }) {
     const form = useForm<OrderFormData>({
         customer_id: order.customer_id ?? '',
@@ -72,6 +80,9 @@ export function OrderEditDialog({
         agent_pic_id: order.agent_pic_id ? String(order.agent_pic_id) : '',
         mobile_no: order.mobile_no ?? '',
         delivery_mode: order.delivery_mode ?? '',
+        delivery_location_id: order.delivery_location_id
+            ? String(order.delivery_location_id)
+            : '',
         laycan_from: order.laycan_from ? order.laycan_from.slice(0, 10) : '',
         laycan_to: order.laycan_to ? order.laycan_to.slice(0, 10) : '',
     });
@@ -217,6 +228,20 @@ export function OrderEditDialog({
                     onChange={(value) => form.setData('delivery_mode', value)}
                     options={deliveryModeOptions}
                     placeholder="Select mode"
+                />
+
+                <LabeledSelect
+                    label="Supply Location"
+                    value={form.data.delivery_location_id}
+                    onChange={(value) =>
+                        form.setData('delivery_location_id', value)
+                    }
+                    options={supplyLocationOptions.filter(
+                        (option) =>
+                            form.data.port_id === '' ||
+                            option.port_id === Number(form.data.port_id),
+                    )}
+                    placeholder="Select location"
                 />
 
                 <div className="grid gap-1">

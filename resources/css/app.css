@@ -97,6 +97,7 @@
 }
 
 :root {
+    --background: #f2f1ef;
     --color-paper: oklch(97% 0.012 95);
     --color-paper-2: oklch(94% 0.016 95);
     --color-paper-3: oklch(91% 0.02 95);

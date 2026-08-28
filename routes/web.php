@@ -15,6 +15,7 @@ use App\Http\Controllers\OperationController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PortController;
+use App\Http\Controllers\SupplyLocationController;
 use App\Http\Controllers\ReportAnalyticsController;
 use App\Http\Controllers\SurveyingController;
 use App\Http\Controllers\SurveyorController;
@@ -56,6 +57,9 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         // CRUD management.
         Route::resource('customers', CustomerController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('ports', PortController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::post('ports/{port}/supply-locations', [SupplyLocationController::class, 'store'])->name('ports.supply-locations.store');
+        Route::patch('ports/{port}/supply-locations/{supply_location}', [SupplyLocationController::class, 'update'])->name('ports.supply-locations.update');
+        Route::delete('ports/{port}/supply-locations/{supply_location}', [SupplyLocationController::class, 'destroy'])->name('ports.supply-locations.destroy');
         Route::get('barges/edit', [BargeController::class, 'edit'])->name('barges.edit');
         Route::resource('barges', BargeController::class)->only(['store', 'update', 'destroy']);
         Route::resource('agents', AgentController::class)->only(['index', 'store', 'update', 'destroy']);

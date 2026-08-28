@@ -14,7 +14,8 @@ import {
 import { FUEL_GRADES } from '@/lib/domain';
 import { shortDate } from '@/lib/utils';
 import { ebdn } from '@/routes/bdns';
-import type { AgentOption, EnumOption } from '@/types';
+import { complete as completeOrder } from '@/routes/surveyor';
+import type { AgentOption, EnumOption, SupplyLocationOption } from '@/types';
 import { BdnDialog } from './bdn-dialog';
 import type { BdnRow } from './bdn-dialog';
 
@@ -29,8 +30,9 @@ export interface PendingRow {
     vessel_name: string | null;
     vessel_id: string | null;
     port: string | null;
+    port_id: number | null;
     location: string | null;
-    delivery_location: string | null;
+    delivery_location_id: number | null;
     delivery_mode: string | null;
     barge_id: string | null;
     agent_id: number | null;
@@ -66,7 +68,7 @@ interface SurveyorDashboardProps {
     completedOrders: CompletedRow[];
     barges: BargeOption[];
     agents: AgentOption[];
-    supplyLocationOptions: EnumOption[];
+    supplyLocationOptions: SupplyLocationOption[];
     deliveryMethodOptions: EnumOption[];
     samplingLocationOptions: EnumOption[];
     samplingMethodOptions: EnumOption[];

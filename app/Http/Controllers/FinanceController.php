@@ -16,7 +16,7 @@ class FinanceController extends Controller
 {
     public function index(): Response
     {
-        $completedOrders = Order::with(['customer', 'payments'])
+        $completedOrders = Order::with(['customer', 'deliveryLocation', 'payments'])
             ->whereIn('status', OrderStatus::completedStatuses())
             ->orderBy('payment_due_date')
             ->orderBy('order_number')
@@ -26,7 +26,7 @@ class FinanceController extends Controller
                 'order_number' => $order->order_number,
                 'customer_name' => $order->customer?->name,
                 'vessel_name' => $order->vessel_name,
-                'location' => $order->delivery_location?->label(),
+                'location' => $order->deliveryLocation?->name,
                 'vlsfo_qty' => $order->vlsfo_bdn_qty ?? $order->vlsfo_final_qty,
                 'mgo_qty' => $order->mgo_bdn_qty ?? $order->mgo_final_qty,
                 'hsfo_qty' => $order->hsfo_bdn_qty ?? $order->hsfo_final_qty,

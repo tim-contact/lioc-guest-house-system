@@ -6,7 +6,6 @@ use App\Enums\DeliveryMode;
 use App\Enums\FuelGrade;
 use App\Enums\Sampling;
 use App\Enums\SamplingMethod;
-use App\Enums\SupplyLocation;
 use App\Models\Agent;
 use App\Models\Barge;
 use App\Models\Order;
@@ -34,7 +33,7 @@ class SurveyingController extends Controller
                     'completedOrders' => [],
                     'barges' => [],
                     'agents' => fn () => Agent::orderBy('name')->get(['id', 'name', 'address']),
-                    'supplyLocationOptions' => $this->enumOptions(SupplyLocation::cases()),
+                    'supplyLocationOptions' => $this->supplyLocationOptions(),
                     'deliveryMethodOptions' => $this->enumOptions(DeliveryMode::cases()),
                     'samplingLocationOptions' => $this->enumOptions(Sampling::cases()),
                     'samplingMethodOptions' => $this->enumOptions(SamplingMethod::cases()),
@@ -59,9 +58,10 @@ class SurveyingController extends Controller
                     'order_number' => $order->order_number,
                     'vessel_name' => $order->vessel_name,
                     'vessel_id' => $order->vessel_id,
+                    'port_id' => $order->port_id,
                     'port' => $order->port?->name,
-                    'location' => $order->delivery_location?->label(),
-                    'delivery_location' => $order->delivery_location?->value,
+                    'location' => $order->deliveryLocation?->name,
+                    'delivery_location_id' => $order->delivery_location_id,
                     'delivery_mode' => $order->delivery_mode?->value,
                     'barge_id' => $order->barge_id,
                     'agent_id' => $order->agent_id,
@@ -111,7 +111,7 @@ class SurveyingController extends Controller
             'completedOrders' => $completedOrders,
             'barges' => $barges,
             'agents' => fn () => Agent::orderBy('name')->get(['id', 'name', 'address']),
-            'supplyLocationOptions' => $this->enumOptions(SupplyLocation::cases()),
+            'supplyLocationOptions' => $this->supplyLocationOptions(),
             'deliveryMethodOptions' => $this->enumOptions(DeliveryMode::cases()),
             'samplingLocationOptions' => $this->enumOptions(Sampling::cases()),
             'samplingMethodOptions' => $this->enumOptions(SamplingMethod::cases()),

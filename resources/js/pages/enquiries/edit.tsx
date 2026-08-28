@@ -8,7 +8,7 @@ import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
 import { FUEL_GRADES } from '@/lib/domain';
 import type { ExportColumn } from '@/lib/export-xlsx';
 import { optionLabel, shortDate, str, toDateInput } from '@/lib/utils';
-import type { EnumOption } from '@/types';
+import type { EnumOption, SupplyLocationOption } from '@/types';
 
 interface Enquiry {
     id: number;
@@ -22,6 +22,7 @@ interface Enquiry {
     status: string;
     agent_id: number | null;
     sampling: string;
+    supply_location_id: number | null;
     supply_location: string | null;
     quality_claim: string | null;
     instructions: string | null;
@@ -51,7 +52,7 @@ interface EnquiriesEditProps {
     agents: { id: number; name: string }[];
     statusOptions: EnumOption[];
     samplingOptions: EnumOption[];
-    supplyLocationOptions: EnumOption[];
+    supplyLocationOptions: SupplyLocationOption[];
     qualityClaimOptions: EnumOption[];
     productTypeOptions: EnumOption[];
     deliveryModeOptions: EnumOption[];
@@ -115,7 +116,14 @@ export default function EnquiriesEdit({
         {
             header: 'Supply Location',
             value: (enquiry) =>
-                optionLabel(supplyLocationOptions, enquiry.supply_location, ''),
+                enquiry.supply_location ??
+                optionLabel(
+                    supplyLocationOptions,
+                    enquiry.supply_location_id
+                        ? String(enquiry.supply_location_id)
+                        : null,
+                    '',
+                ),
         },
         {
             header: 'Quality Claim',
@@ -214,6 +222,7 @@ export default function EnquiriesEdit({
                 label: 'Port',
                 type: 'select',
                 options: portOptions,
+                resetOnChange: ['supply_location_id'],
                 section: 'Core',
             },
             {
@@ -251,10 +260,18 @@ export default function EnquiriesEdit({
                 section: 'Details',
             },
             {
-                name: 'supply_location',
+                name: 'supply_location_id',
                 label: 'Supply Location',
                 type: 'select',
-                options: supplyLocationOptions,
+                options: (data) =>
+                    data.port_id
+                        ? supplyLocationOptions.filter(
+                              (option) =>
+                                  Number(option.port_id) ===
+                                  Number(data.port_id),
+                          )
+                        : [],
+                disabledWhen: (data) => !data.port_id,
                 section: 'Details',
             },
             {
@@ -325,7 +342,7 @@ export default function EnquiriesEdit({
             status: enquiry?.status ?? 'open',
             agent_id: str(enquiry?.agent_id),
             sampling: enquiry?.sampling ?? 'barge_manifold',
-            supply_location: str(enquiry?.supply_location),
+            supply_location_id: str(enquiry?.supply_location_id),
             quality_claim: str(enquiry?.quality_claim),
             instructions: str(enquiry?.instructions),
             barging_cost: str(enquiry?.barging_cost ?? '0'),
