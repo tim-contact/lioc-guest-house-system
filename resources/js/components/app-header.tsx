@@ -71,7 +71,7 @@ export function AppHeader({ title }: { title?: string }) {
                     isCurrentOrParentUrl(item.href) ? 'page' : undefined
                 }
                 className={cn(
-                    'flex min-h-11 items-center gap-2 rounded-lg px-2 py-2 text-sm text-[#3f4a5f] transition-colors hover:bg-[#4f46e5]/[0.05] hover:text-[#172033] focus-visible:ring-2 focus-visible:ring-[#4f46e5]/45 focus-visible:outline-none',
+                    'group flex min-h-11 items-center gap-2 rounded-lg px-2 py-2 text-sm text-[#3f4a5f] transition-colors hover:bg-[#4f46e5]/[0.05] hover:text-[#172033] focus-visible:ring-2 focus-visible:ring-[#4f46e5]/45 focus-visible:outline-none',
                     isCurrentOrParentUrl(item.href) &&
                         'bg-[#4f46e5]/[0.05] text-[#172033] ring-1 ring-slate-950/[0.06]',
                 )}
@@ -152,7 +152,7 @@ export function AppHeader({ title }: { title?: string }) {
 
     return (
         <header className="sticky top-0 z-[1000] shrink-0 overflow-visible border-b border-slate-950/[0.07] bg-[rgba(250,251,253,0.94)] text-[#172033] shadow-[0_8px_24px_rgba(15,23,42,0.08)] backdrop-blur-[14px]">
-            <div className="mx-auto grid h-16 w-full max-w-[1600px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center overflow-visible px-4 md:h-[4.25rem] md:px-10">
+            <div className="mx-auto grid h-16 w-full max-w-[1600px] grid-cols-[3rem_minmax(0,1fr)_3rem] items-center gap-2 overflow-visible px-3 sm:grid-cols-[3.5rem_minmax(0,1fr)_3.5rem] sm:px-4 md:h-[4.25rem] md:grid-cols-[4rem_minmax(0,1fr)_4rem] md:px-6 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-0 lg:px-10">
                 <div className="flex min-w-0 items-center gap-4">
                     <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
                         <SheetTrigger asChild>
@@ -168,21 +168,21 @@ export function AppHeader({ title }: { title?: string }) {
                         </SheetTrigger>
                         <SheetContent
                             side="left"
-                            className="z-[1100] w-80 border-slate-950/[0.06] bg-white/[0.98] text-[#172033] shadow-[0_22px_50px_rgba(15,23,42,0.18)] backdrop-blur-sm"
+                            className="z-[1100] max-h-dvh w-80 overflow-hidden border-slate-950/[0.06] bg-white/[0.98] text-[#172033] shadow-[0_22px_50px_rgba(15,23,42,0.18)] backdrop-blur-sm"
                         >
-                            <SheetHeader>
+                            <SheetHeader className="shrink-0">
                                 <SheetTitle className="text-[#172033]">
                                     Navigation
                                 </SheetTitle>
                             </SheetHeader>
                             <nav
                                 aria-label="Mobile main navigation"
-                                className="flex flex-col gap-5 px-4 pb-6"
+                                className="min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto overscroll-contain px-4 pb-6 [-webkit-overflow-scrolling:touch]"
                             >
                                 {filteredGroups.map((group) => (
                                     <div
                                         key={group.title}
-                                        className="flex flex-col gap-1"
+                                        className="mb-5 flex flex-col gap-1 last:mb-0"
                                     >
                                         {'items' in group ? (
                                             <>
@@ -297,12 +297,12 @@ export function AppHeader({ title }: { title?: string }) {
                 <Link
                     href="/"
                     aria-label="Bunkering Operations System home"
-                    className="flex h-12 min-w-[7.5rem] items-center justify-center overflow-hidden rounded-lg focus-visible:ring-2 focus-visible:ring-[#4f46e5]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none md:h-[3.25rem] md:min-w-[8.75rem]"
+                    className="flex h-11 min-w-0 items-center justify-center overflow-hidden rounded-lg focus-visible:ring-2 focus-visible:ring-[#4f46e5]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none md:h-[3.25rem] lg:min-w-[8.75rem]"
                 >
                     <img
                         src="/images/boss_logo.png"
                         alt="Bunkering Operations System"
-                        className="h-auto w-[7rem] object-contain md:w-[8.5rem]"
+                        className="h-auto w-[6.25rem] max-w-full object-contain sm:w-[7rem] md:w-[8rem] lg:w-[8.5rem]"
                     />
                 </Link>
 
@@ -313,10 +313,14 @@ export function AppHeader({ title }: { title?: string }) {
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-10 max-w-48 rounded-lg border border-[#90e0ef]/70 bg-[#cbeef3] pr-3 pl-1.5 text-[#172033] hover:bg-[#7bd8e9] hover:text-[#172033] focus-visible:ring-[#90e0ef]/55 data-[state=open]:bg-[#7bd8e9] [&_[data-slot=avatar-fallback]]:bg-[#172033] [&_[data-slot=avatar-fallback]]:text-white [&_[data-slot=avatar]]:mr-1"
+                                    className="size-10 max-w-10 rounded-lg border border-[#90e0ef]/70 bg-[#cbeef3] p-0 text-[#172033] hover:bg-[#7bd8e9] hover:text-[#172033] focus-visible:ring-[#90e0ef]/55 data-[state=open]:bg-[#7bd8e9] md:h-10 md:w-auto md:max-w-48 md:pr-3 md:pl-1.5 [&_[data-slot=avatar-fallback]]:bg-[#172033] [&_[data-slot=avatar-fallback]]:text-white md:[&_[data-slot=avatar]]:mr-1"
                                     data-test="user-menu-button"
                                 >
-                                    <UserInfo user={auth.user} size="sm" />
+                                    <UserInfo
+                                        user={auth.user}
+                                        size="sm"
+                                        textClassName="hidden md:grid"
+                                    />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
