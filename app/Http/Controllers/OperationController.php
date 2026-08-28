@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\SupplyLocation;
 use App\Models\Barge;
 use App\Models\Order;
+use App\Models\Port;
 use App\Services\OrderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,6 +30,7 @@ class OperationController extends Controller
         return Inertia::render('operations/dashboard', [
             'pendingOrders' => $pendingOrders,
             'completedOrders' => $completedOrders,
+            'ports' => Port::query()->orderBy('name')->pluck('name')->all(),
             'barges' => Barge::orderBy('name')->get(['imo', 'name']),
             ...$this->agentContactProps(),
             'supplyLocationOptions' => $this->enumOptions(SupplyLocation::cases()),

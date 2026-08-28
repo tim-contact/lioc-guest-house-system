@@ -47,8 +47,8 @@ export function ResourceCrudPage<T>({
         <>
             <Head title={config.title} />
 
-            <div className="flex flex-col gap-6 p-4">
-                <div className="flex items-center justify-end gap-2">
+            <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-5 px-4 py-5 md:px-8 md:py-6">
+                <div className="flex items-center justify-end gap-2 py-1">
                     <ExportButton
                         rows={sorted}
                         columns={config.exportColumns}

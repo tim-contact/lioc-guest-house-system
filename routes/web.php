@@ -15,6 +15,7 @@ use App\Http\Controllers\OperationController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PortController;
+use App\Http\Controllers\ReportAnalyticsController;
 use App\Http\Controllers\SurveyingController;
 use App\Http\Controllers\SurveyorController;
 use App\Http\Controllers\UserManagementController;
@@ -29,6 +30,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     // --- Admin section: super_admin and master only ---
     Route::middleware('role:super_admin,master')->group(function () {
         Route::inertia('admin', 'admin')->name('admin');
+        Route::get('reports/analytics', [ReportAnalyticsController::class, 'index'])->name('reports.analytics');
 
         // User management.
         Route::get('users', [UserManagementController::class, 'index'])->name('users.index');

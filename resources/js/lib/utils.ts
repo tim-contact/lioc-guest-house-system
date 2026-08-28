@@ -5,7 +5,6 @@ import type { DateRange } from 'react-day-picker';
 import { extendTailwindMerge } from 'tailwind-merge';
 import type { EnumOption } from '@/types';
 
-
 const twMerge = extendTailwindMerge({
     extend: {
         theme: {
@@ -33,52 +32,100 @@ export function cn(...inputs: ClassValue[]) {
 
 const PORT_COLOR_CLASSES = [
     {
-        card: 'bg-sky-50',
-        accent: 'from-sky-500 to-blue-600',
-        icon: 'bg-sky-100 text-sky-700',
+        card: 'bg-sky-600',
+        accent: 'from-white/80 to-white/20',
+        color: '#0284c7',
+        icon: 'bg-white/20 text-white',
     },
     {
-        card: 'bg-emerald-50',
-        accent: 'from-emerald-500 to-teal-600',
-        icon: 'bg-emerald-100 text-emerald-700',
+        card: 'bg-emerald-600',
+        accent: 'from-white/80 to-white/20',
+        color: '#059669',
+        icon: 'bg-white/20 text-white',
     },
     {
-        card: 'bg-amber-50',
-        accent: 'from-amber-500 to-orange-600',
-        icon: 'bg-amber-100 text-amber-800',
+        card: 'bg-amber-500',
+        accent: 'from-white/80 to-white/20',
+        color: '#f59e0b',
+        icon: 'bg-white/25 text-white',
     },
     {
-        card: 'bg-rose-50',
-        accent: 'from-rose-500 to-red-600',
-        icon: 'bg-rose-100 text-rose-700',
+        card: 'bg-rose-600',
+        accent: 'from-white/80 to-white/20',
+        color: '#e11d48',
+        icon: 'bg-white/20 text-white',
     },
     {
-        card: 'bg-violet-50',
-        accent: 'from-violet-500 to-indigo-600',
-        icon: 'bg-violet-100 text-violet-700',
+        card: 'bg-violet-600',
+        accent: 'from-white/80 to-white/20',
+        color: '#7c3aed',
+        icon: 'bg-white/20 text-white',
     },
     {
-        card: 'bg-cyan-50',
-        accent: 'from-cyan-500 to-sky-600',
-        icon: 'bg-cyan-100 text-cyan-700',
+        card: 'bg-cyan-600',
+        accent: 'from-white/80 to-white/20',
+        color: '#0891b2',
+        icon: 'bg-white/20 text-white',
     },
     {
-        card: 'bg-lime-50',
-        accent: 'from-lime-500 to-green-600',
-        icon: 'bg-lime-100 text-lime-800',
+        card: 'bg-lime-600',
+        accent: 'from-white/80 to-white/20',
+        color: '#65a30d',
+        icon: 'bg-white/20 text-white',
     },
     {
-        card: 'bg-fuchsia-50',
-        accent: 'from-fuchsia-500 to-pink-600',
-        icon: 'bg-fuchsia-100 text-fuchsia-700',
+        card: 'bg-fuchsia-600',
+        accent: 'from-white/80 to-white/20',
+        color: '#c026d3',
+        icon: 'bg-white/20 text-white',
     },
 ] as const;
 
 const NEUTRAL_PORT_COLOR_CLASSES = {
-    card: 'bg-white',
-    accent: 'from-slate-400 to-slate-700',
-    icon: 'bg-slate-100 text-slate-700',
+    card: 'bg-slate-700',
+    accent: 'from-white/80 to-white/20',
+    color: '#334155',
+    icon: 'bg-white/20 text-white',
 } as const;
+
+export const PORT_COLORS = {
+    Colombo: PORT_COLOR_CLASSES[0].color,
+    Galle: PORT_COLOR_CLASSES[1].color,
+    Hambanthota: PORT_COLOR_CLASSES[2].color,
+    Hambantota: PORT_COLOR_CLASSES[2].color,
+    Trincomalee: PORT_COLOR_CLASSES[3].color,
+    Kankesanthurai: PORT_COLOR_CLASSES[4].color,
+} as const;
+
+export const PORT_ICON_PATHS = {
+    Colombo: '/images/icons/location_blue.png',
+    Galle: '/images/icons/location_green.png',
+    Hambanthota: '/images/icons/location_orange.png',
+    Hambantota: '/images/icons/location_orange.png',
+    Trincomalee: '/images/icons/location_red.png',
+    Kankesanthurai: '/images/icons/location_violet.png',
+} as const;
+
+const PORT_CLASS_ALIASES = {
+    Colombo: PORT_COLOR_CLASSES[0],
+    Galle: PORT_COLOR_CLASSES[1],
+    Hambanthota: PORT_COLOR_CLASSES[2],
+    Hambantota: PORT_COLOR_CLASSES[2],
+    Trincomalee: PORT_COLOR_CLASSES[3],
+    Kankesanthurai: PORT_COLOR_CLASSES[4],
+} as const;
+
+function matchedPortEntry<T>(
+    portLabel: string | null | undefined,
+    entries: Record<string, T>,
+): T | null {
+    const normalizedPort = String(portLabel ?? '').toUpperCase();
+    const matchedPort = Object.entries(entries).find(([port]) =>
+        normalizedPort.includes(port.toUpperCase()),
+    );
+
+    return matchedPort?.[1] ?? null;
+}
 
 function stableColorIndex(value: string): number {
     let hash = 0;
@@ -95,7 +142,99 @@ export function portColorClasses(portKey: string | number | null | undefined) {
         return NEUTRAL_PORT_COLOR_CLASSES;
     }
 
+    const matchedPortClasses = matchedPortEntry(portKey, PORT_CLASS_ALIASES);
+
+    if (matchedPortClasses) {
+        return matchedPortClasses;
+    }
+
     return PORT_COLOR_CLASSES[stableColorIndex(String(portKey))];
+}
+
+const FALLBACK_PORT_COLORS = Object.values(PORT_COLORS);
+const FALLBACK_PORT_ICON_PATHS = Object.values(PORT_ICON_PATHS);
+
+export function portColor(
+    portLabel: string | null | undefined,
+    fallbackIndex = 0,
+): string {
+    const matchedPortColor = matchedPortEntry(portLabel, PORT_COLORS);
+
+    return (
+        matchedPortColor ??
+        FALLBACK_PORT_COLORS[fallbackIndex % FALLBACK_PORT_COLORS.length]
+    );
+}
+
+export function portIconPath(
+    portLabel: string | null | undefined,
+    fallbackIndex = 0,
+): string {
+    const matchedPortIcon = matchedPortEntry(portLabel, PORT_ICON_PATHS);
+
+    return (
+        matchedPortIcon ??
+        FALLBACK_PORT_ICON_PATHS[
+            fallbackIndex % FALLBACK_PORT_ICON_PATHS.length
+        ]
+    );
+}
+
+export const PRODUCT_COLORS = {
+    VLSFO: '#2a9d8f',
+    MGO: '#e76f51',
+    HSFO: '#5f0f40',
+} as const;
+
+const FALLBACK_PRODUCT_COLORS = Object.values(PRODUCT_COLORS);
+
+export function productColor(
+    productLabel: string | null | undefined,
+    fallbackIndex = 0,
+): string {
+    const normalizedProduct = String(productLabel ?? '').toUpperCase();
+    const matchedProduct = Object.entries(PRODUCT_COLORS).find(([product]) =>
+        normalizedProduct.includes(product),
+    );
+
+    return (
+        matchedProduct?.[1] ??
+        FALLBACK_PRODUCT_COLORS[fallbackIndex % FALLBACK_PRODUCT_COLORS.length]
+    );
+}
+
+export const ANALYTICS_STAGE_COLORS = {
+    enquiries: '#16697a',
+    orders: '#489fb5',
+    completed: '#82c0cc',
+} as const;
+
+const ANALYTICS_STAGE_ALIASES = {
+    enquiry: ANALYTICS_STAGE_COLORS.enquiries,
+    enquiries: ANALYTICS_STAGE_COLORS.enquiries,
+    order: ANALYTICS_STAGE_COLORS.orders,
+    orders: ANALYTICS_STAGE_COLORS.orders,
+    complete: ANALYTICS_STAGE_COLORS.completed,
+    completed: ANALYTICS_STAGE_COLORS.completed,
+} as const;
+
+const FALLBACK_ANALYTICS_STAGE_COLORS = Object.values(ANALYTICS_STAGE_COLORS);
+
+export function analyticsStageColor(
+    stageLabel: string | null | undefined,
+    fallbackIndex = 0,
+): string {
+    const normalizedStage = String(stageLabel ?? '').toLowerCase();
+    const matchedStage = Object.entries(ANALYTICS_STAGE_ALIASES).find(
+        ([stage]) => normalizedStage.includes(stage),
+    );
+
+    return (
+        matchedStage?.[1] ??
+        FALLBACK_ANALYTICS_STAGE_COLORS[
+            fallbackIndex % FALLBACK_ANALYTICS_STAGE_COLORS.length
+        ]
+    );
 }
 
 /**
@@ -239,4 +378,3 @@ export function toDateRange(from: string, to: string): DateRange | undefined {
 
     return { from: dateOnlyToDate(from), to: dateOnlyToDate(to) };
 }
-

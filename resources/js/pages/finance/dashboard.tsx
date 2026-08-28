@@ -1,4 +1,5 @@
 import { Head, router } from '@inertiajs/react';
+import { CheckCircle2, CreditCard, XCircle } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { ExportButton } from '@/components/export-button';
@@ -193,101 +194,138 @@ export default function FinanceDashboard({
         <>
             <Head title="Finance" />
 
-            <div className="flex flex-col gap-6 p-4">
-                <FinanceSummaryCards completedOrders={completedOrders} />
+            <main className="min-h-[calc(100svh-4.25rem)] overflow-x-clip bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.045),transparent_32%),#F4F7FA] px-3 py-4 sm:px-4 md:px-6">
+                <div className="flex w-full flex-col gap-4">
+                    <FinanceSummaryCards completedOrders={completedOrders} />
 
-                <section className="flex flex-col gap-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-semibold tracking-tight">
-                            Completed Orders
-                        </h2>
-                        <ExportButton
-                            rows={sorted}
-                            columns={EXPORT_COLUMNS}
-                            filename="finance"
-                        />
-                    </div>
-                    <TableFrame>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    {COLUMNS.map((column) => (
-                                        <SortableHead
-                                            key={column.header}
-                                            label={column.header}
-                                            sortKey={column.sortKey}
-                                            currentKey={sortKey}
-                                            currentDir={sortDir}
-                                            onSort={handleSort}
-                                            className={cn(
-                                                column.align === 'right' &&
-                                                    'text-right',
-                                            )}
-                                        />
-                                    ))}
-                                    <TableHead className="text-right">
-                                        Action
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {sorted.map((row) => (
-                                    <TableRow key={row.id}>
-                                        {COLUMNS.map((column) => (
-                                            <TableCell
-                                                key={column.header}
-                                                className={cn(
-                                                    column.align === 'right' &&
-                                                        'text-right tabular-nums',
-                                                )}
+                    <section className="overflow-hidden rounded-[17px] border border-[#E3EAF2] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
+                        <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex min-w-0 items-center gap-3">
+                                <h2 className="text-xl font-bold tracking-normal text-[#0F172A]">
+                                    Completed Orders
+                                </h2>
+                                <span className="rounded-full bg-[#EEF2FF] px-2.5 py-1 text-xs font-bold text-[#3155E7] tabular-nums">
+                                    {sorted.length}
+                                </span>
+                            </div>
+                            <ExportButton
+                                rows={sorted}
+                                columns={EXPORT_COLUMNS}
+                                filename="finance"
+                            />
+                        </div>
+                        <div className="px-4 pb-4">
+                            <TableFrame className="rounded-[14px] border-[#E3EAF2]">
+                                <Table>
+                                    <TableHeader className="bg-[#EDF3FA]">
+                                        <TableRow className="border-[#E7EDF4] hover:bg-[#EDF3FA]">
+                                            {COLUMNS.map((column) => (
+                                                <SortableHead
+                                                    key={column.header}
+                                                    label={column.header}
+                                                    sortKey={column.sortKey}
+                                                    currentKey={sortKey}
+                                                    currentDir={sortDir}
+                                                    onSort={handleSort}
+                                                    className={cn(
+                                                        'h-11 px-3 font-bold text-[#172033]',
+                                                        column.align ===
+                                                            'right' &&
+                                                            'text-right',
+                                                    )}
+                                                />
+                                            ))}
+                                            <TableHead className="h-11 px-3 text-right font-bold text-[#172033]">
+                                                Action
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {sorted.map((row) => (
+                                            <TableRow
+                                                key={row.id}
+                                                className="min-h-[50px] border-[#E7EDF4] bg-white hover:bg-[#F8FAFD]"
                                             >
-                                                {column.cell(row)}
-                                            </TableCell>
+                                                {COLUMNS.map((column) => (
+                                                    <TableCell
+                                                        key={column.header}
+                                                        className={cn(
+                                                            'px-3 py-3 text-[#334155]',
+                                                            column.align ===
+                                                                'right' &&
+                                                                'text-right tabular-nums',
+                                                        )}
+                                                    >
+                                                        {column.cell(row)}
+                                                    </TableCell>
+                                                ))}
+                                                <TableCell className="px-3 py-3 text-right">
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            className="h-8 rounded-lg border border-[#4F75F5] bg-white px-3 text-sm font-semibold text-[#2455E6] shadow-none transition-[background-color,color,box-shadow] duration-200 hover:bg-[#2455E6] hover:text-white hover:shadow-[0_6px_14px_rgba(36,85,230,0.20)] focus-visible:ring-[#3155E7]/40"
+                                                            onClick={() =>
+                                                                setPayingRow(
+                                                                    row,
+                                                                )
+                                                            }
+                                                        >
+                                                            <CreditCard
+                                                                className="size-3.5"
+                                                                aria-hidden="true"
+                                                            />
+                                                            Add Payment
+                                                        </Button>
+                                                        <Button
+                                                            variant="default"
+                                                            size="sm"
+                                                            disabled={
+                                                                !row.can_close ||
+                                                                closingId ===
+                                                                    row.id
+                                                            }
+                                                            className="h-8 rounded-lg border border-[#2DD4BF] bg-white px-3 text-sm font-semibold text-[#0F766E] shadow-none transition-[background-color,color,box-shadow] duration-200 hover:bg-[#0F766E] hover:text-white hover:shadow-[0_6px_14px_rgba(15,118,110,0.20)] focus-visible:ring-[#2DD4BF]/40 disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400"
+                                                            onClick={() =>
+                                                                closeOrder(
+                                                                    row.id,
+                                                                )
+                                                            }
+                                                        >
+                                                            {row.can_close ? (
+                                                                <CheckCircle2
+                                                                    className="size-3.5"
+                                                                    aria-hidden="true"
+                                                                />
+                                                            ) : (
+                                                                <XCircle
+                                                                    className="size-3.5"
+                                                                    aria-hidden="true"
+                                                                />
+                                                            )}
+                                                            Close
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
                                         ))}
-                                        <TableCell className="text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Button
-                                                    size="sm"
-                                                    className="bg-green-600 text-white hover:bg-green-600/90"
-                                                    onClick={() =>
-                                                        setPayingRow(row)
-                                                    }
-                                                >
-                                                    Add Payment
-                                                </Button>
-                                                <Button
-                                                    variant="default"
-                                                    size="sm"
-                                                    disabled={
-                                                        !row.can_close ||
-                                                        closingId === row.id
-                                                    }
-                                                    onClick={() =>
-                                                        closeOrder(row.id)
-                                                    }
-                                                >
-                                                    Close
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
 
-                                {sorted.length === 0 && (
-                                    <TableRow>
-                                        <TableCell
-                                            colSpan={COLUMNS.length + 1}
-                                            className="text-center text-muted-foreground"
-                                        >
-                                            No orders.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </TableFrame>
-                </section>
-            </div>
+                                        {sorted.length === 0 && (
+                                            <TableRow>
+                                                <TableCell
+                                                    colSpan={COLUMNS.length + 1}
+                                                    className="px-3 py-8 text-center text-muted-foreground"
+                                                >
+                                                    No orders.
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </TableFrame>
+                        </div>
+                    </section>
+                </div>
+            </main>
 
             {payingRow && (
                 <AddPaymentDialog

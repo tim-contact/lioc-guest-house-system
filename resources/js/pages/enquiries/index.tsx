@@ -73,13 +73,13 @@ export default function EnquiriesIndex({
         <>
             <Head title="Enquiries" />
 
-            <div className="relative isolate flex min-h-0 flex-1 flex-col gap-5 overflow-hidden bg-[#f6f9fc] p-4 md:p-6">
+            <div className="relative isolate flex min-h-0 flex-1 flex-col gap-5 overflow-hidden bg-background p-4 md:p-6">
                 <div
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-0 z-0 opacity-70"
                 >
                     <Dot
-                        color="rgba(71, 85, 105, 0.24)"
+                        color="rgba(172, 106, 68, 0.18)"
                         size={1}
                         spacing={14}
                         className="h-full w-full"
@@ -151,7 +151,7 @@ export default function EnquiriesIndex({
                             ref={scrollbarRef}
                             aria-label="Scroll enquiries horizontally"
                             onScroll={syncCards}
-                            className="sticky bottom-0 z-30 [scrollbar-gutter:stable] overflow-x-scroll overflow-y-hidden rounded-md bg-[#f6f9fc]/90 py-2 backdrop-blur [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-thumb]:rounded-md [&::-webkit-scrollbar-thumb]:bg-slate-400/80 [&::-webkit-scrollbar-thumb:hover]:bg-slate-500 [&::-webkit-scrollbar-track]:rounded-md [&::-webkit-scrollbar-track]:bg-slate-200"
+                            className="sticky bottom-0 z-30 [scrollbar-gutter:stable] overflow-x-scroll overflow-y-hidden rounded-md bg-background/90 py-2 backdrop-blur [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-thumb]:rounded-md [&::-webkit-scrollbar-thumb]:bg-slate-400/80 [&::-webkit-scrollbar-thumb:hover]:bg-slate-500 [&::-webkit-scrollbar-track]:rounded-md [&::-webkit-scrollbar-track]:bg-brand-surface"
                         >
                             <div
                                 aria-hidden="true"
