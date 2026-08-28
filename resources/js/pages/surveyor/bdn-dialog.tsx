@@ -32,7 +32,8 @@ import { useAutosave } from '@/hooks/use-autosave';
 import type { AutosaveStatus } from '@/hooks/use-autosave';
 import { QUALITY_FIELDS, SEALS, TIMESHEET_FIELDS } from '@/lib/bdn-fields';
 import { cn, dateOnlyToDate, dateToDateOnly } from '@/lib/utils';
-import type { AgentOption, EnumOption } from '@/types';
+import { complete } from '@/routes/surveyor';
+import type { AgentOption, EnumOption, SupplyLocationOption } from '@/types';
 import type { BargeOption, PendingRow } from './dashboard';
 
 const DECLARATIONS = [
@@ -86,8 +87,9 @@ function buildFormData(order: PendingRow): BdnFormData {
         delivery_date:
             text(bdn?.delivery_date).slice(0, 10) ||
             (order.eta ?? '').slice(0, 10),
-        delivery_location:
-            text(bdn?.delivery_location) || (order.delivery_location ?? ''),
+        delivery_location_id:
+            text(bdn?.delivery_location_id) ||
+            (order.delivery_location_id ? String(order.delivery_location_id) : ''),
         vessel_flag: text(bdn?.vessel_flag),
         grt: text(bdn?.grt),
         pi_club: text(bdn?.pi_club),
@@ -189,7 +191,7 @@ export function BdnDialog({
     order: PendingRow;
     barges: BargeOption[];
     agents: AgentOption[];
-    supplyLocationOptions: EnumOption[];
+    supplyLocationOptions: SupplyLocationOption[];
     deliveryMethodOptions: EnumOption[];
     samplingLocationOptions: EnumOption[];
     samplingMethodOptions: EnumOption[];
@@ -283,9 +285,13 @@ export function BdnDialog({
                         </div>
                         <LabeledSelect
                             label="Delivery Location"
-                            value={form.data.delivery_location}
-                            onChange={set('delivery_location')}
-                            options={supplyLocationOptions}
+                            value={form.data.delivery_location_id}
+                            onChange={set('delivery_location_id')}
+                            options={supplyLocationOptions.filter(
+                                (option) =>
+                                    order.port_id === null ||
+                                    option.port_id === order.port_id,
+                            )}
                             placeholder="Select location"
                         />
                         <LabeledField

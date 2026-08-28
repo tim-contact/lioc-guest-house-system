@@ -8,7 +8,6 @@ use App\Enums\FuelGrade;
 use App\Enums\ProductType;
 use App\Enums\QualityClaim;
 use App\Enums\Sampling;
-use App\Enums\SupplyLocation;
 use Database\Factories\EnquiryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -29,7 +28,7 @@ use Illuminate\Support\Carbon;
  * @property EnquiryStatus $status
  * @property int|null $agent_id
  * @property Sampling $sampling
- * @property SupplyLocation|null $supply_location
+ * @property int|null $supply_location_id
  * @property QualityClaim|null $quality_claim
  * @property string|null $instructions
  * @property float $barging_cost
@@ -52,7 +51,7 @@ use Illuminate\Support\Carbon;
  * @property float|null $hsfo_lost_price
  */
 #[Fillable([
-    'vessel_name', 'imo', 'port_id', 'laycan_from', 'laycan_to', 'eta', 'status', 'agent_id', 'sampling', 'supply_location', 'quality_claim', 'instructions', 'barging_cost',
+    'vessel_name', 'imo', 'port_id', 'laycan_from', 'laycan_to', 'eta', 'status', 'agent_id', 'sampling', 'supply_location_id', 'quality_claim', 'instructions', 'barging_cost',
     'lost_to', 'lost_port',
     'vlsfo_quantity_low', 'vlsfo_quantity_high', 'vlsfo_product_type', 'vlsfo_delivery_mode', 'vlsfo_lost_price',
     'mgo_quantity_low', 'mgo_quantity_high', 'mgo_product_type', 'mgo_delivery_mode', 'mgo_lost_price',
@@ -87,7 +86,6 @@ class Enquiry extends Model
             'laycan_from' => 'date',
             'laycan_to' => 'date',
             'sampling' => Sampling::class,
-            'supply_location' => SupplyLocation::class,
             'quality_claim' => QualityClaim::class,
             'barging_cost' => 'decimal:2',
         ];
@@ -125,5 +123,11 @@ class Enquiry extends Model
     public function port(): BelongsTo
     {
         return $this->belongsTo(Port::class);
+    }
+
+    /** @return BelongsTo<SupplyLocation, $this> */
+    public function supplyLocation(): BelongsTo
+    {
+        return $this->belongsTo(SupplyLocation::class);
     }
 }

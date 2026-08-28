@@ -3,13 +3,13 @@
 use App\Enums\OrderStatus;
 use App\Enums\PaymentType;
 use App\Enums\UserType;
-use App\Enums\SupplyLocation;
 use App\Models\Agent;
 use App\Models\Barge;
 use App\Models\Customer;
 use App\Models\Enquiry;
 use App\Models\Order;
 use App\Models\Port;
+use App\Models\SupplyLocation;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
@@ -18,11 +18,15 @@ function createFinanceOrder(array $attributes = []): Order
     static $sequence = 0;
     $sequence++;
 
+    $port = Port::factory()->create(['name' => 'Colombo']);
+    $location = SupplyLocation::factory(['port_id' => $port->id])->create(['name' => 'BERTH']);
+
     return Order::create([
         'enquiry_id' => Enquiry::factory()->create()->id,
         'order_number' => 'ORD-FIN-'.$sequence,
         'customer_id' => Customer::factory()->create()->sap_id,
-        'port_id' => Port::factory()->create(['name' => 'Colombo'])->id,
+        'port_id' => $port->id,
+        'delivery_location_id' => $location->id,
         'eta' => now(),
         'agent_id' => Agent::factory()->create()->id,
         'barge_id' => Barge::factory()->create()->imo,
@@ -76,7 +80,6 @@ test('paid_in_full is true only when amount received covers the invoice', functi
         'customer_id' => $customer->sap_id,
         'order_number' => 'ORD-FIN-PAID',
         'vessel_name' => 'MV Paid',
-        'delivery_location' => SupplyLocation::Berth->value,
         'invoice_value' => 1000,
         'amount_received' => 1000,
         'payment_due_date' => now()->addDays(1),
@@ -95,7 +98,7 @@ test('paid_in_full is true only when amount received covers the invoice', functi
             ->has('completedOrders', 2)
             ->where('completedOrders.0.order_number', 'ORD-FIN-PAID')
             ->where('completedOrders.0.customer_name', 'Blue Ocean Ltd')
-            ->where('completedOrders.0.location', 'Berth')
+            ->where('completedOrders.0.location', 'BERTH')
             ->where('completedOrders.0.invoice_value', '1000.00')
             ->where('completedOrders.0.status', 'Delivered')
             ->where('completedOrders.0.paid_in_full', true)

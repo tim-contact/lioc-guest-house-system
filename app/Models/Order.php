@@ -7,7 +7,6 @@ use App\Enums\DeliveryMode;
 use App\Enums\FuelGrade;
 use App\Enums\OrderStatus;
 use App\Enums\ProductType;
-use App\Enums\SupplyLocation;
 use Database\Factories\OrderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -31,7 +30,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $laycan_from
  * @property Carbon|null $laycan_to
  * @property DeliveryMode|null $delivery_mode
- * @property SupplyLocation|null $delivery_location
+ * @property int|null $delivery_location_id
  * @property ProductType|null $product_type
  * @property string|null $barge_id
  * @property int|null $agent_id
@@ -68,7 +67,7 @@ use Illuminate\Support\Carbon;
  */
 #[Fillable([
     'enquiry_id', 'order_number', 'order_date', 'customer_id', 'vessel_id', 'vessel_name',
-    'port_id', 'eta', 'laycan_from', 'laycan_to', 'delivery_mode', 'delivery_location',
+    'port_id', 'eta', 'laycan_from', 'laycan_to', 'delivery_mode', 'delivery_location_id',
     'product_type', 'barge_id', 'agent_id', 'agent_name', 'agent_pic_id', 'pic', 'mobile_no',
     'vlsfo_quantity_low', 'vlsfo_quantity_high', 'vlsfo_qty_range', 'vlsfo_rate', 'vlsfo_final_qty', 'vlsfo_bdn_qty',
     'mgo_quantity_low', 'mgo_quantity_high', 'mgo_qty_range', 'mgo_rate', 'mgo_final_qty', 'mgo_bdn_qty',
@@ -109,7 +108,6 @@ class Order extends Model
             'credit_terms' => CreditTerms::class,
             'product_type' => ProductType::class,
             'delivery_mode' => DeliveryMode::class,
-            'delivery_location' => SupplyLocation::class,
             'eta' => 'datetime:Y-m-d\TH:i:s',
             'order_date' => 'date',
             'laycan_from' => 'date',
@@ -178,6 +176,12 @@ class Order extends Model
     public function port(): BelongsTo
     {
         return $this->belongsTo(Port::class);
+    }
+
+    /** @return BelongsTo<SupplyLocation, $this> */
+    public function deliveryLocation(): BelongsTo
+    {
+        return $this->belongsTo(SupplyLocation::class, 'delivery_location_id');
     }
 
     /** @return BelongsTo<Agent, $this> */

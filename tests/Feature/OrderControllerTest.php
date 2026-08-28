@@ -3,6 +3,7 @@
 use App\Enums\CreditTerms;
 use App\Enums\DeliveryMode;
 use App\Enums\OrderStatus;
+use App\Enums\UserType;
 use App\Models\Agent;
 use App\Models\AgentPic;
 use App\Models\Barge;
@@ -10,7 +11,7 @@ use App\Models\Customer;
 use App\Models\Enquiry;
 use App\Models\Order;
 use App\Models\Port;
-use App\Enums\UserType;
+use App\Models\SupplyLocation;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
@@ -373,6 +374,7 @@ test('table update saves every section of the order, unlike the narrower dashboa
     $order = createOrder(['status' => OrderStatus::Pending]);
     $customer = Customer::factory()->create();
     $port = Port::factory()->create();
+    $location = SupplyLocation::firstOrCreate(['port_id' => $port->id, 'name' => 'BERTH']);
     $agent = Agent::factory()->create();
     $agentPic = AgentPic::factory()->create(['agent_id' => $agent->id, 'name' => 'Jane PIC']);
     $barge = Barge::factory()->create();
@@ -395,7 +397,7 @@ test('table update saves every section of the order, unlike the narrower dashboa
         'credit_terms' => CreditTerms::Days30->value,
         'status' => OrderStatus::Delivered->value,
         'delivery_mode' => DeliveryMode::Pipeline->value,
-        'delivery_location' => 'berth',
+        'delivery_location_id' => $location->id,
         'product_type' => 'bonded',
         'vlsfo_quantity_low' => 100,
         'vlsfo_quantity_high' => 200,
@@ -428,6 +430,7 @@ test('table update saves every section of the order, unlike the narrower dashboa
     expect($fresh->status)->toBe(OrderStatus::Delivered);
     expect($fresh->credit_terms)->toBe(CreditTerms::Days30);
     expect($fresh->delivery_mode)->toBe(DeliveryMode::Pipeline);
+    expect($fresh->delivery_location_id)->toBe($location->id);
     expect($fresh->vessel_name)->toBe('MV Renamed');
     expect($fresh->vlsfo_qty_range)->toBe('100 - 200');
     expect((float) $fresh->amount_received)->toBe(45000.0);

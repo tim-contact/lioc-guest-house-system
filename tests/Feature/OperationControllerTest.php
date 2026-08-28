@@ -1,12 +1,13 @@
 <?php
 
 use App\Enums\OrderStatus;
-use App\Enums\SupplyLocation;
 use App\Enums\UserType;
 use App\Models\Agent;
 use App\Models\AgentPic;
 use App\Models\Barge;
 use App\Models\Order;
+use App\Models\Port;
+use App\Models\SupplyLocation;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
@@ -72,10 +73,11 @@ test('update persists operations fields and leaves vessel and order identifiers 
     $barge = Barge::factory()->create();
     $agent = Agent::factory()->create(['name' => 'Direct Entry Agent']);
     $pic = AgentPic::factory()->create(['agent_id' => $agent->id, 'name' => 'Jane Roe']);
+    $location = SupplyLocation::firstOrCreate(['port_id' => $order->port_id, 'name' => 'ANCHORAGE']);
 
     $this->patch(route('operations.update', $order), [
         'eta' => '2026-08-01T14:30',
-        'delivery_location' => SupplyLocation::Anchorage->value,
+        'delivery_location_id' => $location->id,
         'barge_id' => $barge->imo,
         'vlsfo_final_qty' => 812.5,
         'mgo_final_qty' => 140.25,
@@ -87,7 +89,7 @@ test('update persists operations fields and leaves vessel and order identifiers 
 
     $order->refresh();
 
-    expect($order->delivery_location)->toBe(SupplyLocation::Anchorage);
+    expect($order->delivery_location_id)->toBe($location->id);
     expect($order->barge_id)->toBe($barge->imo);
     expect($order->agent_id)->toBe($agent->id);
     expect($order->agent_name)->toBe('Direct Entry Agent');

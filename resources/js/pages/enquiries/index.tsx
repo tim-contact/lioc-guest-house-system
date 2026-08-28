@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { useDragScroll } from '@/hooks/use-drag-scroll';
 import { dateToDateOnly, toDateRange } from '@/lib/utils';
 import { store } from '@/routes/enquiries';
-import type { AgentOption, EnumOption } from '@/types';
+import type { AgentOption, EnumOption, SupplyLocationOption } from '@/types';
 import { EnquiryCard } from './enquiry-card';
 import type { CustomerOption, EnquiryRow, PortOption } from './enquiry-card';
 
@@ -24,7 +24,7 @@ interface EnquiriesIndexProps {
     customers: CustomerOption[];
     ports: PortOption[];
     agents: AgentOption[];
-    supplyLocationOptions: EnumOption[];
+    supplyLocationOptions: SupplyLocationOption[];
     productTypeOptions: EnumOption[];
     deliveryModeOptions: EnumOption[];
     creditTermsOptions: EnumOption[];

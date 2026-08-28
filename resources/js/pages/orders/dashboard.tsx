@@ -6,7 +6,12 @@ import OrderDashboard from '@/components/order-dashboard';
 import type { OrderRow, RowAction } from '@/components/order-dashboard';
 import { PortSummaryCards } from '@/components/port-summary-cards';
 import { cancel as cancelOrder } from '@/routes/orders';
-import type { AgentOption, AgentPicOption, EnumOption } from '@/types';
+import type {
+    AgentOption,
+    AgentPicOption,
+    EnumOption,
+    SupplyLocationOption,
+} from '@/types';
 import { DisputeCreateDialog } from './dispute-create-dialog';
 import { DisputePickerDialog } from './dispute-picker-dialog';
 import { OrderEditDialog } from './order-edit-dialog';
@@ -17,6 +22,7 @@ export interface OrderEditRow extends OrderRow {
     customer_id: string | null;
     vessel_id: string | null;
     port_id: number | null;
+    delivery_location_id: number | null;
     agent_id: number | null;
     agent_pic_id: number | null;
     mobile_no: string | null;
@@ -43,6 +49,7 @@ interface OrdersDashboardProps {
     agents: AgentOption[];
     agentPics: AgentPicOption[];
     deliveryModeOptions: EnumOption[];
+    supplyLocationOptions: SupplyLocationOption[];
     disputeTypeOptions: EnumOption[];
     proposedActionPlanOptions: EnumOption[];
     actionStatusOptions: EnumOption[];
@@ -56,6 +63,7 @@ export default function OrdersDashboard({
     agents,
     agentPics,
     deliveryModeOptions,
+    supplyLocationOptions,
     disputeTypeOptions,
     proposedActionPlanOptions,
     actionStatusOptions,
@@ -123,6 +131,7 @@ export default function OrdersDashboard({
                     agents={agents}
                     agentPics={agentPics}
                     deliveryModeOptions={deliveryModeOptions}
+                    supplyLocationOptions={supplyLocationOptions}
                 />
             )}
 

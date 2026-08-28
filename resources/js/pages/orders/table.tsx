@@ -12,7 +12,12 @@ import {
     toDateInput,
     toDateTimeInput,
 } from '@/lib/utils';
-import type { AgentOption, AgentPicOption, EnumOption } from '@/types';
+import type {
+    AgentOption,
+    AgentPicOption,
+    EnumOption,
+    SupplyLocationOption,
+} from '@/types';
 
 interface Order {
     id: number;
@@ -27,6 +32,7 @@ interface Order {
     laycan_from: string | null;
     laycan_to: string | null;
     delivery_mode: string | null;
+    delivery_location_id: number | null;
     delivery_location: string | null;
     product_type: string | null;
     barge_id: string | null;
@@ -71,7 +77,7 @@ interface OrdersTableProps {
     agentPics: AgentPicOption[];
     statusOptions: EnumOption[];
     deliveryModeOptions: EnumOption[];
-    supplyLocationOptions: EnumOption[];
+    supplyLocationOptions: SupplyLocationOption[];
     productTypeOptions: EnumOption[];
     creditTermsOptions: EnumOption[];
 }
@@ -116,8 +122,7 @@ export default function OrdersTable({
         },
         {
             header: 'Supply Location',
-            value: (o) =>
-                optionLabel(supplyLocationOptions, o.delivery_location),
+            value: (o) => o.delivery_location ?? '',
         },
         {
             header: 'Product Type',
@@ -249,9 +254,8 @@ export default function OrdersTable({
             },
             {
                 header: 'Supply Location',
-                sortKey: 'delivery_location',
-                cell: (o) =>
-                    optionLabel(supplyLocationOptions, o.delivery_location),
+                sortKey: 'delivery_location_id',
+                cell: (o) => o.delivery_location ?? 'â€”',
             },
             {
                 header: 'Product Type',
@@ -432,7 +436,7 @@ export default function OrdersTable({
                 section: 'Delivery',
             },
             {
-                name: 'delivery_location',
+                name: 'delivery_location_id',
                 label: 'Supply Location',
                 type: 'select',
                 options: supplyLocationOptions,
@@ -533,7 +537,7 @@ export default function OrdersTable({
             credit_terms: str(order?.credit_terms),
             status: order?.status ?? 'pending',
             delivery_mode: str(order?.delivery_mode),
-            delivery_location: str(order?.delivery_location),
+            delivery_location_id: str(order?.delivery_location_id),
             product_type: str(order?.product_type),
             ...Object.fromEntries(
                 FUEL_GRADES.flatMap((product) => [

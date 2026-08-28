@@ -10,7 +10,6 @@ use App\Enums\FuelGrade;
 use App\Enums\OrderStatus;
 use App\Enums\ProductType;
 use App\Enums\ProposedActionPlan;
-use App\Enums\SupplyLocation;
 use App\Models\Customer;
 use App\Models\Dispute;
 use App\Models\Order;
@@ -51,6 +50,7 @@ class OrderController extends Controller
             'ports' => Port::orderBy('name')->get(['id', 'name']),
             ...$this->agentContactProps(),
             'deliveryModeOptions' => $this->enumOptions(DeliveryMode::cases()),
+            'supplyLocationOptions' => $this->supplyLocationOptions(),
             'disputeTypeOptions' => $this->enumOptions(DisputeType::cases()),
             'proposedActionPlanOptions' => $this->enumOptions(ProposedActionPlan::cases()),
             'actionStatusOptions' => $this->enumOptions(ActionStatus::cases()),
@@ -68,7 +68,7 @@ class OrderController extends Controller
             'agent_pic_id' => ['nullable', $this->agentPicRule($request)],
             'mobile_no' => ['nullable', 'string', 'max:255'],
             'delivery_mode' => ['nullable', Rule::enum(DeliveryMode::class)],
-            'delivery_location' => ['nullable', Rule::enum(SupplyLocation::class)],
+            'delivery_location_id' => ['nullable', $this->supplyLocationRule($request->input('port_id', $order->port_id))],
             'laycan_from' => ['nullable', 'date'],
             'laycan_to' => ['nullable', 'date', 'after_or_equal:laycan_from'],
         ];
@@ -104,11 +104,17 @@ class OrderController extends Controller
     public function table(): Response
     {
         return Inertia::render('orders/table', [
-            'orders' => Order::orderBy('id')->get(),
+            'orders' => Order::with('deliveryLocation')
+                ->orderBy('id')
+                ->get()
+                ->map(fn (Order $order): array => [
+                    ...$order->toArray(),
+                    'delivery_location' => $order->deliveryLocation?->name,
+                ]),
             ...$this->agentContactProps(),
             'statusOptions' => $this->enumOptions(OrderStatus::cases()),
             'deliveryModeOptions' => $this->enumOptions(DeliveryMode::cases()),
-            'supplyLocationOptions' => $this->enumOptions(SupplyLocation::cases()),
+            'supplyLocationOptions' => $this->supplyLocationOptions(),
             'productTypeOptions' => $this->enumOptions(ProductType::cases()),
             'creditTermsOptions' => $this->enumOptions(CreditTerms::cases()),
         ]);
@@ -136,7 +142,7 @@ class OrderController extends Controller
             'barge_id' => ['nullable', 'exists:barges,imo'],
             'mobile_no' => ['nullable', 'string', 'max:255'],
             'delivery_mode' => ['nullable', Rule::enum(DeliveryMode::class)],
-            'delivery_location' => ['nullable', Rule::enum(SupplyLocation::class)],
+            'delivery_location_id' => ['nullable', $this->supplyLocationRule($request->input('port_id', $order->port_id))],
             'product_type' => ['nullable', Rule::enum(ProductType::class)],
             'credit_terms' => ['nullable', Rule::enum(CreditTerms::class)],
             'status' => ['required', Rule::enum(OrderStatus::class)],

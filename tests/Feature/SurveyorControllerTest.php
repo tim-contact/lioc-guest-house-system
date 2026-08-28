@@ -2,16 +2,16 @@
 
 use App\Enums\CreditTerms;
 use App\Enums\OrderStatus;
-use App\Enums\UserType;
 use App\Enums\QualityClaim;
 use App\Enums\Sampling;
-use App\Enums\SupplyLocation;
+use App\Enums\UserType;
 use App\Models\Agent;
 use App\Models\Barge;
 use App\Models\Customer;
 use App\Models\Enquiry;
 use App\Models\Order;
 use App\Models\Port;
+use App\Models\SupplyLocation;
 use App\Models\Surveyor;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
@@ -21,11 +21,15 @@ function createSurveyorOrder(array $attributes = []): Order
     static $sequence = 0;
     $sequence++;
 
+    $port = Port::factory()->create(['name' => 'Colombo']);
+    $location = SupplyLocation::factory(['port_id' => $port->id])->create(['name' => 'BERTH']);
+
     return Order::create([
         'enquiry_id' => Enquiry::factory()->create()->id,
         'order_number' => 'ORD-SUR-'.$sequence,
         'customer_id' => Customer::factory()->create()->sap_id,
-        'port_id' => Port::factory()->create(['name' => 'Colombo'])->id,
+        'port_id' => $port->id,
+        'delivery_location_id' => $location->id,
         'eta' => now(),
         'agent_id' => Agent::factory()->create()->id,
         'barge_id' => Barge::factory()->create()->imo,
@@ -58,7 +62,6 @@ test('index renders pending orders with location and fuel grade quantities for t
     $order = createSurveyorOrder([
         'vessel_name' => 'MV Pending',
         'vessel_id' => '1234567',
-        'delivery_location' => SupplyLocation::Berth->value,
         'vlsfo_final_qty' => 500,
         'mgo_final_qty' => 100,
         'status' => OrderStatus::Pending,
@@ -74,7 +77,7 @@ test('index renders pending orders with location and fuel grade quantities for t
             ->where('pendingOrders.0.vessel_name', 'MV Pending')
             ->where('pendingOrders.0.vessel_id', '1234567')
             ->where('pendingOrders.0.port', 'Colombo')
-            ->where('pendingOrders.0.location', 'Berth')
+            ->where('pendingOrders.0.location', 'BERTH')
             ->where('pendingOrders.0.vlsfo_qty', '500.000')
             ->where('pendingOrders.0.mgo_qty', '100.000')
             ->has('pendingOrders.0.order_number')
@@ -82,7 +85,7 @@ test('index renders pending orders with location and fuel grade quantities for t
 });
 
 test('index renders the operational instructions from the pending order enquiry', function () {
-    $this->actingAs(User::factory()->create());
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $enquiry = Enquiry::factory()->create([
         'sampling' => Sampling::VesselManifold,

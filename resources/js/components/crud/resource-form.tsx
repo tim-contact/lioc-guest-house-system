@@ -21,22 +21,32 @@ const controlClass =
 function FieldControl({
     field,
     value,
+    formData,
+    disabled,
     onChange,
 }: {
     field: CrudField;
     value: string;
+    formData: Record<string, string>;
+    disabled: boolean;
     onChange: (value: string) => void;
 }) {
     if (field.type === 'select') {
+        const options =
+            typeof field.options === 'function'
+                ? field.options(formData)
+                : field.options;
+
         return (
             <select
                 id={field.name}
                 value={value}
+                disabled={disabled}
                 onChange={(e) => onChange(e.target.value)}
                 className={cn(controlClass, 'cursor-pointer')}
             >
                 <option value="">—</option>
-                {field.options?.map((option) => (
+                {options?.map((option) => (
                     <option key={option.value} value={option.value}>
                         {option.label}
                     </option>
@@ -69,9 +79,13 @@ function FieldControl({
 /** Resolves a select field's stored value to its option label for display. */
 function fieldDisplayValue(field: CrudField, value: string): string {
     if (field.type === 'select') {
+        const options =
+            typeof field.options === 'function'
+                ? field.options({})
+                : field.options;
+
         return (
-            field.options?.find((option) => option.value === value)?.label ??
-            value
+            options?.find((option) => option.value === value)?.label ?? value
         );
     }
 
@@ -110,8 +124,10 @@ export function ResourceForm<T>({
     const form = useForm<Record<string, string>>(config.toFormData(row));
     const isEdit = row !== null;
     const isLocked = (field: CrudField) => isEdit && !!field.disabledOnEdit;
-    const lockedFields = config.fields.filter(isLocked);
-    const editableFields = config.fields.filter((field) => !isLocked(field));
+    const isDisabled = (field: CrudField) => !!field.disabledWhen?.(form.data);
+    const fields = config.fields ?? [];
+    const lockedFields = fields.filter(isLocked);
+    const editableFields = fields.filter((field) => !isLocked(field));
     const gridClass =
         config.formColumns === 2 ? 'grid grid-cols-2 gap-3' : 'grid gap-3';
 
@@ -178,9 +194,22 @@ export function ResourceForm<T>({
                                     <FieldControl
                                         field={field}
                                         value={form.data[field.name] ?? ''}
-                                        onChange={(value) =>
-                                            form.setData(field.name, value)
-                                        }
+                                        formData={form.data}
+                                        disabled={isDisabled(field)}
+                                        onChange={(value) => {
+                                            const nextData = {
+                                                ...form.data,
+                                                [field.name]: value,
+                                            };
+
+                                            field.resetOnChange?.forEach(
+                                                (name) => {
+                                                    nextData[name] = '';
+                                                },
+                                            );
+
+                                            form.setData(nextData);
+                                        }}
                                     />
                                     <InputError
                                         message={form.errors[field.name]}

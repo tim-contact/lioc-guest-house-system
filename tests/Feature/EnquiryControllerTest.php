@@ -8,13 +8,13 @@ use App\Enums\OrderStatus;
 use App\Enums\ProductType;
 use App\Enums\QualityClaim;
 use App\Enums\Sampling;
-use App\Enums\SupplyLocation;
+use App\Enums\UserType;
 use App\Models\Agent;
 use App\Models\Customer;
 use App\Models\Enquiry;
 use App\Models\Order;
 use App\Models\Port;
-use App\Enums\UserType;
+use App\Models\SupplyLocation;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
@@ -161,11 +161,12 @@ test('updateDetails saves the additional operational details', function () {
 
     $enquiry = Enquiry::factory()->create(['status' => EnquiryStatus::Completing]);
     $agent = Agent::factory()->create();
+    $location = SupplyLocation::firstOrCreate(['port_id' => $enquiry->port_id, 'name' => 'ANCHORAGE']);
 
     $this->patch(route('enquiries.details.update', $enquiry), [
         'agent_id' => $agent->id,
         'sampling' => 'vessel_manifold',
-        'supply_location' => 'anchorage',
+        'supply_location_id' => $location->id,
         'quality_claim' => '30_days',
         'instructions' => 'Deliver before noon.',
         'barging_cost' => 1500,
@@ -175,7 +176,7 @@ test('updateDetails saves the additional operational details', function () {
     expect($enquiry->refresh())
         ->agent_id->toBe($agent->id)
         ->sampling->toBe(Sampling::VesselManifold)
-        ->supply_location->toBe(SupplyLocation::Anchorage)
+        ->supply_location_id->toBe($location->id)
         ->quality_claim->toBe(QualityClaim::ThirtyDays)
         ->instructions->toBe('Deliver before noon.')
         ->status->toBe(EnquiryStatus::Completing);
@@ -189,9 +190,24 @@ test('updateDetails rejects invalid supply location and quality claim', function
 
     $this->patch(route('enquiries.details.update', $enquiry), [
         'sampling' => 'barge_manifold',
-        'supply_location' => 'jetty',
+        'supply_location_id' => 999999,
         'quality_claim' => '7_days',
-    ])->assertSessionHasErrors(['supply_location', 'quality_claim']);
+    ])->assertSessionHasErrors(['supply_location_id', 'quality_claim']);
+});
+
+test('updateDetails rejects supply location when enquiry has no port', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $enquiry = Enquiry::factory()->create([
+        'port_id' => null,
+        'status' => EnquiryStatus::Completing,
+    ]);
+    $location = SupplyLocation::factory()->create();
+
+    $this->patch(route('enquiries.details.update', $enquiry), [
+        'sampling' => 'barge_manifold',
+        'supply_location_id' => $location->id,
+    ])->assertSessionHasErrors(['supply_location_id']);
 });
 
 test('updateDetails with generate_order wins the enquiry', function () {
@@ -202,7 +218,7 @@ test('updateDetails with generate_order wins the enquiry', function () {
     $this->patch(route('enquiries.details.update', $enquiry), [
         'agent_id' => null,
         'sampling' => 'barge_manifold',
-        'supply_location' => null,
+        'supply_location_id' => null,
         'barging_cost' => 0,
         'generate_order' => true,
     ])->assertRedirect()->assertSessionHasNoErrors();
@@ -233,6 +249,7 @@ test('generate_order snapshots the enquiry and winning customer into an order', 
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $port = Port::factory()->create();
+    $location = SupplyLocation::firstOrCreate(['port_id' => $port->id, 'name' => 'ANCHORAGE']);
     $agent = Agent::factory()->create();
     $customer = Customer::factory()->create();
 
@@ -241,9 +258,9 @@ test('generate_order snapshots the enquiry and winning customer into an order', 
         'vessel_name' => 'MT Test Vessel',
         'imo' => '1234567',
         'port_id' => $port->id,
+        'supply_location_id' => $location->id,
         'laycan_from' => '2026-08-01',
         'laycan_to' => '2026-08-05',
-        'supply_location' => SupplyLocation::Anchorage,
         'vlsfo_quantity_low' => 500,
         'vlsfo_quantity_high' => 1000,
         'vlsfo_product_type' => ProductType::Bonded,
@@ -272,7 +289,7 @@ test('generate_order snapshots the enquiry and winning customer into an order', 
         ->and($order->vessel_name)->toBe('MT Test Vessel')
         ->and($order->port_id)->toBe($port->id)
         ->and($order->agent_id)->toBe($agent->id)
-        ->and($order->delivery_location)->toBe(SupplyLocation::Anchorage)
+        ->and($order->delivery_location_id)->toBe($location->id)
         ->and($order->product_type)->toBe(ProductType::Bonded)
         ->and($order->delivery_mode)->toBe(DeliveryMode::Barge)
         ->and($order->vlsfo_qty_range)->toBe('500 - 1000')
@@ -466,13 +483,14 @@ test('editUpdate saves status, agent and product details', function () {
 
     $enquiry = Enquiry::factory()->create(['status' => EnquiryStatus::Open]);
     $agent = Agent::factory()->create();
+    $location = SupplyLocation::firstOrCreate(['port_id' => $enquiry->port_id, 'name' => 'BERTH']);
 
     $this->patch(route('enquiries.edit.update', $enquiry), [
         'vessel_name' => 'Updated',
         'status' => 'won',
         'agent_id' => $agent->id,
         'sampling' => 'vessel_manifold',
-        'supply_location' => 'berth',
+        'supply_location_id' => $location->id,
         'quality_claim' => '14_days',
         'instructions' => 'Notify agent on arrival.',
         'barging_cost' => 1200,
@@ -487,7 +505,7 @@ test('editUpdate saves status, agent and product details', function () {
         ->status->toBe(EnquiryStatus::Won)
         ->agent_id->toBe($agent->id)
         ->sampling->toBe(Sampling::VesselManifold)
-        ->supply_location->toBe(SupplyLocation::Berth)
+        ->supply_location_id->toBe($location->id)
         ->quality_claim->toBe(QualityClaim::FourteenDays)
         ->instructions->toBe('Notify agent on arrival.')
         ->mgo_quantity_low->toEqual('50.000')

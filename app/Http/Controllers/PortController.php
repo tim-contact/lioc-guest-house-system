@@ -15,7 +15,9 @@ class PortController extends Controller
     public function index(): Response
     {
         return Inertia::render('ports/index', [
-            'ports' => Port::orderBy('name')->get(['id', 'name']),
+            'ports' => Port::with(['supplyLocations' => fn ($query) => $query->orderBy('name')])
+                ->orderBy('name')
+                ->get(['id', 'name']),
         ]);
     }
 

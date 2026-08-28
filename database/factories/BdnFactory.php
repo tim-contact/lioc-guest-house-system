@@ -6,7 +6,6 @@ use App\Enums\DeliveryMode;
 use App\Enums\FuelGrade;
 use App\Enums\Sampling;
 use App\Enums\SamplingMethod;
-use App\Enums\SupplyLocation;
 use App\Models\Agent;
 use App\Models\Barge;
 use App\Models\Bdn;
@@ -27,11 +26,13 @@ class BdnFactory extends Factory
     {
         $alongside = fake()->dateTimeBetween('-5 days', 'now');
 
+        $order = Order::factory()->create();
+
         $attributes = [
-            'order_id' => Order::factory(),
+            'order_id' => $order->id,
             'bdn_number' => 'BDN-'.fake()->unique()->numberBetween(10000, 99999),
             'delivery_date' => $alongside,
-            'delivery_location' => fake()->randomElement(SupplyLocation::cases()),
+            'delivery_location_id' => $order->delivery_location_id,
             'vessel_flag' => fake()->country(),
             'grt' => fake()->randomFloat(2, 1000, 90000),
             'pi_club' => fake()->company(),

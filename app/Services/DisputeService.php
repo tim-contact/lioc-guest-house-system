@@ -35,7 +35,7 @@ class DisputeService
             'vessel_name' => $order->vessel_name,
             'vessel_id' => $order->vessel_id,
             'port' => $order->port?->name,
-            'delivery_location' => $order->delivery_location?->label(),
+            'delivery_location' => $order->deliveryLocation?->name,
             'vlsfo_qty' => $order->vlsfo_bdn_qty ?? $order->vlsfo_final_qty,
             'mgo_qty' => $order->mgo_bdn_qty ?? $order->mgo_final_qty,
             'hsfo_qty' => $order->hsfo_bdn_qty ?? $order->hsfo_final_qty,

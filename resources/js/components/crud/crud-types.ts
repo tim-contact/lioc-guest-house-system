@@ -18,8 +18,10 @@ export interface CrudField {
     label: string;
     type?: CrudFieldType;
     step?: string;
-    options?: EnumOption[];
+    options?: EnumOption[] | ((data: Record<string, string>) => EnumOption[]);
     disabledOnEdit?: boolean;
+    disabledWhen?: (data: Record<string, string>) => boolean;
+    resetOnChange?: string[];
     section?: string;
 }
 

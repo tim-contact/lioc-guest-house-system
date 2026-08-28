@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\SupplyLocation;
 use App\Models\Barge;
 use App\Models\Order;
 use App\Services\OrderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,7 +16,6 @@ class OperationController extends Controller
     {
         $mapOrder = fn (Order $order): array => [
             ...OrderService::toRow($order),
-            'delivery_location' => $order->delivery_location?->value,
             'barge_id' => $order->barge_id,
         ];
 
@@ -31,7 +28,7 @@ class OperationController extends Controller
             'completedOrders' => $completedOrders,
             'barges' => Barge::orderBy('name')->get(['imo', 'name']),
             ...$this->agentContactProps(),
-            'supplyLocationOptions' => $this->enumOptions(SupplyLocation::cases()),
+            'supplyLocationOptions' => $this->supplyLocationOptions(),
         ]);
     }
 
@@ -39,7 +36,7 @@ class OperationController extends Controller
     {
         $validated = $request->validate([
             'eta' => ['nullable', 'date'],
-            'delivery_location' => ['nullable', Rule::enum(SupplyLocation::class)],
+            'delivery_location_id' => ['nullable', $this->supplyLocationRule($order->port_id)],
             'barge_id' => ['nullable', 'exists:barges,imo'],
             'vlsfo_final_qty' => ['nullable', 'numeric', 'min:0'],
             'mgo_final_qty' => ['nullable', 'numeric', 'min:0'],
