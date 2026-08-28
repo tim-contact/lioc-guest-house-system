@@ -32,7 +32,7 @@ const TIME_GREETINGS: Record<TimeOfDay, string[]> = {
     morning: [
         'Good morning',
         'Good morning, {name}',
-        'Coffee and Claude time?',
+        'Coffee and Work time?',
         'Back at it!',
         'Back at it, {name}',
     ],

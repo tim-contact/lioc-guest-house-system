@@ -42,7 +42,12 @@ export default function Login({ status }: Props) {
                 <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-[48%] bg-[linear-gradient(90deg,rgba(3,16,29,0.62),rgba(3,16,29,0.18),rgba(3,16,29,0))] lg:block" />
 
                 <div className="relative z-10 grid min-h-[calc(100svh-2.5rem)] items-center gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(360px,520px)]">
-                    <section className="hidden max-w-[520px] pl-4 lg:block xl:pl-12">
+                    <section className="hidden max-w-[560px] pl-4 lg:block xl:pl-12">
+                        <img
+                            alt="BOSS"
+                            className="-mb-16 block w-[min(30vw,320px)] object-contain drop-shadow-[0_18px_38px_rgba(0,10,24,0.32)]"
+                            src="/images/boss_logo.png"
+                        />
                         <h1 className="text-[clamp(2.4rem,3.2vw,4rem)] leading-[1.05] font-bold tracking-normal text-white">
                             Command every
                             <br />
@@ -55,21 +60,21 @@ export default function Login({ status }: Props) {
                     </section>
 
                     <section className="mx-auto w-full max-w-[520px] lg:mr-[6vw]">
-                        <div className="rounded-[22px] border border-[#bad7eb]/42 bg-[linear-gradient(145deg,rgba(4,31,53,0.94),rgba(3,22,40,0.88))] px-5 py-5 shadow-[0_28px_70px_rgba(0,10,24,0.42),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[18px] sm:px-8 sm:py-7">
+                        <div className="rounded-[22px] border border-[#f36f21]/22 bg-[linear-gradient(145deg,#fff8ef,#f2f1ef_56%,#e4edf4)] px-5 py-5 shadow-[0_28px_70px_rgba(0,10,24,0.38),inset_0_1px_0_rgba(255,255,255,0.72)] sm:px-8 sm:py-7">
                             <div className="flex flex-col items-center text-center">
                                 <img
                                     alt="BOSS"
                                     className="max-h-[60px] w-[min(62vw,190px)] object-contain"
                                     src="/images/boss_logo.png"
                                 />
-                                <p className="mt-3 text-xs font-semibold tracking-[0.08em] text-[#d8e7f2] uppercase">
+                                <p className="mt-3 text-xs font-semibold tracking-[0.08em] text-[#31536a] uppercase">
                                     Bunker Operations and Sales System
                                 </p>
                                 <div className="mt-3 h-[3px] w-12 rounded-full bg-[#f36f21]" />
-                                <h2 className="mt-5 text-2xl font-bold tracking-normal text-white sm:text-[1.75rem]">
+                                <h2 className="mt-5 text-2xl font-bold tracking-normal text-[#031628] sm:text-[1.75rem]">
                                     Welcome back
                                 </h2>
-                                <p className="mt-1.5 text-sm text-[#b8ccd9] sm:text-[0.95rem]">
+                                <p className="mt-1.5 text-sm text-[#31536a] sm:text-[0.95rem]">
                                     Sign in to continue to BOSS
                                 </p>
                             </div>
@@ -85,14 +90,14 @@ export default function Login({ status }: Props) {
                                         <div className="grid gap-1.5">
                                             <Label
                                                 htmlFor="email"
-                                                className="text-sm font-medium text-white/88"
+                                                className="text-sm font-medium text-[#18364b]"
                                             >
                                                 Email address
                                             </Label>
                                             <div className="relative">
                                                 <Mail
                                                     aria-hidden="true"
-                                                    className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-[#dce8f1]/65"
+                                                    className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-[#486a80]"
                                                 />
                                                 <Input
                                                     id="email"
@@ -103,26 +108,26 @@ export default function Login({ status }: Props) {
                                                     tabIndex={1}
                                                     autoComplete="email"
                                                     placeholder="name@lankaioc.com"
-                                                    className="h-[46px] rounded-[11px] border-[#b0cde1]/38 bg-[#021322]/55 pr-4 pl-10 text-base text-white placeholder:text-[#dce8f1]/60 focus-visible:border-[#f36f21] focus-visible:ring-[3px] focus-visible:ring-[#f36f21]/16 md:text-sm"
+                                                    className="h-[46px] rounded-[11px] border-[#b6c6d0] bg-white pr-4 pl-10 text-base text-[#031628] placeholder:text-[#6d8797] focus-visible:border-[#f36f21] focus-visible:ring-[3px] focus-visible:ring-[#f36f21]/18 md:text-sm"
                                                 />
                                             </div>
                                             <InputError
                                                 message={errors.email}
-                                                className="text-[#ffb4a8]"
+                                                className="text-[#b42318]"
                                             />
                                         </div>
 
                                         <div className="grid gap-1.5">
                                             <Label
                                                 htmlFor="password"
-                                                className="text-sm font-medium text-white/88"
+                                                className="text-sm font-medium text-[#18364b]"
                                             >
                                                 Password
                                             </Label>
-                                            <div className="relative [&_button]:rounded-r-[11px] [&_button]:text-[#dce8f1]/65 [&_button]:transition-colors [&_button]:hover:text-[#f36f21] [&_button]:focus-visible:ring-[#f36f21]/35">
+                                            <div className="relative [&_button]:rounded-r-[11px] [&_button]:text-[#486a80] [&_button]:transition-colors [&_button]:hover:text-[#f36f21] [&_button]:focus-visible:ring-[#f36f21]/35">
                                                 <Lock
                                                     aria-hidden="true"
-                                                    className="pointer-events-none absolute top-1/2 left-3.5 z-10 size-4 -translate-y-1/2 text-[#dce8f1]/65"
+                                                    className="pointer-events-none absolute top-1/2 left-3.5 z-10 size-4 -translate-y-1/2 text-[#486a80]"
                                                 />
                                                 <PasswordInput
                                                     id="password"
@@ -136,12 +141,12 @@ export default function Login({ status }: Props) {
                                                             true,
                                                         )
                                                     }
-                                                    className="h-[46px] rounded-[11px] border-[#b0cde1]/38 bg-[#021322]/55 pr-11 pl-10 text-base text-white placeholder:text-[#dce8f1]/60 focus-visible:border-[#f36f21] focus-visible:ring-[3px] focus-visible:ring-[#f36f21]/16 md:text-sm"
+                                                    className="h-[46px] rounded-[11px] border-[#b6c6d0] bg-white pr-11 pl-10 text-base text-[#031628] placeholder:text-[#6d8797] focus-visible:border-[#f36f21] focus-visible:ring-[3px] focus-visible:ring-[#f36f21]/18 md:text-sm"
                                                 />
                                             </div>
                                             <InputError
                                                 message={errors.password}
-                                                className="text-[#ffb4a8]"
+                                                className="text-[#b42318]"
                                             />
                                         </div>
 
@@ -151,11 +156,11 @@ export default function Login({ status }: Props) {
                                                     id="remember"
                                                     name="remember"
                                                     tabIndex={3}
-                                                    className="border-[#f36f21]/70 bg-[#021322]/45 text-white focus-visible:ring-[#f36f21]/35 data-checked:border-[#f36f21] data-checked:bg-[#f36f21]"
+                                                    className="border-[#f36f21]/70 bg-white text-white focus-visible:ring-[#f36f21]/35 data-checked:border-[#f36f21] data-checked:bg-[#f36f21]"
                                                 />
                                                 <Label
                                                     htmlFor="remember"
-                                                    className="text-sm font-medium text-[#d8e7f2]"
+                                                    className="text-sm font-medium text-[#18364b]"
                                                 >
                                                     Remember me
                                                 </Label>
@@ -231,19 +236,19 @@ export default function Login({ status }: Props) {
                             </Form>
 
                             {status && (
-                                <div className="mt-4 text-center text-sm font-medium text-[#9ff6c9]">
+                                <div className="mt-4 text-center text-sm font-medium text-[#157347]">
                                     {status}
                                 </div>
                             )}
 
-                            <div className="mt-6 border-t border-white/12 pt-4">
+                            <div className="mt-6 border-t border-[#c9d4dc] pt-4">
                                 <div className="flex items-center justify-center gap-3">
                                     <img
                                         alt="Lanka IOC"
                                         className="size-11 object-contain"
                                         src="/images/lanka-ioc-logo.png"
                                     />
-                                    <p className="text-sm font-medium text-[#d8e7f2]">
+                                    <p className="text-sm font-medium text-[#62808a]">
                                         Powered by{' '}
                                         <span className="font-bold text-[#03045e]">
                                             Lanka
@@ -253,7 +258,7 @@ export default function Login({ status }: Props) {
                                         </span>
                                     </p>
                                 </div>
-                                <div className="mt-3 flex items-center justify-center gap-2 text-xs font-medium text-[#b8ccd9]">
+                                <div className="mt-3 flex items-center justify-center gap-2 text-xs font-medium text-[#486a80]">
                                     <ShieldCheck
                                         aria-hidden="true"
                                         className="size-4 text-[#f36f21]"
