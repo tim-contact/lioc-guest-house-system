@@ -102,9 +102,6 @@ export default function LaunchScreen() {
                         className="mt-10 min-h-12 rounded-full px-6 text-base shadow-[0_18px_42px_rgba(79,70,229,0.35)]"
                     >
                         Launch now
-                        <span className="ml-1 hidden rounded-full border border-white/20 px-2 py-0.5 text-xs font-semibold text-white/70 sm:inline">
-                            Enter / L
-                        </span>
                         <ArrowRight className="size-5" />
                     </Button>
                 </section>
