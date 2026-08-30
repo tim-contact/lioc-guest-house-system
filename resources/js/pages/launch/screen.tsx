@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { ArrowRight } from 'lucide-react';
 import { GLSLHills } from '@/components/ui/glsl-hills';
@@ -40,9 +40,35 @@ export default function LaunchScreen() {
         void videoRef.current?.play();
     }, [isLaunching]);
 
-    const handleLaunch = () => {
+    const handleLaunch = useCallback(() => {
         setIsLaunching(true);
-    };
+    }, []);
+
+    useEffect(() => {
+        const handleShortcut = (event: KeyboardEvent) => {
+            if (isLaunching || event.defaultPrevented) {
+                return;
+            }
+
+            const target = event.target as HTMLElement | null;
+            const isTyping =
+                target?.matches('input, textarea, select') ||
+                target?.isContentEditable;
+
+            if (isTyping) {
+                return;
+            }
+
+            if (event.key === 'Enter' || event.key.toLowerCase() === 'l') {
+                event.preventDefault();
+                handleLaunch();
+            }
+        };
+
+        window.addEventListener('keydown', handleShortcut);
+
+        return () => window.removeEventListener('keydown', handleShortcut);
+    }, [handleLaunch, isLaunching]);
 
     const handleLaunchComplete = () => {
         router.visit(reportsAnalytics());
@@ -72,9 +98,13 @@ export default function LaunchScreen() {
                     <Button
                         size="lg"
                         onClick={handleLaunch}
+                        aria-keyshortcuts="Enter L"
                         className="mt-10 min-h-12 rounded-full px-6 text-base shadow-[0_18px_42px_rgba(79,70,229,0.35)]"
                     >
                         Launch now
+                        <span className="ml-1 hidden rounded-full border border-white/20 px-2 py-0.5 text-xs font-semibold text-white/70 sm:inline">
+                            Enter / L
+                        </span>
                         <ArrowRight className="size-5" />
                     </Button>
                 </section>

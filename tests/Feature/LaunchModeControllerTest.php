@@ -5,6 +5,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
+    $this->withoutVite();
+
     Storage::fake('local');
     config(['launch.enabled' => false]);
 });
