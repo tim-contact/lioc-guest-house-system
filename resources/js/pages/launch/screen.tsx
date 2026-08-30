@@ -44,9 +44,19 @@ export default function LaunchScreen() {
         setIsLaunching(true);
     }, []);
 
+    const handleReturnToLaunch = useCallback(() => {
+        videoRef.current?.pause();
+
+        if (videoRef.current) {
+            videoRef.current.currentTime = 0;
+        }
+
+        setIsLaunching(false);
+    }, []);
+
     useEffect(() => {
         const handleShortcut = (event: KeyboardEvent) => {
-            if (isLaunching || event.defaultPrevented) {
+            if (event.defaultPrevented) {
                 return;
             }
 
@@ -59,7 +69,19 @@ export default function LaunchScreen() {
                 return;
             }
 
-            if (event.key === 'Enter' || event.key.toLowerCase() === 'l') {
+            const shortcutKey = event.key.toLowerCase();
+
+            if (shortcutKey === 'r') {
+                event.preventDefault();
+                handleReturnToLaunch();
+
+                return;
+            }
+
+            if (
+                !isLaunching &&
+                (event.key === 'Enter' || shortcutKey === 'l')
+            ) {
                 event.preventDefault();
                 handleLaunch();
             }
@@ -68,7 +90,7 @@ export default function LaunchScreen() {
         window.addEventListener('keydown', handleShortcut);
 
         return () => window.removeEventListener('keydown', handleShortcut);
-    }, [handleLaunch, isLaunching]);
+    }, [handleLaunch, handleReturnToLaunch, isLaunching]);
 
     const handleLaunchComplete = () => {
         router.visit(reportsAnalytics());
