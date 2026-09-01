@@ -7,7 +7,6 @@ import {
     CreditCard,
     FileCheck,
     FileText,
-    Rocket,
     Handshake,
     LayoutGrid,
     MapPin,
@@ -40,7 +39,6 @@ import { index as customersIndex } from '@/routes/customers';
 import { table as disputesTable } from '@/routes/disputes';
 import { index as enquiriesIndex } from '@/routes/enquiries';
 import { index as invoicesIndex } from '@/routes/invoices';
-import { index as launchIndex, screen as launchScreen } from '@/routes/launch';
 import { index as paymentsIndex } from '@/routes/payments';
 import { index as portsIndex } from '@/routes/ports';
 import { edit as surveyorsEdit } from '@/routes/surveyors';
@@ -62,20 +60,6 @@ export const navGroups: NavGroup[] = [
                 href: reportsAnalytics(),
                 icon: BarChart3,
                 description: 'Analytics and conversion metrics',
-            },
-            {
-                title: 'Launch Mode',
-                href: launchIndex(),
-                icon: Rocket,
-                description: 'Control webapp launch screen',
-                roles: ['super_admin', 'master'],
-            },
-            {
-                title: 'Launch Screen',
-                href: launchScreen(),
-                icon: Rocket,
-                description: 'Open the launch-day splash screen',
-                roles: ['super_admin', 'master'],
             },
 
             {
@@ -219,23 +203,9 @@ export const navGroups: NavGroup[] = [
  * Other roles see only their own section.
  */
 export function visibleNavGroups(userType: string): NavGroup[] {
-    const filterItems = (group: NavGroup): NavGroup | null => {
-        if ('items' in group) {
-            const items = group.items.filter(
-                (item) => !item.roles || item.roles.includes(userType),
-            );
-
-            return items.length > 0 ? { ...group, items } : null;
-        }
-
-        return !group.roles || group.roles.includes(userType) ? group : null;
-    };
-
     // Privileged users see all groups.
     if (userType === 'super_admin' || userType === 'master') {
-        return navGroups
-            .map(filterItems)
-            .filter((group): group is NavGroup => group !== null);
+        return navGroups;
     }
 
     // Map role to nav section title.
@@ -252,8 +222,5 @@ export function visibleNavGroups(userType: string): NavGroup[] {
         return [];
     }
 
-    return navGroups
-        .filter((group) => group.title === sectionTitle)
-        .map(filterItems)
-        .filter((group): group is NavGroup => group !== null);
+    return navGroups.filter((group) => group.title === sectionTitle);
 }
