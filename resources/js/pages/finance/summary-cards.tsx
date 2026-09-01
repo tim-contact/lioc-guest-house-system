@@ -1,33 +1,11 @@
-import { addWeeks, endOfWeek, isWithinInterval, startOfWeek } from 'date-fns';
 import { CalendarClock, CircleDollarSign, ReceiptText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { dateOnlyToDate, formatMoney, toDateInput } from '@/lib/utils';
-import type { CompletedRow } from './dashboard';
+import { formatMoney } from '@/lib/utils';
 
-interface Bucket {
+export interface FinanceSummaryBucket {
     label: string;
     count: number;
     amount: number;
-}
-
-function bucket(label: string, rows: CompletedRow[]): Bucket {
-    return {
-        label,
-        count: rows.length,
-        amount: rows.reduce((total, row) => total + row.amount_remaining, 0),
-    };
-}
-
-function dueWithin(
-    rows: CompletedRow[],
-    start: Date,
-    end: Date,
-): CompletedRow[] {
-    return rows.filter((row) => {
-        const due = dateOnlyToDate(toDateInput(row.payment_due_date));
-
-        return due ? isWithinInterval(due, { start, end }) : false;
-    });
 }
 
 function CommandMetric({ label, value }: { label: string; value: string }) {
@@ -44,30 +22,10 @@ function CommandMetric({ label, value }: { label: string; value: string }) {
 }
 
 export function FinanceSummaryCards({
-    completedOrders,
+    summary,
 }: {
-    completedOrders: CompletedRow[];
+    summary: FinanceSummaryBucket[];
 }) {
-    const pending = completedOrders.filter((row) => row.amount_remaining > 0);
-
-    const today = new Date();
-    const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 });
-    const thisWeekEnd = endOfWeek(today, { weekStartsOn: 1 });
-    const nextWeekStart = addWeeks(thisWeekStart, 1);
-    const nextWeekEnd = addWeeks(thisWeekEnd, 1);
-
-    const buckets = [
-        bucket('Total Invoices Pending', pending),
-        bucket(
-            'Pending This Week',
-            dueWithin(pending, thisWeekStart, thisWeekEnd),
-        ),
-        bucket(
-            'Pending Next Week',
-            dueWithin(pending, nextWeekStart, nextWeekEnd),
-        ),
-    ];
-
     return (
         <Card className="relative overflow-hidden rounded-[18px] border border-[rgba(96,165,250,0.24)] bg-[linear-gradient(120deg,rgba(8,43,91,0.98),rgba(5,39,84,0.98),rgba(6,51,108,0.96))] py-0 text-white shadow-[0_14px_32px_rgba(15,45,90,0.16)]">
             <div className="pointer-events-none absolute inset-0 [background-image:radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.8)_1px,transparent_1px)] [background-size:18px_18px] opacity-[0.08]" />
@@ -85,7 +43,7 @@ export function FinanceSummaryCards({
                 </div>
             </CardHeader>
             <CardContent className="relative grid grid-cols-1 gap-5 p-5 md:grid-cols-3 md:divide-x md:divide-white/14">
-                {buckets.map((summary) => (
+                {summary.map((summary) => (
                     <div
                         key={summary.label}
                         className="min-w-0 space-y-3 md:pl-5 md:first:pl-0"

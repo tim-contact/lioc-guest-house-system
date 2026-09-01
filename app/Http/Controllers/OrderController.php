@@ -101,13 +101,17 @@ class OrderController extends Controller
         return $this->toast('Order cancelled.');
     }
 
-    public function table(): Response
+    public function table(Request $request): Response
     {
+        $perPage = (int) $request->input('per_page', 25);
+        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 25;
+
         return Inertia::render('orders/table', [
             'orders' => Order::with('deliveryLocation')
                 ->orderBy('id')
-                ->get()
-                ->map(fn (Order $order): array => [
+                ->paginate($perPage)
+                ->withQueryString()
+                ->through(fn (Order $order): array => [
                     ...$order->toArray(),
                     'delivery_location' => $order->deliveryLocation?->name,
                 ]),

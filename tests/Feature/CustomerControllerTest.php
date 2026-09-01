@@ -7,7 +7,7 @@ use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
 test('guests are redirected from the customers page', function () {
-    $this->get(route('customers.index'))->assertForbidden();
+    $this->get(route('customers.index'))->assertRedirect(route('login'));
 });
 
 test('index lists customers ordered by name', function () {

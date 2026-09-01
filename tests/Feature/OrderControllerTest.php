@@ -36,7 +36,7 @@ function createOrder(array $attributes = []): Order
 }
 
 test('guests are redirected from the orders page', function () {
-    $this->get(route('orders'))->assertForbidden();
+    $this->get(route('orders'))->assertRedirect(route('login'));
 });
 
 test('index renders pending and completed orders grouped by port', function () {
@@ -168,7 +168,7 @@ test('index provides customer, port, agency and PIC options and edit fields', fu
 test('guests cannot update an order', function () {
     $order = createOrder();
 
-    $this->patch(route('orders.update', $order))->assertForbidden();
+    $this->patch(route('orders.update', $order))->assertRedirect(route('login'));
 });
 
 test('update persists editable fields and leaves order number and date untouched', function () {
@@ -337,7 +337,7 @@ test('update leaves invoice value alone for a pending order', function () {
 test('guests cannot cancel an order', function () {
     $order = createOrder();
 
-    $this->patch(route('orders.cancel', $order))->assertForbidden();
+    $this->patch(route('orders.cancel', $order))->assertRedirect(route('login'));
 });
 
 test('cancel marks the order cancelled, hiding it from the dashboard but not the table', function () {
@@ -353,11 +353,11 @@ test('cancel marks the order cancelled, hiding it from the dashboard but not the
         ->assertInertia(fn (AssertableInertia $page) => $page->has('pendingOrders', 0));
 
     $this->get(route('orders.table'))
-        ->assertInertia(fn (AssertableInertia $page) => $page->has('orders', 1));
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('orders.data', 1));
 });
 
 test('guests are redirected from the orders table page', function () {
-    $this->get(route('orders.table'))->assertForbidden();
+    $this->get(route('orders.table'))->assertRedirect(route('login'));
 });
 
 test('table renders every order with all attributes', function () {
@@ -370,10 +370,12 @@ test('table renders every order with all attributes', function () {
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('orders/table')
-            ->has('orders', 2)
-            ->where('orders.0.order_number', 'ORD-ALPHA')
-            ->where('orders.0.status', OrderStatus::Pending->value)
-            ->where('orders.1.order_number', 'ORD-BETA')
+            ->has('orders.data', 2)
+            ->where('orders.data.0.order_number', 'ORD-ALPHA')
+            ->where('orders.data.0.status', OrderStatus::Pending->value)
+            ->where('orders.data.1.order_number', 'ORD-BETA')
+            ->where('orders.per_page', 25)
+            ->where('orders.total', 2)
             ->has('agents')
             ->has('agentPics')
             ->has('statusOptions')
@@ -383,10 +385,36 @@ test('table renders every order with all attributes', function () {
             ->has('creditTermsOptions'));
 });
 
+test('orders table paginates orders', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    foreach (range(1, 26) as $number) {
+        createOrder(['order_number' => 'ORD-'.str_pad((string) $number, 3, '0', STR_PAD_LEFT)]);
+    }
+
+    $this->get(route('orders.table'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('orders/table')
+            ->has('orders.data', 25)
+            ->where('orders.current_page', 1)
+            ->where('orders.per_page', 25)
+            ->where('orders.total', 26)
+            ->where('orders.data.0.order_number', 'ORD-001'));
+
+    $this->get(route('orders.table', ['page' => 2]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('orders/table')
+            ->has('orders.data', 1)
+            ->where('orders.current_page', 2)
+            ->where('orders.data.0.order_number', 'ORD-026'));
+});
+
 test('guests cannot save an order from the admin table', function () {
     $order = createOrder();
 
-    $this->patch(route('orders.table.update', $order))->assertForbidden();
+    $this->patch(route('orders.table.update', $order))->assertRedirect(route('login'));
 });
 
 test('table update rejects a PIC belonging to another agency', function () {

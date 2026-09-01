@@ -36,7 +36,7 @@ function createFinanceOrder(array $attributes = []): Order
 }
 
 test('guests are redirected from the finance page', function () {
-    $this->get(route('finance'))->assertForbidden();
+    $this->get(route('finance'))->assertRedirect(route('login'));
 });
 
 test('index lists only delivered orders regardless of age', function () {
@@ -68,7 +68,8 @@ test('index lists only delivered orders regardless of age', function () {
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('finance/dashboard')
-            ->has('completedOrders', 2));
+            ->has('completedOrders.data', 2)
+            ->where('completedOrders.total', 2));
 });
 
 test('paid_in_full is true only when amount received covers the invoice', function () {
@@ -95,21 +96,54 @@ test('paid_in_full is true only when amount received covers the invoice', functi
 
     $this->get(route('finance'))
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('completedOrders', 2)
-            ->where('completedOrders.0.order_number', 'ORD-FIN-PAID')
-            ->where('completedOrders.0.customer_name', 'Blue Ocean Ltd')
-            ->where('completedOrders.0.location', 'BERTH')
-            ->where('completedOrders.0.invoice_value', '1000.00')
-            ->where('completedOrders.0.status', 'Delivered')
-            ->where('completedOrders.0.paid_in_full', true)
-            ->where('completedOrders.1.order_number', 'ORD-FIN-PARTIAL')
-            ->where('completedOrders.1.paid_in_full', false));
+            ->has('completedOrders.data', 2)
+            ->where('completedOrders.data.0.order_number', 'ORD-FIN-PAID')
+            ->where('completedOrders.data.0.customer_name', 'Blue Ocean Ltd')
+            ->where('completedOrders.data.0.location', 'BERTH')
+            ->where('completedOrders.data.0.invoice_value', '1000.00')
+            ->where('completedOrders.data.0.status', 'Delivered')
+            ->where('completedOrders.data.0.paid_in_full', true)
+            ->where('completedOrders.data.1.order_number', 'ORD-FIN-PARTIAL')
+            ->where('completedOrders.data.1.paid_in_full', false));
+});
+
+test('finance dashboard paginates completed orders', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    foreach (range(1, 26) as $number) {
+        createFinanceOrder([
+            'order_number' => 'ORD-FIN-'.str_pad((string) $number, 3, '0', STR_PAD_LEFT),
+            'invoice_value' => 1000,
+            'amount_received' => 100,
+            'payment_due_date' => now()->addDays($number),
+        ]);
+    }
+
+    $this->get(route('finance', ['per_page' => 10]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('finance/dashboard')
+            ->has('completedOrders.data', 10)
+            ->where('completedOrders.current_page', 1)
+            ->where('completedOrders.per_page', 10)
+            ->where('completedOrders.total', 26)
+            ->where('completedOrders.data.0.order_number', 'ORD-FIN-001')
+            ->where('financeSummary.0.count', 26)
+            ->where('financeSummary.0.amount', 23400));
+
+    $this->get(route('finance', ['page' => 2, 'per_page' => 25]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('finance/dashboard')
+            ->has('completedOrders.data', 1)
+            ->where('completedOrders.current_page', 2)
+            ->where('completedOrders.data.0.order_number', 'ORD-FIN-026'));
 });
 
 test('guests cannot add a payment', function () {
     $order = createFinanceOrder();
 
-    $this->post(route('finance.payments.store', $order))->assertForbidden();
+    $this->post(route('finance.payments.store', $order))->assertRedirect(route('login'));
 });
 
 test('adding payments totals the amount received and records the latest date', function () {
@@ -189,13 +223,13 @@ test('the dashboard lists an order\'s payments newest first', function () {
 
     $this->get(route('finance'))
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('completedOrders.0.payments', 2)
-            ->where('completedOrders.0.payments.0.date', '2026-07-20')
-            ->where('completedOrders.0.payments.0.amount', '350.50')
-            ->where('completedOrders.0.payments.0.type', 'credit_note')
-            ->where('completedOrders.0.payments.1.date', '2026-07-10')
-            ->where('completedOrders.0.payments.1.amount', '400.00')
-            ->where('completedOrders.0.payments.1.type', 'regular')
+            ->has('completedOrders.data.0.payments', 2)
+            ->where('completedOrders.data.0.payments.0.date', '2026-07-20')
+            ->where('completedOrders.data.0.payments.0.amount', '350.50')
+            ->where('completedOrders.data.0.payments.0.type', 'credit_note')
+            ->where('completedOrders.data.0.payments.1.date', '2026-07-10')
+            ->where('completedOrders.data.0.payments.1.amount', '400.00')
+            ->where('completedOrders.data.0.payments.1.type', 'regular')
             ->has('paymentTypeOptions'));
 });
 
@@ -225,7 +259,7 @@ test('add payment requires a non-negative amount, a date and a valid type', func
 test('guests cannot close a finance order', function () {
     $order = createFinanceOrder();
 
-    $this->patch(route('finance.close', $order))->assertForbidden();
+    $this->patch(route('finance.close', $order))->assertRedirect(route('login'));
 });
 
 test('closing a delivered order that is paid in full sets it to closed', function () {
@@ -243,7 +277,7 @@ test('closing a delivered order that is paid in full sets it to closed', functio
 });
 
 test('a delivered order with a zero-value invoice can be closed', function () {
-    $this->actingAs(User::factory()->create());
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $order = createFinanceOrder([
         'status' => OrderStatus::Delivered,
@@ -253,8 +287,8 @@ test('a delivered order with a zero-value invoice can be closed', function () {
 
     $this->get(route('finance'))
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('completedOrders.0.paid_in_full', false)
-            ->where('completedOrders.0.can_close', true));
+            ->where('completedOrders.data.0.paid_in_full', false)
+            ->where('completedOrders.data.0.can_close', true));
 
     $this->patch(route('finance.close', $order))->assertRedirect();
 
@@ -262,7 +296,7 @@ test('a delivered order with a zero-value invoice can be closed', function () {
 });
 
 test('a delivered order without an invoice cannot be closed', function () {
-    $this->actingAs(User::factory()->create());
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $order = createFinanceOrder([
         'status' => OrderStatus::Delivered,
@@ -272,7 +306,7 @@ test('a delivered order without an invoice cannot be closed', function () {
 
     $this->get(route('finance'))
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('completedOrders.0.can_close', false));
+            ->where('completedOrders.data.0.can_close', false));
 
     $this->patch(route('finance.close', $order))->assertRedirect();
 
@@ -305,5 +339,6 @@ test('closed orders do not appear on the finance dashboard', function () {
 
     $this->get(route('finance'))
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('completedOrders', 0));
+            ->has('completedOrders.data', 0)
+            ->where('completedOrders.total', 0));
 });

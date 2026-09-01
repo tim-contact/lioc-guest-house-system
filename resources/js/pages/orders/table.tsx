@@ -1,6 +1,7 @@
 import { tableUpdate } from '@/actions/App/Http/Controllers/OrderController';
-import type { CrudConfig, PaginationMeta } from '@/components/crud/crud-types';
+import type { CrudConfig } from '@/components/crud/crud-types';
 import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
+import type { PaginationMeta } from '@/components/pagination-controls';
 import { FUEL_GRADES } from '@/lib/domain';
 import type { ExportColumn } from '@/lib/export-xlsx';
 import {

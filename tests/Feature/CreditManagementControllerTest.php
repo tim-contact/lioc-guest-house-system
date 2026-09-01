@@ -30,7 +30,7 @@ function creditManagementOrderFor(Customer $customer, array $attributes): Order
 }
 
 test('guests are redirected from the credit management page', function () {
-    $this->get(route('credit-management'))->assertForbidden();
+    $this->get(route('credit-management'))->assertRedirect(route('login'));
 });
 
 test('index lists customers ordered by name', function () {

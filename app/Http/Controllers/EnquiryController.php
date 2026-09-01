@@ -129,13 +129,17 @@ class EnquiryController extends Controller
         return $this->toast('Enquiry saved.');
     }
 
-    public function edit(): Response
+    public function edit(Request $request): Response
     {
+        $perPage = (int) $request->input('per_page', 25);
+        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 25;
+
         return Inertia::render('enquiries/edit', [
             'enquiries' => Enquiry::with('supplyLocation')
                 ->latest()
-                ->get()
-                ->map(fn (Enquiry $enquiry): array => [
+                ->paginate($perPage)
+                ->withQueryString()
+                ->through(fn (Enquiry $enquiry): array => [
                     ...$enquiry->toArray(),
                     'supply_location' => $enquiry->supplyLocation?->name,
                 ]),

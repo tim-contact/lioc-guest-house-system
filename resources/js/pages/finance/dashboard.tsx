@@ -3,6 +3,10 @@ import { CheckCircle2, CreditCard, XCircle } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { ExportButton } from '@/components/export-button';
+import {
+    PaginationControls,
+    type PaginationMeta,
+} from '@/components/pagination-controls';
 import { SortableHead } from '@/components/sortable-head';
 import { TableFrame } from '@/components/table-frame';
 import { Button } from '@/components/ui/button';
@@ -20,7 +24,10 @@ import { cn, formatMoney, shortDate } from '@/lib/utils';
 import { close as closeFinanceOrder } from '@/routes/finance';
 import type { EnumOption } from '@/types';
 import { AddPaymentDialog } from './add-payment-dialog';
-import { FinanceSummaryCards } from './summary-cards';
+import {
+    FinanceSummaryCards,
+    type FinanceSummaryBucket,
+} from './summary-cards';
 
 export interface PaymentRow {
     id: number;
@@ -51,7 +58,10 @@ export interface CompletedRow {
 }
 
 interface FinanceDashboardProps {
-    completedOrders: CompletedRow[];
+    completedOrders: PaginationMeta & {
+        data: CompletedRow[];
+    };
+    financeSummary: FinanceSummaryBucket[];
     paymentTypeOptions: EnumOption[];
 }
 
@@ -169,12 +179,14 @@ const EXPORT_COLUMNS: ExportColumn<CompletedRow>[] = [
 
 export default function FinanceDashboard({
     completedOrders,
+    financeSummary,
     paymentTypeOptions,
 }: FinanceDashboardProps) {
+    const rows = completedOrders.data;
     const [closingId, setClosingId] = useState<number | null>(null);
     const [payingRow, setPayingRow] = useState<CompletedRow | null>(null);
     const { sortKey, sortDir, handleSort, sorted } = useSortable(
-        completedOrders,
+        rows,
         'payment_due_date',
     );
 
@@ -196,7 +208,7 @@ export default function FinanceDashboard({
 
             <main className="min-h-[calc(100svh-4.25rem)] overflow-x-clip bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.045),transparent_32%),#F4F7FA] px-3 py-4 sm:px-4 md:px-6">
                 <div className="flex w-full flex-col gap-4">
-                    <FinanceSummaryCards completedOrders={completedOrders} />
+                    <FinanceSummaryCards summary={financeSummary} />
 
                     <section className="overflow-hidden rounded-[17px] border border-[#E3EAF2] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
                         <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -205,7 +217,7 @@ export default function FinanceDashboard({
                                     Completed Orders
                                 </h2>
                                 <span className="rounded-full bg-[#EEF2FF] px-2.5 py-1 text-xs font-bold text-[#3155E7] tabular-nums">
-                                    {sorted.length}
+                                    {completedOrders.total}
                                 </span>
                             </div>
                             <ExportButton
@@ -322,6 +334,11 @@ export default function FinanceDashboard({
                                     </TableBody>
                                 </Table>
                             </TableFrame>
+                            <div className="mt-4">
+                                <PaginationControls
+                                    pagination={completedOrders}
+                                />
+                            </div>
                         </div>
                     </section>
                 </div>

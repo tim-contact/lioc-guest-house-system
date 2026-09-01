@@ -9,7 +9,7 @@ use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
 test('guests are redirected from the agents page', function () {
-    $this->get(route('agents.index'))->assertForbidden();
+    $this->get(route('agents.index'))->assertRedirect(route('login'));
 });
 
 test('index lists agents ordered by name', function () {
