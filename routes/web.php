@@ -11,7 +11,6 @@ use App\Http\Controllers\EnquiryController;
 use App\Http\Controllers\EnquiryCustomerController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\InvoiceController;
-use App\Http\Controllers\LaunchModeController;
 use App\Http\Controllers\OperationController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaymentController;
@@ -67,13 +66,6 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::resource('agent-pics', AgentPicController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::get('surveyors/edit', [SurveyorController::class, 'edit'])->name('surveyors.edit');
         Route::resource('surveyors', SurveyorController::class)->only(['store', 'update', 'destroy']);
-    });
-
-    // --- Launch section: super_admin and master only ---
-    Route::middleware('role:super_admin,master')->group(function () {
-        Route::get('launch', [LaunchModeController::class, 'index'])->name('launch.index');
-        Route::get('launch-screen', [LaunchModeController::class, 'screen'])->name('launch.screen');
-        Route::patch('launch', [LaunchModeController::class, 'update'])->name('launch.update');
     });
 
     // --- Sales section: super_admin, master, sales ---

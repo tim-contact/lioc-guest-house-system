@@ -8,8 +8,6 @@ export type NavItem = {
     isActive?: boolean;
     /** Shown on the admin dashboard card; unused by the header dropdown. */
     description?: string;
-    /** Optional override for links that are more restricted than their group. */
-    roles?: string[];
 };
 
 export type NavGroup = NavItem | { title: string; items: NavItem[] };

@@ -9,8 +9,6 @@ use App\Models\User;
 
 $adminGetRoutes = [
     'admin',
-    'launch.index',
-    'launch.screen',
     'reports.analytics',
     'users.index',
     'orders.table',
