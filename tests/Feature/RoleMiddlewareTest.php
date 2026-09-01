@@ -54,11 +54,11 @@ $allProtectedGetRoutes = array_merge(
 );
 
 // ============================================================
-// 1. Guests are shown forbidden
+// 1. Guests are redirected to login
 // ============================================================
 
-test('guests are shown forbidden when accessing protected routes', function (string $route) {
-    $this->get(route($route))->assertForbidden();
+test('guests are redirected to login when accessing protected routes', function (string $route) {
+    $this->get(route($route))->assertRedirect(route('login'));
 })->with([
     'admin' => 'admin',
     'sales-dashboard' => 'sales-dashboard',

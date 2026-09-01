@@ -5,6 +5,7 @@ import {
 } from '@/actions/App/Http/Controllers/EnquiryController';
 import type { CrudConfig } from '@/components/crud/crud-types';
 import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
+import type { PaginationMeta } from '@/components/pagination-controls';
 import { FUEL_GRADES } from '@/lib/domain';
 import type { ExportColumn } from '@/lib/export-xlsx';
 import { optionLabel, shortDate, str, toDateInput } from '@/lib/utils';
@@ -47,7 +48,9 @@ interface Enquiry {
 }
 
 interface EnquiriesEditProps {
-    enquiries: Enquiry[];
+    enquiries: PaginationMeta & {
+        data: Enquiry[];
+    };
     ports: { id: number; name: string }[];
     agents: { id: number; name: string }[];
     statusOptions: EnumOption[];
@@ -69,6 +72,8 @@ export default function EnquiriesEdit({
     productTypeOptions,
     deliveryModeOptions,
 }: EnquiriesEditProps) {
+    const rows = enquiries.data;
+
     const portOptions = ports.map((port) => ({
         value: String(port.id),
         label: port.name,
@@ -380,7 +385,9 @@ export default function EnquiriesEdit({
         },
     };
 
-    return <ResourceCrudPage rows={enquiries} config={config} />;
+    return (
+        <ResourceCrudPage rows={rows} config={config} pagination={enquiries} />
+    );
 }
 
 EnquiriesEdit.layout = {

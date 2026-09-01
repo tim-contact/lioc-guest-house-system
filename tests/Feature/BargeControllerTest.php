@@ -9,7 +9,7 @@ use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
 test('guests are redirected from the barges page', function () {
-    $this->get(route('barges.edit'))->assertForbidden();
+    $this->get(route('barges.edit'))->assertRedirect(route('login'));
 });
 
 test('edit renders the barges page with status options', function () {

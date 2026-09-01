@@ -8,7 +8,7 @@ use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
 test('guests are redirected from the agent PICs page', function () {
-    $this->get(route('agent-pics.index'))->assertForbidden();
+    $this->get(route('agent-pics.index'))->assertRedirect(route('login'));
 });
 
 test('index lists PICs grouped by agency with the agency options', function () {

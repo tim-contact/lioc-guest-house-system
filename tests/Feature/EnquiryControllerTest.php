@@ -19,7 +19,7 @@ use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
 test('guests are redirected from the enquiries page', function () {
-    $this->get(route('enquiries.index'))->assertForbidden();
+    $this->get(route('enquiries.index'))->assertRedirect(route('login'));
 });
 
 test('index lists enquiries with their customers and product details', function () {
@@ -443,13 +443,44 @@ test('edit renders the enquiries edit page with option lists', function () {
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('enquiries/edit')
-            ->has('enquiries', 1)
+            ->has('enquiries.data', 1)
+            ->where('enquiries.per_page', 25)
+            ->where('enquiries.total', 1)
             ->has('ports')
             ->has('agents')
             ->has('statusOptions')
             ->has('samplingOptions')
             ->has('productTypeOptions')
             ->has('deliveryModeOptions'));
+});
+
+test('edit paginates enquiries', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    foreach (range(1, 26) as $number) {
+        Enquiry::factory()->create([
+            'vessel_name' => 'MT Page '.str_pad((string) $number, 2, '0', STR_PAD_LEFT),
+            'created_at' => now()->subMinutes($number),
+        ]);
+    }
+
+    $this->get(route('enquiries.edit'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('enquiries/edit')
+            ->has('enquiries.data', 25)
+            ->where('enquiries.current_page', 1)
+            ->where('enquiries.per_page', 25)
+            ->where('enquiries.total', 26)
+            ->where('enquiries.data.0.vessel_name', 'MT Page 01'));
+
+    $this->get(route('enquiries.edit', ['page' => 2]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('enquiries/edit')
+            ->has('enquiries.data', 1)
+            ->where('enquiries.current_page', 2)
+            ->where('enquiries.data.0.vessel_name', 'MT Page 26'));
 });
 
 test('editStore creates an enquiry with full details', function () {

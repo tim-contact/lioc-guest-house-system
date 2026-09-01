@@ -12,7 +12,7 @@ use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
 test('guests are redirected from the operations page', function () {
-    $this->get(route('operations'))->assertForbidden();
+    $this->get(route('operations'))->assertRedirect(route('login'));
 });
 
 test('index exposes barge, agency and PIC options alongside the edit fields', function () {
@@ -80,7 +80,7 @@ test('index exposes recent completed orders with their port and final quantities
 test('guests cannot update an operations order', function () {
     $order = Order::factory()->create();
 
-    $this->patch(route('operations.update', $order))->assertForbidden();
+    $this->patch(route('operations.update', $order))->assertRedirect(route('login'));
 });
 
 test('update persists operations fields and leaves vessel and order identifiers untouched', function () {

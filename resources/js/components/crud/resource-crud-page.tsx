@@ -1,6 +1,10 @@
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import { ExportButton } from '@/components/export-button';
+import {
+    PaginationControls,
+    type PaginationMeta,
+} from '@/components/pagination-controls';
 import { SortableHead } from '@/components/sortable-head';
 import { TableFrame } from '@/components/table-frame';
 import { Button } from '@/components/ui/button';
@@ -28,9 +32,11 @@ import { ResourceForm } from './resource-form';
 export function ResourceCrudPage<T>({
     rows,
     config,
+    pagination,
 }: {
     rows: T[];
     config: CrudConfig<T>;
+    pagination?: PaginationMeta;
 }) {
     const [editing, setEditing] = useState<T | null>(null);
     const [deleting, setDeleting] = useState<T | null>(null);
@@ -161,6 +167,8 @@ export function ResourceCrudPage<T>({
                         </TableBody>
                     </Table>
                 </TableFrame>
+
+                {pagination && <PaginationControls pagination={pagination} />}
             </div>
 
             {/* ---- Create popup ---- */}

@@ -1,6 +1,7 @@
 import { tableUpdate } from '@/actions/App/Http/Controllers/OrderController';
 import type { CrudConfig } from '@/components/crud/crud-types';
 import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
+import type { PaginationMeta } from '@/components/pagination-controls';
 import { FUEL_GRADES } from '@/lib/domain';
 import type { ExportColumn } from '@/lib/export-xlsx';
 import {
@@ -72,7 +73,9 @@ interface Order {
 }
 
 interface OrdersTableProps {
-    orders: Order[];
+    orders: PaginationMeta & {
+        data: Order[];
+    };
     agents: AgentOption[];
     agentPics: AgentPicOption[];
     statusOptions: EnumOption[];
@@ -92,6 +95,8 @@ export default function OrdersTable({
     productTypeOptions,
     creditTermsOptions,
 }: OrdersTableProps) {
+    const rows = orders.data;
+
     const agentOptions = agents.map((agent) => ({
         value: String(agent.id),
         label: agent.name,
@@ -255,7 +260,7 @@ export default function OrdersTable({
             {
                 header: 'Supply Location',
                 sortKey: 'delivery_location_id',
-                cell: (o) => o.delivery_location ?? 'â€”',
+                cell: (o) => o.delivery_location ?? '—',
             },
             {
                 header: 'Product Type',
@@ -572,7 +577,7 @@ export default function OrdersTable({
         },
     };
 
-    return <ResourceCrudPage rows={orders} config={config} />;
+    return <ResourceCrudPage rows={rows} config={config} pagination={orders} />;
 }
 
 OrdersTable.layout = {

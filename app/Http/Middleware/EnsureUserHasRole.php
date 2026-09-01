@@ -22,7 +22,7 @@ class EnsureUserHasRole
         $user = $request->user();
 
         if (! $user) {
-            abort(403);
+            return redirect()->guest(route('login'));
         }
 
         $userType = $user->type;
