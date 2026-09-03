@@ -51,6 +51,7 @@ export interface CompletedRow {
     vlsfo_qty: string | null;
     mgo_qty: string | null;
     hsfo_qty: string | null;
+    barging_cost: string | null;
     invoice_value: string | null;
     invoice_date: string | null;
     payment_due_date: string | null;
@@ -120,6 +121,12 @@ const COLUMNS: Column[] = [
         cell: (row) => row.hsfo_qty ?? '—',
     },
     {
+        header: 'Barging Cost',
+        sortKey: 'barging_cost',
+        align: 'right',
+        cell: (row) => formatMoney(row.barging_cost),
+    },
+    {
         header: 'Invoice Value',
         sortKey: 'invoice_value',
         align: 'right',
@@ -172,6 +179,7 @@ const EXPORT_COLUMNS: ExportColumn<CompletedRow>[] = [
     { header: 'VLSFO Qty', value: (row) => row.vlsfo_qty ?? '' },
     { header: 'MGO Qty', value: (row) => row.mgo_qty ?? '' },
     { header: 'HSFO Qty', value: (row) => row.hsfo_qty ?? '' },
+    { header: 'Barging Cost', value: (row) => row.barging_cost ?? '' },
     { header: 'Invoice Value', value: (row) => row.invoice_value ?? '' },
     { header: 'Invoice Date', value: (row) => row.invoice_date ?? '' },
     { header: 'Payment Due Date', value: (row) => row.payment_due_date ?? '' },

@@ -182,6 +182,7 @@ test('update reprices a delivered order\'s invoice value from the new BDN quanti
         'vlsfo_rate' => 500,
         'mgo_rate' => 0,
         'hsfo_rate' => 0,
+        'barging_cost' => 1500,
         'invoice_value' => 0,
     ]);
 
@@ -189,7 +190,7 @@ test('update reprices a delivered order\'s invoice value from the new BDN quanti
         'vlsfo_bdn_qty' => 100,
     ])->assertRedirect();
 
-    expect((float) $order->refresh()->invoice_value)->toBe(50000.0);
+    expect((float) $order->refresh()->invoice_value)->toBe(51500.0);
 });
 
 test('update leaves invoice value alone for a pending order', function () {
@@ -232,6 +233,7 @@ test('complete delivers the order and stamps the invoice from BDN quantities and
         'mgo_rate' => 600,
         'hsfo_bdn_qty' => 0,
         'hsfo_rate' => 700,
+        'barging_cost' => 2000,
     ]);
     Bdn::factory()->create([
         'order_id' => $order->id,
@@ -243,7 +245,7 @@ test('complete delivers the order and stamps the invoice from BDN quantities and
     $order->refresh();
 
     expect($order->status)->toBe(OrderStatus::Delivered);
-    expect((float) $order->invoice_value)->toBe(80000.0);
+    expect((float) $order->invoice_value)->toBe(82000.0);
     expect($order->invoice_date->toDateString())->toBe('2026-07-18');
     expect($order->payment_due_date->toDateString())->toBe('2026-08-17');
 });
