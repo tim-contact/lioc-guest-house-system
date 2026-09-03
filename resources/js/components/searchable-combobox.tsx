@@ -6,6 +6,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import { cleanSearchText, searchIncludes } from '@/lib/search';
 
 export interface ComboboxItem {
     value: string; // the value stored on the form (sap_id / imo)
@@ -32,11 +33,11 @@ export function SearchableCombobox({
     const [query, setQuery] = useState('');
 
     const selected = items.find((item) => item.value === value);
-    const needle = query.toLowerCase();
+    const needle = cleanSearchText(query);
     const filtered = items.filter(
         (item) =>
-            item.label.toLowerCase().includes(needle) ||
-            item.sublabel.toLowerCase().includes(needle),
+            searchIncludes(item.label, needle) ||
+            searchIncludes(item.sublabel, needle),
     );
 
     return (

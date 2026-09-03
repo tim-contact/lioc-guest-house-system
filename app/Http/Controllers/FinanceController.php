@@ -7,6 +7,7 @@ use App\Enums\PaymentType;
 use App\Models\Order;
 use App\Models\Payment;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -21,16 +22,24 @@ class FinanceController extends Controller
     {
         $perPage = (int) $request->input('per_page', 25);
         $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 25;
-        $search = trim((string) $request->input('search', ''));
+        $search = self::cleanSearchText($request->input('search', ''));
+        $sort = (string) $request->input('sort', 'payment_due_date');
+        $direction = $request->input('dir') === 'desc' ? 'desc' : 'asc';
+        $sort = in_array($sort, self::sortableColumns(), true) ? $sort : 'payment_due_date';
 
         $completedOrders = Order::with(['customer', 'deliveryLocation', 'payments'])
+            ->select('orders.*')
+            ->when($sort === 'customer_name', fn ($query) => $query->leftJoin('customers', 'orders.customer_id', '=', 'customers.sap_id'))
+            ->when($sort === 'location', fn ($query) => $query->leftJoin('supply_locations', 'orders.delivery_location_id', '=', 'supply_locations.id'))
             ->whereIn('status', OrderStatus::completedStatuses())
             ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
+                $searchPattern = "%{$search}%";
+
                 $query
-                    ->where('vessel_name', 'like', "%{$search}%")
-                    ->orWhereHas('customer', fn ($customer) => $customer->where('name', 'like', "%{$search}%"));
+                    ->whereRaw('LOWER(vessel_name) LIKE ?', [$searchPattern])
+                    ->orWhereHas('customer', fn ($customer) => $customer->whereRaw('LOWER(name) LIKE ?', [$searchPattern]));
             }))
-            ->orderBy('payment_due_date')
+            ->tap(fn (Builder $query) => self::applySort($query, $sort, $direction))
             ->orderBy('order_number')
             ->paginate($perPage)
             ->withQueryString()
@@ -69,6 +78,8 @@ class FinanceController extends Controller
             'paymentTypeOptions' => $this->enumOptions(PaymentType::cases()),
             'filters' => [
                 'search' => $search,
+                'sort' => $sort,
+                'dir' => $direction,
             ],
         ]);
     }
@@ -85,6 +96,50 @@ class FinanceController extends Controller
         $order->syncPaymentTotals();
 
         return $this->toast('Payment added.');
+    }
+
+    private static function cleanSearchText(mixed $value): string
+    {
+        return mb_strtolower(preg_replace('/\s+/', ' ', trim((string) $value)) ?? '');
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function sortableColumns(): array
+    {
+        return [
+            'order_number',
+            'customer_name',
+            'vessel_name',
+            'location',
+            'vlsfo_qty',
+            'mgo_qty',
+            'hsfo_qty',
+            'invoice_value',
+            'invoice_date',
+            'payment_due_date',
+            'paid_in_full',
+            'amount_received',
+            'amount_remaining',
+            'payment_receipt_date',
+            'status',
+        ];
+    }
+
+    private static function applySort(Builder $query, string $sort, string $direction): void
+    {
+        match ($sort) {
+            'customer_name' => $query->orderByRaw("LOWER(customers.name) {$direction} NULLS LAST"),
+            'location' => $query->orderByRaw("LOWER(supply_locations.name) {$direction} NULLS LAST"),
+            'order_number', 'vessel_name', 'status' => $query->orderByRaw("LOWER(orders.{$sort}) {$direction} NULLS LAST"),
+            'vlsfo_qty' => $query->orderByRaw("COALESCE(orders.vlsfo_bdn_qty, orders.vlsfo_final_qty) {$direction} NULLS LAST"),
+            'mgo_qty' => $query->orderByRaw("COALESCE(orders.mgo_bdn_qty, orders.mgo_final_qty) {$direction} NULLS LAST"),
+            'hsfo_qty' => $query->orderByRaw("COALESCE(orders.hsfo_bdn_qty, orders.hsfo_final_qty) {$direction} NULLS LAST"),
+            'paid_in_full' => $query->orderByRaw('(orders.invoice_value > 0 AND COALESCE(orders.invoice_value, 0) - COALESCE(orders.amount_received, 0) <= 0) '.$direction),
+            'amount_remaining' => $query->orderByRaw("(COALESCE(orders.invoice_value, 0) - COALESCE(orders.amount_received, 0)) {$direction}"),
+            default => $query->orderBy("orders.{$sort}", $direction),
+        };
     }
 
     public function close(Order $order): RedirectResponse
