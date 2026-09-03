@@ -8,6 +8,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { cleanSearchText, searchIncludes } from '@/lib/search';
 
 export const ALL_PORTS_VALUE = '__all_ports__';
 
@@ -118,7 +119,7 @@ export function filterPortScopedRows<T extends PortSearchableRow>(
     rows: T[],
     filters: PortSearchState,
 ): T[] {
-    const query = filters.query.trim().toLowerCase();
+    const query = cleanSearchText(filters.query);
 
     return rows.filter((row) => {
         const matchesPort =
@@ -126,7 +127,7 @@ export function filterPortScopedRows<T extends PortSearchableRow>(
         const matchesQuery =
             query.length === 0 ||
             [row.vessel_name, row.customer_name].some((value) =>
-                (value ?? '').toLowerCase().includes(query),
+                searchIncludes(value, query),
             );
 
         return matchesPort && matchesQuery;

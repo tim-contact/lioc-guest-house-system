@@ -23,7 +23,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { useSortable } from '@/hooks/use-sortable';
+import type { SortDir } from '@/hooks/use-sortable';
 import type { ExportColumn } from '@/lib/export-xlsx';
 import { cn, formatMoney, shortDate } from '@/lib/utils';
 import { close as closeFinanceOrder } from '@/routes/finance';
@@ -71,6 +71,8 @@ interface FinanceDashboardProps {
     paymentTypeOptions: EnumOption[];
     filters: {
         search: string;
+        sort: keyof CompletedRow;
+        dir: SortDir;
     };
 }
 
@@ -200,10 +202,8 @@ export default function FinanceDashboard({
         port: ALL_PORTS_VALUE,
     });
     const didMount = useRef(false);
-    const { sortKey, sortDir, handleSort, sorted } = useSortable(
-        rows,
-        'payment_due_date',
-    );
+    const sortKey = filters.sort;
+    const sortDir = filters.dir;
 
     useEffect(() => {
         if (!didMount.current) {
@@ -223,6 +223,14 @@ export default function FinanceDashboard({
                 params.per_page = completedOrders.per_page;
             }
 
+            if (sortKey !== 'payment_due_date') {
+                params.sort = sortKey;
+            }
+
+            if (sortDir !== 'asc') {
+                params.dir = sortDir;
+            }
+
             router.get('/finance', params, {
                 preserveScroll: true,
                 preserveState: true,
@@ -232,6 +240,29 @@ export default function FinanceDashboard({
 
         return () => window.clearTimeout(timeout);
     }, [completedOrders.per_page, searchFilters]);
+
+    const handleSort = (key: keyof CompletedRow): void => {
+        const nextDir = key === sortKey && sortDir === 'asc' ? 'desc' : 'asc';
+        const params: Record<string, string | number> = {
+            sort: key,
+            dir: nextDir,
+        };
+        const query = searchFilters.query.trim();
+
+        if (query) {
+            params.search = query;
+        }
+
+        if (completedOrders.per_page !== 25) {
+            params.per_page = completedOrders.per_page;
+        }
+
+        router.get('/finance', params, {
+            preserveScroll: true,
+            preserveState: true,
+            replace: true,
+        });
+    };
 
     const closeOrder = (id: number) => {
         router.patch(
@@ -271,7 +302,7 @@ export default function FinanceDashboard({
                                 </span>
                             </div>
                             <ExportButton
-                                rows={sorted}
+                                rows={rows}
                                 columns={EXPORT_COLUMNS}
                                 filename="finance"
                             />
@@ -303,7 +334,7 @@ export default function FinanceDashboard({
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {sorted.map((row) => (
+                                        {rows.map((row) => (
                                             <TableRow
                                                 key={row.id}
                                                 className="min-h-[50px] border-[#E7EDF4] bg-white hover:bg-[#F8FAFD]"
@@ -371,7 +402,7 @@ export default function FinanceDashboard({
                                             </TableRow>
                                         ))}
 
-                                        {sorted.length === 0 && (
+                                        {rows.length === 0 && (
                                             <TableRow>
                                                 <TableCell
                                                     colSpan={COLUMNS.length + 1}

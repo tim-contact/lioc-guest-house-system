@@ -141,6 +141,52 @@ test('finance dashboard paginates completed orders', function () {
             ->where('completedOrders.data.0.order_number', 'ORD-FIN-026'));
 });
 
+test('finance dashboard sorts the full paginated result set by customer name', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    foreach (range('A', 'J') as $letter) {
+        $customer = Customer::factory()->create(['name' => "{$letter} Customer"]);
+
+        createFinanceOrder([
+            'customer_id' => $customer->sap_id,
+            'order_number' => "ORD-FIN-{$letter}",
+            'payment_due_date' => now()->addDays(ord($letter) - 63),
+        ]);
+    }
+
+    $zulu = Customer::factory()->create(['name' => 'Zulu Marine']);
+    createFinanceOrder([
+        'customer_id' => $zulu->sap_id,
+        'order_number' => 'ORD-FIN-ZULU',
+        'payment_due_date' => now()->addDay(),
+    ]);
+
+    $this->get(route('finance', [
+        'sort' => 'customer_name',
+        'dir' => 'asc',
+        'per_page' => 10,
+    ]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('finance/dashboard')
+            ->where('completedOrders.total', 11)
+            ->where('completedOrders.data.0.customer_name', 'A Customer')
+            ->where('completedOrders.data.9.customer_name', 'J Customer')
+            ->where('filters.sort', 'customer_name')
+            ->where('filters.dir', 'asc'));
+
+    $this->get(route('finance', [
+        'sort' => 'customer_name',
+        'dir' => 'asc',
+        'per_page' => 10,
+        'page' => 2,
+    ]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('finance/dashboard')
+            ->where('completedOrders.data.0.customer_name', 'Zulu Marine'));
+});
+
 test('finance dashboard filters completed orders by vessel or customer', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
@@ -195,6 +241,13 @@ test('finance dashboard filters completed orders by vessel or customer', functio
             ->component('finance/dashboard')
             ->has('completedOrders.data', 2)
             ->where('completedOrders.total', 2));
+
+    $this->get(route('finance', ['search' => '  search   alpha  ']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('finance/dashboard')
+            ->where('completedOrders.total', 2)
+            ->where('filters.search', 'search alpha'));
 });
 
 test('guests cannot add a payment', function () {
