@@ -7,6 +7,7 @@ use App\Enums\Sampling;
 use App\Enums\UserType;
 use App\Models\Agent;
 use App\Models\Barge;
+use App\Models\Bdn;
 use App\Models\Customer;
 use App\Models\Enquiry;
 use App\Models\Order;
@@ -232,6 +233,10 @@ test('complete delivers the order and stamps the invoice from BDN quantities and
         'hsfo_bdn_qty' => 0,
         'hsfo_rate' => 700,
     ]);
+    Bdn::factory()->create([
+        'order_id' => $order->id,
+        'delivery_date' => '2026-07-18',
+    ]);
 
     $this->patch(route('surveyor.complete', $order))->assertRedirect();
 
@@ -239,8 +244,8 @@ test('complete delivers the order and stamps the invoice from BDN quantities and
 
     expect($order->status)->toBe(OrderStatus::Delivered);
     expect((float) $order->invoice_value)->toBe(80000.0);
-    expect($order->invoice_date->toDateString())->toBe(now()->toDateString());
-    expect($order->payment_due_date->toDateString())->toBe(now()->addDays(30)->toDateString());
+    expect($order->invoice_date->toDateString())->toBe('2026-07-18');
+    expect($order->payment_due_date->toDateString())->toBe('2026-08-17');
 });
 
 test('complete with immediate credit terms makes payment due the same day', function () {

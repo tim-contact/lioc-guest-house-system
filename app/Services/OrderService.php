@@ -60,11 +60,12 @@ class OrderService
 
     /**
      * Mark an order delivered and stamp its invoice: value is the sum of each
-     * grade's BDN quantity times its rate, due date is today plus credit terms.
+     * grade's BDN quantity times its rate, due date is invoice date plus credit terms.
      */
     public static function complete(Order $order): void
     {
-        $invoiceDate = Carbon::today();
+        $deliveryDate = $order->bdn()->value('delivery_date');
+        $invoiceDate = $deliveryDate !== null ? Carbon::parse($deliveryDate) : Carbon::today();
 
         $order->update([
             'status' => OrderStatus::Delivered,

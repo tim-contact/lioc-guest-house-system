@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\DeliveryMode;
 use App\Enums\FuelGrade;
+use App\Enums\OrderStatus;
 use App\Enums\Sampling;
 use App\Enums\SamplingMethod;
 use App\Models\Bdn;
@@ -114,6 +115,13 @@ class BdnController extends Controller
                 ])
                 ->all(),
         );
+
+        if ($order->status === OrderStatus::Delivered && $bdn->delivery_date !== null) {
+            $order->update([
+                'invoice_date' => $bdn->delivery_date,
+                'payment_due_date' => $bdn->delivery_date->copy()->addDays($order->credit_terms?->days() ?? 0),
+            ]);
+        }
 
         OrderService::reprice($order);
 

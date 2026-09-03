@@ -21,9 +21,15 @@ class FinanceController extends Controller
     {
         $perPage = (int) $request->input('per_page', 25);
         $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 25;
+        $search = trim((string) $request->input('search', ''));
 
         $completedOrders = Order::with(['customer', 'deliveryLocation', 'payments'])
             ->whereIn('status', OrderStatus::completedStatuses())
+            ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
+                $query
+                    ->where('vessel_name', 'like', "%{$search}%")
+                    ->orWhereHas('customer', fn ($customer) => $customer->where('name', 'like', "%{$search}%"));
+            }))
             ->orderBy('payment_due_date')
             ->orderBy('order_number')
             ->paginate($perPage)
@@ -61,6 +67,9 @@ class FinanceController extends Controller
             'completedOrders' => $completedOrders,
             'financeSummary' => $this->financeSummary(),
             'paymentTypeOptions' => $this->enumOptions(PaymentType::cases()),
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 

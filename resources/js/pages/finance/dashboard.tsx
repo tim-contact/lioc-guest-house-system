@@ -1,12 +1,17 @@
 import { Head, router } from '@inertiajs/react';
 import { CheckCircle2, CreditCard, XCircle } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ExportButton } from '@/components/export-button';
 import {
     PaginationControls,
     type PaginationMeta,
 } from '@/components/pagination-controls';
+import {
+    ALL_PORTS_VALUE,
+    PortScopedOrderSearch,
+    type PortSearchState,
+} from '@/components/port-scoped-order-search';
 import { SortableHead } from '@/components/sortable-head';
 import { TableFrame } from '@/components/table-frame';
 import { Button } from '@/components/ui/button';
@@ -41,6 +46,7 @@ export interface CompletedRow {
     order_number: string | null;
     customer_name: string | null;
     vessel_name: string | null;
+    port: string | null;
     location: string | null;
     vlsfo_qty: string | null;
     mgo_qty: string | null;
@@ -63,6 +69,9 @@ interface FinanceDashboardProps {
     };
     financeSummary: FinanceSummaryBucket[];
     paymentTypeOptions: EnumOption[];
+    filters: {
+        search: string;
+    };
 }
 
 interface Column {
@@ -181,14 +190,48 @@ export default function FinanceDashboard({
     completedOrders,
     financeSummary,
     paymentTypeOptions,
+    filters,
 }: FinanceDashboardProps) {
     const rows = completedOrders.data;
     const [closingId, setClosingId] = useState<number | null>(null);
     const [payingRow, setPayingRow] = useState<CompletedRow | null>(null);
+    const [searchFilters, setSearchFilters] = useState<PortSearchState>({
+        query: filters.search,
+        port: ALL_PORTS_VALUE,
+    });
+    const didMount = useRef(false);
     const { sortKey, sortDir, handleSort, sorted } = useSortable(
         rows,
         'payment_due_date',
     );
+
+    useEffect(() => {
+        if (!didMount.current) {
+            didMount.current = true;
+            return;
+        }
+
+        const timeout = window.setTimeout(() => {
+            const params: Record<string, string | number> = {};
+            const query = searchFilters.query.trim();
+
+            if (query) {
+                params.search = query;
+            }
+
+            if (completedOrders.per_page !== 25) {
+                params.per_page = completedOrders.per_page;
+            }
+
+            router.get('/finance', params, {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            });
+        }, 300);
+
+        return () => window.clearTimeout(timeout);
+    }, [completedOrders.per_page, searchFilters]);
 
     const closeOrder = (id: number) => {
         router.patch(
@@ -209,6 +252,13 @@ export default function FinanceDashboard({
             <main className="min-h-[calc(100svh-4.25rem)] overflow-x-clip bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.045),transparent_32%),#F4F7FA] px-3 py-4 sm:px-4 md:px-6">
                 <div className="flex w-full flex-col gap-4">
                     <FinanceSummaryCards summary={financeSummary} />
+
+                    <PortScopedOrderSearch
+                        value={searchFilters}
+                        onChange={setSearchFilters}
+                        resultCount={completedOrders.total}
+                        showPortSelect={false}
+                    />
 
                     <section className="overflow-hidden rounded-[17px] border border-[#E3EAF2] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
                         <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">

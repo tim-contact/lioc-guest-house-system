@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\CreditTerms;
 use App\Enums\DeliveryMode;
 use App\Enums\OrderStatus;
 use App\Enums\Sampling;
@@ -166,6 +167,25 @@ test('update reprices a delivered order\'s invoice value from the new metric ton
     ])->assertSessionHasNoErrors();
 
     expect((float) $order->fresh()->invoice_value)->toBe(80000.0);
+});
+
+test('update keeps a delivered order invoice date aligned to the bdn delivery date', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $order = Order::factory()->create([
+        'status' => OrderStatus::Delivered,
+        'credit_terms' => CreditTerms::Days30,
+        'invoice_date' => '2026-07-01',
+        'payment_due_date' => '2026-07-31',
+    ]);
+
+    $this->put(route('surveyor.bdn.update', $order), [
+        'delivery_date' => '2026-07-20',
+    ])->assertSessionHasNoErrors();
+
+    expect($order->fresh())
+        ->invoice_date->toDateString()->toBe('2026-07-20')
+        ->payment_due_date->toDateString()->toBe('2026-08-19');
 });
 
 test('update accepts a form where every field is still blank', function () {

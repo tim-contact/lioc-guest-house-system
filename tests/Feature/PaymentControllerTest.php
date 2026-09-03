@@ -27,11 +27,46 @@ test('index lists payments with their order and customer', function () {
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('payments/index')
-            ->has('payments', 1)
-            ->where('payments.0.order_number', 'ORD-PAY-1')
-            ->where('payments.0.customer_name', 'Blue Ocean Ltd')
-            ->where('payments.0.type', 'credit_note')
+            ->has('payments.data', 1)
+            ->where('payments.data.0.order_number', 'ORD-PAY-1')
+            ->where('payments.data.0.customer_name', 'Blue Ocean Ltd')
+            ->where('payments.data.0.type', 'credit_note')
+            ->where('payments.per_page', 25)
+            ->where('payments.total', 1)
             ->has('paymentTypeOptions'));
+});
+
+test('index paginates payments', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    foreach (range(1, 26) as $number) {
+        $orderNumber = 'ORD-PAY-'.str_pad((string) $number, 3, '0', STR_PAD_LEFT);
+
+        Order::factory()->create(['order_number' => $orderNumber]);
+
+        Payment::factory()->create([
+            'order_number' => $orderNumber,
+            'date' => now()->subDays($number),
+        ]);
+    }
+
+    $this->get(route('payments.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('payments/index')
+            ->has('payments.data', 25)
+            ->where('payments.current_page', 1)
+            ->where('payments.per_page', 25)
+            ->where('payments.total', 26)
+            ->where('payments.data.0.order_number', 'ORD-PAY-001'));
+
+    $this->get(route('payments.index', ['page' => 2]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('payments/index')
+            ->has('payments.data', 1)
+            ->where('payments.current_page', 2)
+            ->where('payments.data.0.order_number', 'ORD-PAY-026'));
 });
 
 test('guests cannot update a payment', function () {

@@ -34,8 +34,40 @@ test('index lists only orders that have been invoiced', function () {
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('invoices/index')
-            ->has('invoices', 1)
-            ->where('invoices.0.customer_name', 'Blue Ocean Ltd'));
+            ->has('invoices.data', 1)
+            ->where('invoices.data.0.customer_name', 'Blue Ocean Ltd')
+            ->where('invoices.per_page', 25)
+            ->where('invoices.total', 1));
+});
+
+test('index paginates invoices', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    foreach (range(1, 26) as $number) {
+        Order::factory()->create([
+            'order_number' => 'INV-'.str_pad((string) $number, 3, '0', STR_PAD_LEFT),
+            'invoice_date' => now()->subDays(2),
+            'payment_due_date' => now()->addDays($number),
+        ]);
+    }
+
+    $this->get(route('invoices.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('invoices/index')
+            ->has('invoices.data', 25)
+            ->where('invoices.current_page', 1)
+            ->where('invoices.per_page', 25)
+            ->where('invoices.total', 26)
+            ->where('invoices.data.0.order_number', 'INV-001'));
+
+    $this->get(route('invoices.index', ['page' => 2]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('invoices/index')
+            ->has('invoices.data', 1)
+            ->where('invoices.current_page', 2)
+            ->where('invoices.data.0.order_number', 'INV-026'));
 });
 
 test('guests cannot update an invoice', function () {
