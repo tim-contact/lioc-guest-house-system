@@ -356,6 +356,7 @@ class EnquiryController extends Controller
             'laycan_to' => $enquiry->laycan_to,
             'delivery_mode' => collect($products)->map(fn (string $p) => $enquiry->{"{$p}_delivery_mode"})->first(fn ($v) => $v !== null),
             'delivery_location_id' => $enquiry->supply_location_id,
+            'barging_cost' => $enquiry->barging_cost,
             'product_type' => collect($products)->map(fn (string $p) => $enquiry->{"{$p}_product_type"})->first(fn ($v) => $v !== null),
             'agent_id' => $enquiry->agent_id,
             'status' => OrderStatus::Pending,

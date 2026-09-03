@@ -309,6 +309,7 @@ test('update reprices the invoice value of a delivered order when a rate changes
         'status' => OrderStatus::Delivered,
         'vlsfo_bdn_qty' => 100,
         'vlsfo_rate' => 500,
+        'barging_cost' => 2500,
         'invoice_value' => 50000,
     ]);
 
@@ -316,7 +317,7 @@ test('update reprices the invoice value of a delivered order when a rate changes
         'vlsfo_rate' => 600,
     ])->assertRedirect();
 
-    expect((float) $order->refresh()->invoice_value)->toBe(60000.0);
+    expect((float) $order->refresh()->invoice_value)->toBe(62500.0);
 });
 
 test('update leaves invoice value alone for a pending order', function () {
@@ -463,6 +464,7 @@ test('table update saves every section of the order, unlike the narrower dashboa
         'status' => OrderStatus::Delivered->value,
         'delivery_mode' => DeliveryMode::Pipeline->value,
         'delivery_location_id' => $location->id,
+        'barging_cost' => 1250,
         'product_type' => 'bonded',
         'vlsfo_quantity_low' => 100,
         'vlsfo_quantity_high' => 200,
@@ -496,11 +498,12 @@ test('table update saves every section of the order, unlike the narrower dashboa
     expect($fresh->credit_terms)->toBe(CreditTerms::Days30);
     expect($fresh->delivery_mode)->toBe(DeliveryMode::Pipeline);
     expect($fresh->delivery_location_id)->toBe($location->id);
+    expect((float) $fresh->barging_cost)->toBe(1250.0);
     expect($fresh->vessel_name)->toBe('MV Renamed');
     expect($fresh->vlsfo_qty_range)->toBe('100 - 200');
     expect((float) $fresh->amount_received)->toBe(45000.0);
     expect($fresh->payment_receipt_date->toDateString())->toBe('2026-02-10');
-    expect((float) $fresh->invoice_value)->toBe(75000.0);
+    expect((float) $fresh->invoice_value)->toBe(76250.0);
 });
 
 test('table update ignores a submitted invoice value and recomputes it from bdn quantity and rate', function () {
@@ -510,6 +513,7 @@ test('table update ignores a submitted invoice value and recomputes it from bdn 
         'status' => OrderStatus::Delivered,
         'vlsfo_bdn_qty' => 100,
         'vlsfo_rate' => 500,
+        'barging_cost' => 750,
         'invoice_value' => 50000,
     ]);
 
@@ -521,7 +525,7 @@ test('table update ignores a submitted invoice value and recomputes it from bdn 
         'invoice_value' => 999999,
     ])->assertRedirect();
 
-    expect((float) $order->refresh()->invoice_value)->toBe(50000.0);
+    expect((float) $order->refresh()->invoice_value)->toBe(50750.0);
 });
 
 test('table update rejects a duplicate order number', function () {

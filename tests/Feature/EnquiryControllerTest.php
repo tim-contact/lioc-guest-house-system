@@ -265,6 +265,7 @@ test('generate_order snapshots the enquiry and winning customer into an order', 
         'vlsfo_quantity_high' => 1000,
         'vlsfo_product_type' => ProductType::Bonded,
         'vlsfo_delivery_mode' => DeliveryMode::Barge,
+        'barging_cost' => 1250,
     ]);
 
     $enquiry->enquiryCustomers()->create([
@@ -290,6 +291,7 @@ test('generate_order snapshots the enquiry and winning customer into an order', 
         ->and($order->port_id)->toBe($port->id)
         ->and($order->agent_id)->toBe($agent->id)
         ->and($order->delivery_location_id)->toBe($location->id)
+        ->and((float) $order->barging_cost)->toBe(1250.0)
         ->and($order->product_type)->toBe(ProductType::Bonded)
         ->and($order->delivery_mode)->toBe(DeliveryMode::Barge)
         ->and($order->vlsfo_qty_range)->toBe('500 - 1000')
