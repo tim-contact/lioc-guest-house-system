@@ -104,7 +104,8 @@ test('paid_in_full is true only when amount received covers the invoice', functi
             ->where('completedOrders.data.0.status', 'Delivered')
             ->where('completedOrders.data.0.paid_in_full', true)
             ->where('completedOrders.data.1.order_number', 'ORD-FIN-PARTIAL')
-            ->where('completedOrders.data.1.paid_in_full', false));
+            ->where('completedOrders.data.1.paid_in_full', false)
+            ->where('filters.search', ''));
 });
 
 test('finance dashboard paginates completed orders', function () {
@@ -138,6 +139,62 @@ test('finance dashboard paginates completed orders', function () {
             ->has('completedOrders.data', 1)
             ->where('completedOrders.current_page', 2)
             ->where('completedOrders.data.0.order_number', 'ORD-FIN-026'));
+});
+
+test('finance dashboard filters completed orders by vessel or customer', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $colombo = Port::factory()->create(['name' => 'Colombo']);
+    $galle = Port::factory()->create(['name' => 'Galle']);
+    $blueOcean = Customer::factory()->create(['name' => 'Blue Ocean Ltd']);
+    $harborLine = Customer::factory()->create(['name' => 'Harbor Line']);
+
+    createFinanceOrder([
+        'customer_id' => $blueOcean->sap_id,
+        'port_id' => $colombo->id,
+        'order_number' => 'ORD-FIN-COL',
+        'vessel_name' => 'MV Search Alpha',
+        'invoice_value' => 1000,
+        'amount_received' => 100,
+        'payment_due_date' => now()->addDay(),
+    ]);
+
+    createFinanceOrder([
+        'customer_id' => $blueOcean->sap_id,
+        'port_id' => $galle->id,
+        'order_number' => 'ORD-FIN-GAL',
+        'vessel_name' => 'MV Search Alpha',
+        'invoice_value' => 1000,
+        'amount_received' => 100,
+        'payment_due_date' => now()->addDays(2),
+    ]);
+
+    createFinanceOrder([
+        'customer_id' => $harborLine->sap_id,
+        'port_id' => $colombo->id,
+        'order_number' => 'ORD-FIN-HAR',
+        'vessel_name' => 'MV Other',
+        'invoice_value' => 1000,
+        'amount_received' => 100,
+        'payment_due_date' => now()->addDays(3),
+    ]);
+
+    $this->get(route('finance', ['search' => 'blue']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('finance/dashboard')
+            ->has('completedOrders.data', 2)
+            ->where('completedOrders.total', 2)
+            ->where('completedOrders.data.0.order_number', 'ORD-FIN-COL')
+            ->where('filters.search', 'blue')
+            ->where('financeSummary.0.count', 3));
+
+    $this->get(route('finance', ['search' => 'search alpha']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('finance/dashboard')
+            ->has('completedOrders.data', 2)
+            ->where('completedOrders.total', 2));
 });
 
 test('guests cannot add a payment', function () {

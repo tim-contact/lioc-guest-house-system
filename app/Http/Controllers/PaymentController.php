@@ -12,12 +12,16 @@ use Inertia\Response;
 
 class PaymentController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $perPage = (int) $request->input('per_page', 25);
+        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 25;
+
         $payments = Payment::with('order.customer')
             ->orderByDesc('date')
-            ->get()
-            ->map(fn (Payment $payment): array => [
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(fn (Payment $payment): array => [
                 'id' => $payment->id,
                 'order_number' => $payment->order_number,
                 'customer_name' => $payment->order?->customer?->name,

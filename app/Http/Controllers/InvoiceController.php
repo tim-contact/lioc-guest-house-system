@@ -10,13 +10,17 @@ use Inertia\Response;
 
 class InvoiceController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $perPage = (int) $request->input('per_page', 25);
+        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 25;
+
         $invoices = Order::with('customer')
             ->whereNotNull('invoice_date')
             ->orderBy('payment_due_date')
-            ->get()
-            ->map(fn (Order $order): array => [
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(fn (Order $order): array => [
                 'id' => $order->id,
                 'order_number' => $order->order_number,
                 'customer_name' => $order->customer?->name,

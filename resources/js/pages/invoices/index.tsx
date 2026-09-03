@@ -1,5 +1,6 @@
 import type { CrudConfig } from '@/components/crud/crud-types';
 import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
+import type { PaginationMeta } from '@/components/pagination-controls';
 import type { ExportColumn } from '@/lib/export-xlsx';
 import { formatMoney, shortDate } from '@/lib/utils';
 import { update } from '@/routes/invoices';
@@ -18,7 +19,9 @@ interface Invoice {
 }
 
 interface InvoicesIndexProps {
-    invoices: Invoice[];
+    invoices: PaginationMeta & {
+        data: Invoice[];
+    };
 }
 
 const invoiceColumns: ExportColumn<Invoice>[] = [
@@ -120,7 +123,13 @@ const config: CrudConfig<Invoice> = {
 };
 
 export default function InvoicesIndex({ invoices }: InvoicesIndexProps) {
-    return <ResourceCrudPage rows={invoices} config={config} />;
+    return (
+        <ResourceCrudPage
+            rows={invoices.data}
+            config={config}
+            pagination={invoices}
+        />
+    );
 }
 
 InvoicesIndex.layout = {

@@ -1,5 +1,6 @@
 import type { CrudConfig } from '@/components/crud/crud-types';
 import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
+import type { PaginationMeta } from '@/components/pagination-controls';
 import type { ExportColumn } from '@/lib/export-xlsx';
 import { formatMoney, optionLabel, shortDate } from '@/lib/utils';
 import { destroy, update } from '@/routes/payments';
@@ -16,7 +17,9 @@ interface Payment {
 }
 
 interface PaymentsIndexProps {
-    payments: Payment[];
+    payments: PaginationMeta & {
+        data: Payment[];
+    };
     paymentTypeOptions: EnumOption[];
 }
 
@@ -24,6 +27,8 @@ export default function PaymentsIndex({
     payments,
     paymentTypeOptions,
 }: PaymentsIndexProps) {
+    const rows = payments.data;
+
     const exportColumns: ExportColumn<Payment>[] = [
         {
             header: 'Order Number',
@@ -107,7 +112,9 @@ export default function PaymentsIndex({
         },
     };
 
-    return <ResourceCrudPage rows={payments} config={config} />;
+    return (
+        <ResourceCrudPage rows={rows} config={config} pagination={payments} />
+    );
 }
 
 PaymentsIndex.layout = {
