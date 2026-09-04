@@ -91,7 +91,7 @@ class OrderService
     }
 
     /**
-     * Sum of each grade's BDN quantity times its rate, plus barging cost.
+     * Sum of each grade's BDN quantity times its rate, plus barging and agent fees.
      */
     private static function invoiceValue(Order $order): float
     {
@@ -99,7 +99,7 @@ class OrderService
             fn (string $product): float => (float) $order->{"{$product}_bdn_qty"} * (float) $order->{"{$product}_rate"},
         );
 
-        return $fuelTotal + (float) $order->barging_cost;
+        return $fuelTotal + (float) $order->barging_cost + (float) $order->agent_fees;
     }
 
     /**
@@ -120,6 +120,7 @@ class OrderService
             'delivery_location_id' => $order->delivery_location_id,
             'delivery_location' => $order->deliveryLocation?->name,
             'barging_cost' => $order->barging_cost,
+            'agent_fees' => $order->agent_fees,
             'vlsfo_qty' => $order->vlsfo_final_qty ?? $order->vlsfo_qty_range,
             'mgo_qty' => $order->mgo_final_qty ?? $order->mgo_qty_range,
             'hsfo_qty' => $order->hsfo_final_qty ?? $order->hsfo_qty_range,

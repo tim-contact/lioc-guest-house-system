@@ -6,6 +6,7 @@ use App\Enums\OrderStatus;
 use App\Enums\PaymentType;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Services\OrderService;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -53,6 +54,7 @@ class FinanceController extends Controller
                 'mgo_qty' => $order->mgo_bdn_qty ?? $order->mgo_final_qty,
                 'hsfo_qty' => $order->hsfo_bdn_qty ?? $order->hsfo_final_qty,
                 'barging_cost' => $order->barging_cost,
+                'agent_fees' => $order->agent_fees,
                 'invoice_value' => $order->invoice_value,
                 'invoice_date' => $order->invoice_date,
                 'payment_due_date' => $order->payment_due_date,
@@ -99,6 +101,20 @@ class FinanceController extends Controller
         return $this->toast('Payment added.');
     }
 
+    public function updateAgentFees(Request $request, Order $order): RedirectResponse
+    {
+        abort_unless($order->status === OrderStatus::Delivered, 403);
+
+        $validated = $request->validate([
+            'agent_fees' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $order->update(['agent_fees' => $validated['agent_fees'] ?? 0]);
+        OrderService::reprice($order);
+
+        return $this->toast('Agent fees updated.');
+    }
+
     private static function cleanSearchText(mixed $value): string
     {
         return mb_strtolower(preg_replace('/\s+/', ' ', trim((string) $value)) ?? '');
@@ -119,6 +135,7 @@ class FinanceController extends Controller
             'hsfo_qty',
             'invoice_value',
             'barging_cost',
+            'agent_fees',
             'invoice_date',
             'payment_due_date',
             'paid_in_full',
@@ -139,6 +156,7 @@ class FinanceController extends Controller
             'mgo_qty' => $query->orderByRaw("COALESCE(orders.mgo_bdn_qty, orders.mgo_final_qty) {$direction} NULLS LAST"),
             'hsfo_qty' => $query->orderByRaw("COALESCE(orders.hsfo_bdn_qty, orders.hsfo_final_qty) {$direction} NULLS LAST"),
             'barging_cost' => $query->orderBy("orders.{$sort}", $direction),
+            'agent_fees' => $query->orderBy("orders.{$sort}", $direction),
             'paid_in_full' => $query->orderByRaw('(orders.invoice_value > 0 AND COALESCE(orders.invoice_value, 0) - COALESCE(orders.amount_received, 0) <= 0) '.$direction),
             'amount_remaining' => $query->orderByRaw("(COALESCE(orders.invoice_value, 0) - COALESCE(orders.amount_received, 0)) {$direction}"),
             default => $query->orderBy("orders.{$sort}", $direction),

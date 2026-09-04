@@ -36,6 +36,7 @@ interface Order {
     delivery_location_id: number | null;
     delivery_location: string | null;
     barging_cost: string | null;
+    agent_fees: string | null;
     product_type: string | null;
     barge_id: string | null;
     agent_id: number | null;
@@ -171,6 +172,7 @@ export default function OrdersTable({
             },
         ]),
         { header: 'Barging Cost', value: (o) => o.barging_cost ?? '' },
+        { header: 'Agent Fees', value: (o) => o.agent_fees ?? '' },
         { header: 'Invoice Value', value: (o) => o.invoice_value ?? '' },
         { header: 'Invoice Date', value: (o) => o.invoice_date ?? '' },
         {
@@ -330,6 +332,12 @@ export default function OrdersTable({
                 sortKey: 'barging_cost',
                 align: 'right',
                 cell: (o) => formatMoney(o.barging_cost),
+            },
+            {
+                header: 'Agent Fees',
+                sortKey: 'agent_fees',
+                align: 'right',
+                cell: (o) => formatMoney(o.agent_fees),
             },
             {
                 header: 'Invoice Value',
@@ -505,6 +513,12 @@ export default function OrdersTable({
                 section: 'Invoicing',
             },
             {
+                name: 'agent_fees',
+                label: 'Agent Fees',
+                type: 'currency',
+                section: 'Invoicing',
+            },
+            {
                 name: 'invoice_value',
                 label: 'Invoice Value',
                 type: 'currency',
@@ -556,6 +570,7 @@ export default function OrdersTable({
             delivery_mode: str(order?.delivery_mode),
             delivery_location_id: str(order?.delivery_location_id),
             barging_cost: str(order?.barging_cost ?? '0'),
+            agent_fees: str(order?.agent_fees ?? '0'),
             product_type: str(order?.product_type),
             ...Object.fromEntries(
                 FUEL_GRADES.flatMap((product) => [

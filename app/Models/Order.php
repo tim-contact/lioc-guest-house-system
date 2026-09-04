@@ -32,6 +32,7 @@ use Illuminate\Support\Carbon;
  * @property DeliveryMode|null $delivery_mode
  * @property int|null $delivery_location_id
  * @property float $barging_cost
+ * @property float $agent_fees
  * @property ProductType|null $product_type
  * @property string|null $barge_id
  * @property int|null $agent_id
@@ -69,7 +70,7 @@ use Illuminate\Support\Carbon;
 #[Fillable([
     'enquiry_id', 'order_number', 'order_date', 'customer_id', 'vessel_id', 'vessel_name',
     'port_id', 'eta', 'laycan_from', 'laycan_to', 'delivery_mode', 'delivery_location_id',
-    'barging_cost', 'product_type', 'barge_id', 'agent_id', 'agent_name', 'agent_pic_id', 'pic', 'mobile_no',
+    'barging_cost', 'agent_fees', 'product_type', 'barge_id', 'agent_id', 'agent_name', 'agent_pic_id', 'pic', 'mobile_no',
     'vlsfo_quantity_low', 'vlsfo_quantity_high', 'vlsfo_qty_range', 'vlsfo_rate', 'vlsfo_final_qty', 'vlsfo_bdn_qty',
     'mgo_quantity_low', 'mgo_quantity_high', 'mgo_qty_range', 'mgo_rate', 'mgo_final_qty', 'mgo_bdn_qty',
     'hsfo_quantity_low', 'hsfo_quantity_high', 'hsfo_qty_range', 'hsfo_rate', 'hsfo_final_qty', 'hsfo_bdn_qty',
@@ -119,6 +120,7 @@ class Order extends Model
             'invoice_value' => 'decimal:2',
             'amount_received' => 'decimal:2',
             'barging_cost' => 'decimal:2',
+            'agent_fees' => 'decimal:2',
         ];
 
         foreach (FuelGrade::keys() as $grade) {

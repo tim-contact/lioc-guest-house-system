@@ -148,6 +148,7 @@ class OrderController extends Controller
             'delivery_mode' => ['nullable', Rule::enum(DeliveryMode::class)],
             'delivery_location_id' => ['nullable', $this->supplyLocationRule($request->input('port_id', $order->port_id))],
             'barging_cost' => ['nullable', 'numeric', 'min:0'],
+            'agent_fees' => ['nullable', 'numeric', 'min:0'],
             'product_type' => ['nullable', Rule::enum(ProductType::class)],
             'credit_terms' => ['nullable', Rule::enum(CreditTerms::class)],
             'status' => ['required', Rule::enum(OrderStatus::class)],

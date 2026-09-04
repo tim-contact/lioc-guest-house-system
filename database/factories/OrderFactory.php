@@ -40,6 +40,7 @@ class OrderFactory extends Factory
             'delivery_mode' => fake()->randomElement(DeliveryMode::cases()),
             'delivery_location_id' => $enquiry->supply_location_id,
             'barging_cost' => 0,
+            'agent_fees' => 0,
             'product_type' => fake()->randomElement(ProductType::cases()),
             'barge_id' => Barge::factory(),
             'agent_id' => Agent::factory(),
