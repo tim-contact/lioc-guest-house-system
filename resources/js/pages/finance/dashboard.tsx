@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/table';
 import type { SortDir } from '@/hooks/use-sortable';
 import type { ExportColumn } from '@/lib/export-xlsx';
-import { cn, formatMoney, shortDate } from '@/lib/utils';
+import { cn, formatMoney, productColor, shortDate } from '@/lib/utils';
 import { close as closeFinanceOrder } from '@/routes/finance';
 import type { EnumOption } from '@/types';
 import { AddPaymentDialog } from './add-payment-dialog';
@@ -88,94 +88,42 @@ interface Column {
 
 const COLUMNS: Column[] = [
     {
-        header: 'Order Number',
+        header: 'Order',
         sortKey: 'order_number',
-        cell: (row) => row.order_number ?? '—',
+        cell: (row) => <OrderCell row={row} />,
     },
     {
-        header: 'Customer Name',
+        header: 'Customer / Vessel',
         sortKey: 'customer_name',
-        cell: (row) => row.customer_name ?? '—',
+        cell: (row) => <CustomerVesselCell row={row} />,
     },
     {
-        header: 'Vessel Name',
-        sortKey: 'vessel_name',
-        cell: (row) => row.vessel_name ?? '—',
-    },
-    {
-        header: 'Supply Location',
-        sortKey: 'location',
-        cell: (row) => row.location ?? '—',
-    },
-    {
-        header: 'VLSFO Qty',
+        header: 'Products',
         sortKey: 'vlsfo_qty',
-        cell: (row) => row.vlsfo_qty ?? '—',
+        cell: (row) => <ProductChips row={row} />,
     },
     {
-        header: 'MGO Qty',
-        sortKey: 'mgo_qty',
-        cell: (row) => row.mgo_qty ?? '—',
-    },
-    {
-        header: 'HSFO Qty',
-        sortKey: 'hsfo_qty',
-        cell: (row) => row.hsfo_qty ?? '—',
-    },
-    {
-        header: 'Barging Cost',
-        sortKey: 'barging_cost',
-        align: 'right',
-        cell: (row) => formatMoney(row.barging_cost),
-    },
-    {
-        header: 'Agent Fees',
+        header: 'Charges',
         sortKey: 'agent_fees',
         align: 'right',
-        cell: (row) => <AgentFeesCell row={row} />,
+        cell: (row) => <ChargesCell row={row} />,
     },
     {
-        header: 'Invoice Value',
+        header: 'Invoice',
         sortKey: 'invoice_value',
         align: 'right',
-        cell: (row) => formatMoney(row.invoice_value),
+        cell: (row) => <InvoiceCell row={row} />,
     },
     {
-        header: 'Invoice Date',
-        sortKey: 'invoice_date',
-        cell: (row) => shortDate(row.invoice_date),
-    },
-    {
-        header: 'Payment Due Date',
+        header: 'Payment',
         sortKey: 'payment_due_date',
-        cell: (row) => shortDate(row.payment_due_date),
-    },
-    {
-        header: 'Payment Status',
-        sortKey: 'paid_in_full',
-        cell: (row) => (row.paid_in_full ? 'Received' : 'Not Received'),
-    },
-    {
-        header: 'Amount Received',
-        sortKey: 'amount_received',
         align: 'right',
-        cell: (row) => formatMoney(row.amount_received),
+        cell: (row) => <PaymentCell row={row} />,
     },
     {
-        header: 'Amount Remaining',
-        sortKey: 'amount_remaining',
-        align: 'right',
-        cell: (row) => formatMoney(row.amount_remaining),
-    },
-    {
-        header: 'Last Payment Date',
-        sortKey: 'payment_receipt_date',
-        cell: (row) => shortDate(row.payment_receipt_date),
-    },
-    {
-        header: 'Order Status',
+        header: 'Status',
         sortKey: 'status',
-        cell: (row) => row.status ?? '—',
+        cell: (row) => <StatusCell row={row} />,
     },
 ];
 
@@ -458,6 +406,140 @@ FinanceDashboard.layout = {
     title: 'Finance',
 };
 
+const PRODUCT_FIELDS = [
+    { key: 'vlsfo_qty', label: 'VLSFO' },
+    { key: 'mgo_qty', label: 'MGO' },
+    { key: 'hsfo_qty', label: 'HSFO' },
+] as const;
+
+function hasPositiveAmount(value: string | number | null): boolean {
+    return Number(value ?? 0) > 0;
+}
+
+function OrderCell({ row }: { row: CompletedRow }) {
+    return (
+        <div className="flex min-w-32 flex-col gap-1">
+            <span className="font-semibold text-[#172033]">
+                {row.order_number ?? '—'}
+            </span>
+            <span className="text-xs text-[#64748B]">
+                {row.location ?? 'No supply location'}
+            </span>
+        </div>
+    );
+}
+
+function CustomerVesselCell({ row }: { row: CompletedRow }) {
+    return (
+        <div className="flex min-w-44 flex-col gap-1">
+            <span className="font-semibold text-[#172033]">
+                {row.customer_name ?? '—'}
+            </span>
+            <span className="text-xs text-[#64748B]">
+                {row.vessel_name ?? 'No vessel'}
+            </span>
+        </div>
+    );
+}
+
+function ProductChips({ row }: { row: CompletedRow }) {
+    const products = PRODUCT_FIELDS.filter((product) =>
+        hasPositiveAmount(row[product.key]),
+    );
+
+    if (products.length === 0) {
+        return <span className="text-[#94A3B8]">—</span>;
+    }
+
+    return (
+        <div className="flex min-w-40 flex-col items-start gap-1.5">
+            {products.map((product, index) => {
+                const color = productColor(product.label, index);
+
+                return (
+                    <span
+                        key={product.key}
+                        className="inline-flex w-fit items-center gap-1.5 rounded border px-2 py-1 text-xs font-semibold"
+                        style={{
+                            borderColor: color,
+                            backgroundColor: color,
+                            color: '#ffffff',
+                        }}
+                    >
+                        <span>{product.label}</span>
+                        <span className="tabular-nums">{row[product.key]}</span>
+                    </span>
+                );
+            })}
+        </div>
+    );
+}
+
+function ChargesCell({ row }: { row: CompletedRow }) {
+    return (
+        <div className="flex min-w-40 flex-col items-end gap-1.5">
+            <AgentFeesCell row={row} />
+            {hasPositiveAmount(row.barging_cost) && (
+                <span className="text-xs text-[#64748B]">
+                    Barging {formatMoney(row.barging_cost)}
+                </span>
+            )}
+        </div>
+    );
+}
+
+function InvoiceCell({ row }: { row: CompletedRow }) {
+    return (
+        <div className="flex min-w-32 flex-col items-end gap-1">
+            <span className="font-semibold text-[#172033] tabular-nums">
+                {formatMoney(row.invoice_value)}
+            </span>
+            <span className="text-xs text-[#64748B]">
+                {shortDate(row.invoice_date)}
+            </span>
+        </div>
+    );
+}
+
+function PaymentCell({ row }: { row: CompletedRow }) {
+    return (
+        <div className="flex min-w-36 flex-col items-end gap-1">
+            <span className="text-sm text-[#172033]">
+                Due {shortDate(row.payment_due_date)}
+            </span>
+            <span className="text-xs text-[#64748B]">
+                Received {formatMoney(row.amount_received)}
+            </span>
+            <span className="text-xs font-semibold text-[#334155]">
+                Balance {formatMoney(row.amount_remaining)}
+            </span>
+            {row.payment_receipt_date && (
+                <span className="text-xs text-[#64748B]">
+                    Last {shortDate(row.payment_receipt_date)}
+                </span>
+            )}
+        </div>
+    );
+}
+
+function StatusCell({ row }: { row: CompletedRow }) {
+    return (
+        <div className="flex min-w-24 flex-col gap-1">
+            <span className="font-semibold text-[#172033]">
+                {row.status ?? '—'}
+            </span>
+            <span
+                className={cn(
+                    'text-xs font-medium',
+                    row.paid_in_full ? 'text-[#0F766E]' : 'text-[#B45309]',
+                )}
+            >
+                {row.paid_in_full ? 'Received' : 'Not received'}
+            </span>
+        </div>
+    );
+}
+
 function AgentFeesCell({ row }: { row: CompletedRow }) {
     const [value, setValue] = useState(row.agent_fees ?? '0');
     const [saving, setSaving] = useState(false);
@@ -497,7 +579,7 @@ function AgentFeesCell({ row }: { row: CompletedRow }) {
                     event.currentTarget.blur();
                 }
             }}
-            className="ml-auto h-8 w-28 text-right tabular-nums"
+            className="ml-auto h-10 w-36 rounded-lg border-[#CBD5E1] bg-white text-right text-base font-semibold tabular-nums"
             aria-label={`Agent fees for order ${row.order_number}`}
         />
     );
