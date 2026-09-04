@@ -159,6 +159,7 @@ test('update reprices a delivered order\'s invoice value from the new metric ton
         'mgo_rate' => 600,
         'hsfo_rate' => 0,
         'barging_cost' => 1200,
+        'agent_fees' => 750,
         'invoice_value' => 0,
     ]);
 
@@ -167,7 +168,7 @@ test('update reprices a delivered order\'s invoice value from the new metric ton
         'mgo_metric_ton' => 50,
     ])->assertSessionHasNoErrors();
 
-    expect((float) $order->fresh()->invoice_value)->toBe(81200.0);
+    expect((float) $order->fresh()->invoice_value)->toBe(81950.0);
 });
 
 test('update keeps a delivered order invoice date aligned to the bdn delivery date', function () {

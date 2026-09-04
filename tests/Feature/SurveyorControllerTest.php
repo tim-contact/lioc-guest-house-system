@@ -112,7 +112,7 @@ test('index renders the operational instructions from the pending order enquiry'
             ->missing('pendingOrders.0.barging_cost'));
 });
 
-test('index lists pending orders due within three days and overdue ones, but not later orders', function () {
+test('index lists pending orders due within seven days and overdue ones', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $barge = Barge::factory()->create();
@@ -137,9 +137,10 @@ test('index lists pending orders due within three days and overdue ones, but not
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('surveyor/dashboard')
-            ->has('pendingOrders', 2)
+            ->has('pendingOrders', 3)
             ->where('pendingOrders.0.vessel_name', 'MV Overdue')
-            ->where('pendingOrders.1.vessel_name', 'MV Soon'));
+            ->where('pendingOrders.1.vessel_name', 'MV Soon')
+            ->where('pendingOrders.2.vessel_name', 'MV Later'));
 });
 
 test('guests cannot update a surveyor order', function () {
@@ -183,6 +184,7 @@ test('update reprices a delivered order\'s invoice value from the new BDN quanti
         'mgo_rate' => 0,
         'hsfo_rate' => 0,
         'barging_cost' => 1500,
+        'agent_fees' => 250,
         'invoice_value' => 0,
     ]);
 
@@ -190,7 +192,7 @@ test('update reprices a delivered order\'s invoice value from the new BDN quanti
         'vlsfo_bdn_qty' => 100,
     ])->assertRedirect();
 
-    expect((float) $order->refresh()->invoice_value)->toBe(51500.0);
+    expect((float) $order->refresh()->invoice_value)->toBe(51750.0);
 });
 
 test('update leaves invoice value alone for a pending order', function () {
@@ -234,6 +236,7 @@ test('complete delivers the order and stamps the invoice from BDN quantities and
         'hsfo_bdn_qty' => 0,
         'hsfo_rate' => 700,
         'barging_cost' => 2000,
+        'agent_fees' => 500,
     ]);
     Bdn::factory()->create([
         'order_id' => $order->id,
@@ -245,7 +248,7 @@ test('complete delivers the order and stamps the invoice from BDN quantities and
     $order->refresh();
 
     expect($order->status)->toBe(OrderStatus::Delivered);
-    expect((float) $order->invoice_value)->toBe(82000.0);
+    expect((float) $order->invoice_value)->toBe(82500.0);
     expect($order->invoice_date->toDateString())->toBe('2026-07-18');
     expect($order->payment_due_date->toDateString())->toBe('2026-08-17');
 });

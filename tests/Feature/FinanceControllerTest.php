@@ -256,6 +256,36 @@ test('guests cannot add a payment', function () {
     $this->post(route('finance.payments.store', $order))->assertRedirect(route('login'));
 });
 
+test('finance users can update agent fees and reprice a delivered order', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Finance]));
+
+    $order = createFinanceOrder([
+        'vlsfo_bdn_qty' => 100,
+        'vlsfo_rate' => 500,
+        'barging_cost' => 1200,
+        'agent_fees' => 0,
+        'invoice_value' => 51200,
+    ]);
+
+    $this->patch(route('finance.agent-fees.update', $order), [
+        'agent_fees' => 750,
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($order->refresh())
+        ->agent_fees->toBe('750.00')
+        ->invoice_value->toBe('51950.00');
+});
+
+test('agent fees cannot be updated for a pending order', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Finance]));
+
+    $order = createFinanceOrder(['status' => OrderStatus::Pending]);
+
+    $this->patch(route('finance.agent-fees.update', $order), [
+        'agent_fees' => 750,
+    ])->assertForbidden();
+});
+
 test('adding payments totals the amount received and records the latest date', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 

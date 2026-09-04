@@ -15,6 +15,7 @@ import {
 import { SortableHead } from '@/components/sortable-head';
 import { TableFrame } from '@/components/table-frame';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
     Table,
     TableBody,
@@ -52,6 +53,7 @@ export interface CompletedRow {
     mgo_qty: string | null;
     hsfo_qty: string | null;
     barging_cost: string | null;
+    agent_fees: string | null;
     invoice_value: string | null;
     invoice_date: string | null;
     payment_due_date: string | null;
@@ -127,6 +129,12 @@ const COLUMNS: Column[] = [
         cell: (row) => formatMoney(row.barging_cost),
     },
     {
+        header: 'Agent Fees',
+        sortKey: 'agent_fees',
+        align: 'right',
+        cell: (row) => <AgentFeesCell row={row} />,
+    },
+    {
         header: 'Invoice Value',
         sortKey: 'invoice_value',
         align: 'right',
@@ -180,6 +188,7 @@ const EXPORT_COLUMNS: ExportColumn<CompletedRow>[] = [
     { header: 'MGO Qty', value: (row) => row.mgo_qty ?? '' },
     { header: 'HSFO Qty', value: (row) => row.hsfo_qty ?? '' },
     { header: 'Barging Cost', value: (row) => row.barging_cost ?? '' },
+    { header: 'Agent Fees', value: (row) => row.agent_fees ?? '' },
     { header: 'Invoice Value', value: (row) => row.invoice_value ?? '' },
     { header: 'Invoice Date', value: (row) => row.invoice_date ?? '' },
     { header: 'Payment Due Date', value: (row) => row.payment_due_date ?? '' },
@@ -448,3 +457,48 @@ export default function FinanceDashboard({
 FinanceDashboard.layout = {
     title: 'Finance',
 };
+
+function AgentFeesCell({ row }: { row: CompletedRow }) {
+    const [value, setValue] = useState(row.agent_fees ?? '0');
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        setValue(row.agent_fees ?? '0');
+    }, [row.agent_fees]);
+
+    function save() {
+        if (value === (row.agent_fees ?? '0')) {
+            return;
+        }
+
+        router.patch(
+            `/finance/${row.id}/agent-fees`,
+            { agent_fees: value || 0 },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onStart: () => setSaving(true),
+                onFinish: () => setSaving(false),
+            },
+        );
+    }
+
+    return (
+        <Input
+            type="number"
+            min="0"
+            step="0.01"
+            value={value}
+            disabled={saving}
+            onChange={(event) => setValue(event.target.value)}
+            onBlur={save}
+            onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                    event.currentTarget.blur();
+                }
+            }}
+            className="ml-auto h-8 w-28 text-right tabular-nums"
+            aria-label={`Agent fees for order ${row.order_number}`}
+        />
+    );
+}
