@@ -112,7 +112,7 @@ test('index renders the operational instructions from the pending order enquiry'
             ->missing('pendingOrders.0.barging_cost'));
 });
 
-test('index lists pending orders due within three days and overdue ones, but not later orders', function () {
+test('index lists pending orders due within seven days and overdue ones', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $barge = Barge::factory()->create();
@@ -137,9 +137,10 @@ test('index lists pending orders due within three days and overdue ones, but not
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('surveyor/dashboard')
-            ->has('pendingOrders', 2)
+            ->has('pendingOrders', 3)
             ->where('pendingOrders.0.vessel_name', 'MV Overdue')
-            ->where('pendingOrders.1.vessel_name', 'MV Soon'));
+            ->where('pendingOrders.1.vessel_name', 'MV Soon')
+            ->where('pendingOrders.2.vessel_name', 'MV Later'));
 });
 
 test('guests cannot update a surveyor order', function () {
