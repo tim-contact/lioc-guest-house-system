@@ -28,6 +28,8 @@ export interface OrderRow {
     vessel_name: string | null;
     customer_name: string | null;
     port: string | null;
+    pic?: string | null;
+    mobile_no?: string | null;
     vlsfo_qty: string | null;
     mgo_qty: string | null;
     hsfo_qty: string | null;
@@ -58,6 +60,10 @@ const COLUMNS: Column[] = [
     {
         header: 'Customer Name',
         sortKey: 'customer_name',
+    },
+    {
+        header: 'PIC',
+        sortKey: 'pic',
     },
     ...FUEL_GRADES.map(
         (grade): Column => ({
@@ -228,6 +234,9 @@ function PortTable<T extends OrderRow>({
                             <TableCell className="px-3 py-3 text-[#334155]">
                                 {row.customer_name ?? '-'}
                             </TableCell>
+                            <TableCell className="px-3 py-3 text-[#334155]">
+                                {picLabel(row)}
+                            </TableCell>
                             {FUEL_GRADES.map((grade) => (
                                 <TableCell
                                     key={grade.key}
@@ -281,4 +290,12 @@ function PortTable<T extends OrderRow>({
             </Table>
         </TableFrame>
     );
+}
+
+function picLabel(row: OrderRow): string {
+    if (!row.pic) {
+        return '-';
+    }
+
+    return row.mobile_no ? `${row.pic} (${row.mobile_no})` : row.pic;
 }

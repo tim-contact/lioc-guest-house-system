@@ -114,14 +114,6 @@ function shortTime(value: string | null): string {
     });
 }
 
-function picLabel({ pic, mobile_no }: PendingRow): string {
-    if (!pic) {
-        return '—';
-    }
-
-    return mobile_no ? `${pic} (${mobile_no})` : pic;
-}
-
 function BargeOverviewStrip({
     barge,
     selectedScope,
@@ -216,9 +208,6 @@ function OperationalInstruction({ row }: { row: PendingRow }) {
 
     return (
         <div className="grid grid-cols-[auto_1fr_auto_1fr] items-baseline gap-x-3 gap-y-1 text-xs">
-            <span className="text-muted-foreground">PIC</span>
-            <span className="col-span-3 break-words">{picLabel(row)}</span>
-
             {pairs.map(([label, value]) => (
                 <Fragment key={label}>
                     <span className="text-muted-foreground">{label}</span>

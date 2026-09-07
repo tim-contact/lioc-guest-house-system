@@ -21,7 +21,12 @@ import { UserMenuContent } from '@/components/user-menu-content';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { visibleNavGroups } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
+import type { Auth } from '@/types';
 import type { NavGroup, NavItem } from '@/types';
+
+type PageProps = {
+    auth: Auth;
+};
 
 const entryClass =
     'group relative flex h-10 items-center gap-[6px] rounded-lg border border-transparent px-3 text-[0.95rem] font-medium text-[#3f4a5f] transition-[background-color,border-color,color] duration-200 after:absolute after:right-3 after:bottom-0.5 after:left-3 after:h-0.5 after:origin-center after:scale-x-75 after:rounded-full after:bg-[linear-gradient(90deg,#3f37ff_0%,#5b4dff_50%,#766bff_100%)] after:opacity-0 after:shadow-[0_4px_10px_rgba(79,70,229,0.45)] after:transition-[opacity,transform] after:duration-200 hover:text-[#4f46e5] focus-visible:ring-2 focus-visible:ring-[#4f46e5]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none data-[state=open]:font-semibold data-[state=open]:text-[#172033] data-[state=open]:after:scale-x-100 data-[state=open]:after:opacity-100';
@@ -36,7 +41,7 @@ const menuItemClass =
     'group grid min-h-14 w-full grid-cols-[2.5rem_minmax(0,1fr)_1rem] items-center gap-3 rounded-[0.85rem] px-2.5 py-2.5 text-left transition-[background-color,color] duration-200 outline-none hover:bg-[#625bff]/[0.05] focus:bg-[#625bff]/[0.05] data-[highlighted]:bg-[#625bff]/[0.05] data-disabled:pointer-events-none data-disabled:opacity-50';
 
 export function AppHeader({ title }: { title?: string }) {
-    const { auth } = usePage().props;
+    const { auth } = usePage<PageProps>().props;
     const { isCurrentOrParentUrl } = useCurrentUrl();
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -152,7 +157,7 @@ export function AppHeader({ title }: { title?: string }) {
 
     return (
         <header className="sticky top-0 z-[1000] shrink-0 overflow-visible border-b border-slate-950/[0.07] bg-[rgba(250,251,253,0.94)] text-[#172033] shadow-[0_8px_24px_rgba(15,23,42,0.08)] backdrop-blur-[14px]">
-            <div className="mx-auto grid h-16 w-full max-w-[1600px] grid-cols-[3rem_minmax(0,1fr)_3rem] items-center gap-2 overflow-visible px-3 sm:grid-cols-[3.5rem_minmax(0,1fr)_3.5rem] sm:px-4 md:h-[4.25rem] md:grid-cols-[4rem_minmax(0,1fr)_4rem] md:px-6 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-0 lg:px-10">
+            <div className="mx-auto grid h-[4.5rem] w-full max-w-[1600px] grid-cols-[3rem_minmax(0,1fr)_3rem] items-center gap-2 overflow-visible px-3 sm:grid-cols-[3.5rem_minmax(0,1fr)_3.5rem] sm:px-4 md:h-[5rem] md:grid-cols-[4rem_minmax(0,1fr)_4rem] md:px-6 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-0 lg:px-10">
                 <div className="flex min-w-0 items-center gap-4">
                     <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
                         <SheetTrigger asChild>
@@ -205,7 +210,7 @@ export function AppHeader({ title }: { title?: string }) {
                             <img
                                 src="/images/lanka-ioc-logo.png"
                                 alt="Lanka IOC"
-                                className="h-9 w-auto shrink-0 object-contain"
+                                className="h-11 w-auto shrink-0 object-contain"
                             />
                             <span className="hidden max-w-36 truncate text-sm font-semibold text-[#3f4a5f] xl:block">
                                 {title}
@@ -297,12 +302,12 @@ export function AppHeader({ title }: { title?: string }) {
                 <Link
                     href="/"
                     aria-label="Bunkering Operations System home"
-                    className="flex h-11 min-w-0 items-center justify-center overflow-hidden rounded-lg focus-visible:ring-2 focus-visible:ring-[#4f46e5]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none md:h-[3.25rem] lg:min-w-[8.75rem]"
+                    className="flex h-14 min-w-0 items-center justify-center overflow-hidden rounded-lg focus-visible:ring-2 focus-visible:ring-[#4f46e5]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none md:h-16 lg:min-w-[11rem]"
                 >
                     <img
                         src="/images/boss_logo.png"
                         alt="Bunkering Operations System"
-                        className="h-auto w-[6.25rem] max-w-full object-contain sm:w-[7rem] md:w-[8rem] lg:w-[8.5rem]"
+                        className="h-auto w-[8rem] max-w-full object-contain sm:w-[8.75rem] md:w-[10rem] lg:w-[10.5rem]"
                     />
                 </Link>
 

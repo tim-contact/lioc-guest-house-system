@@ -54,6 +54,8 @@ export interface CrudConfig<T> {
     dialogClassName?: string;
     /** Initial form values; called with null for the create form. */
     toFormData?: (row: T | null) => CrudFormData;
+    /** Optional page-specific form used inside the create/edit dialogs. */
+    form?: (props: { row: T | null; onDone: () => void }) => ReactNode;
     /** Extra buttons rendered before Edit/Delete in each row's Actions cell. */
     rowActions?: (row: T) => ReactNode;
     editTitle?: (row: T) => string;

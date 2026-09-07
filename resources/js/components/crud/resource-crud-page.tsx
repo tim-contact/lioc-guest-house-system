@@ -174,11 +174,16 @@ export function ResourceCrudPage<T>({
             {/* ---- Create popup ---- */}
             <Dialog open={creating} onOpenChange={setCreating}>
                 <DialogContent className={config.dialogClassName}>
-                    <ResourceForm
-                        config={config}
-                        row={null}
-                        onDone={() => setCreating(false)}
-                    />
+                    {config.form?.({
+                        row: null,
+                        onDone: () => setCreating(false),
+                    }) ?? (
+                        <ResourceForm
+                            config={config}
+                            row={null}
+                            onDone={() => setCreating(false)}
+                        />
+                    )}
                 </DialogContent>
             </Dialog>
 
@@ -190,12 +195,18 @@ export function ResourceCrudPage<T>({
                 <DialogContent className={config.dialogClassName}>
                     {editing && (
                         // key forces a fresh form each time a different row is opened
-                        <ResourceForm
-                            key={config.pk(editing)}
-                            config={config}
-                            row={editing}
-                            onDone={() => setEditing(null)}
-                        />
+                        <div key={config.pk(editing)}>
+                            {config.form?.({
+                                row: editing,
+                                onDone: () => setEditing(null),
+                            }) ?? (
+                                <ResourceForm
+                                    config={config}
+                                    row={editing}
+                                    onDone={() => setEditing(null)}
+                                />
+                            )}
+                        </div>
                     )}
                 </DialogContent>
             </Dialog>
