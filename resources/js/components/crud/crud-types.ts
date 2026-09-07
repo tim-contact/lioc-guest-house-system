@@ -3,6 +3,9 @@ import type { ExportColumn } from '@/lib/export-xlsx';
 import type { EnumOption } from '@/types';
 import type { RouteDefinition } from '@/wayfinder';
 
+export type CrudFormValue = string | string[];
+export type CrudFormData = Record<string, CrudFormValue>;
+
 export type CrudFieldType =
     | 'text'
     | 'email'
@@ -11,6 +14,7 @@ export type CrudFieldType =
     | 'date'
     | 'datetime-local'
     | 'select'
+    | 'multiselect'
     | 'password'
     | 'textarea';
 
@@ -19,9 +23,9 @@ export interface CrudField {
     label: string;
     type?: CrudFieldType;
     step?: string;
-    options?: EnumOption[] | ((data: Record<string, string>) => EnumOption[]);
+    options?: EnumOption[] | ((data: CrudFormData) => EnumOption[]);
     disabledOnEdit?: boolean;
-    disabledWhen?: (data: Record<string, string>) => boolean;
+    disabledWhen?: (data: CrudFormData) => boolean;
     resetOnChange?: string[];
     section?: string;
 }
@@ -49,7 +53,7 @@ export interface CrudConfig<T> {
     formColumns?: 1 | 2;
     dialogClassName?: string;
     /** Initial form values; called with null for the create form. */
-    toFormData?: (row: T | null) => Record<string, string>;
+    toFormData?: (row: T | null) => CrudFormData;
     /** Extra buttons rendered before Edit/Delete in each row's Actions cell. */
     rowActions?: (row: T) => ReactNode;
     editTitle?: (row: T) => string;

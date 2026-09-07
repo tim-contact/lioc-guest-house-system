@@ -3,6 +3,7 @@
 use App\Enums\UserType;
 use App\Models\Agent;
 use App\Models\AgentPic;
+use App\Models\ContactInformation;
 use App\Models\Order;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
@@ -50,6 +51,26 @@ test('store creates a PIC', function () {
         ->mobile->toBe('0710000009');
 });
 
+test('store records multiple PIC mobile numbers separately', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $agent = Agent::factory()->create();
+
+    $this->post(route('agent-pics.store'), [
+        'agent_id' => $agent->id,
+        'name' => 'Multi Phone PIC',
+        'mobile' => '0710000001; 0710000002 / 0710000003',
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    $pic = AgentPic::sole();
+
+    expect($pic->contactNumbers()->pluck('value')->all())->toBe([
+        '0710000001',
+        '0710000002',
+        '0710000003',
+    ]);
+});
+
 test('store requires an existing agency, a name and a mobile', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
@@ -75,6 +96,28 @@ test('update saves edits to a PIC', function () {
         ->mobile->toBe('0710000010');
 });
 
+test('update replaces the PIC contact rows', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $pic = AgentPic::factory()->create();
+    $pic->contactInformation()->create([
+        'kind' => 'phone',
+        'value' => '0710000001',
+        'is_primary' => true,
+    ]);
+
+    $this->put(route('agent-pics.update', $pic), [
+        'agent_id' => $pic->agent_id,
+        'name' => 'Updated PIC',
+        'mobile' => '0720000001 / 0720000002',
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($pic->refresh()->contactNumbers()->pluck('value')->all())->toBe([
+        '0720000001',
+        '0720000002',
+    ]);
+});
+
 test('destroy deletes a PIC', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
@@ -83,6 +126,21 @@ test('destroy deletes a PIC', function () {
     $this->delete(route('agent-pics.destroy', $pic))->assertRedirect();
 
     expect(AgentPic::find($pic->id))->toBeNull();
+});
+
+test('destroy removes a PICs contact information', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $pic = AgentPic::factory()->create();
+    $pic->contactInformation()->create([
+        'kind' => 'phone',
+        'value' => '0710000001',
+        'is_primary' => true,
+    ]);
+
+    $this->delete(route('agent-pics.destroy', $pic))->assertRedirect();
+
+    expect(ContactInformation::count())->toBe(0);
 });
 
 test('destroy is refused with an error toast when an order references the PIC', function () {

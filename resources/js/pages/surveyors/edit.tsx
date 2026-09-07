@@ -10,6 +10,7 @@ interface Surveyor {
     mail_id: string | null;
     contact: string | null;
     barge_id: string | null;
+    barge_ids: string[];
     user_id: string | null;
     user_name?: string | null;
     user_email?: string | null;
@@ -40,6 +41,10 @@ export default function SurveyorsEdit({
 
     const bargeName = (imo: string | null): string =>
         bargeOptions.find((barge) => barge.value === imo)?.label ?? '—';
+    const bargeNames = (imos: string[]): string =>
+        imos.length > 0
+            ? imos.map((imo) => bargeName(imo)).join(', ')
+            : bargeName(null);
 
     const userOptions = availableUsers.map((user) => ({
         value: user.id,
@@ -54,7 +59,10 @@ export default function SurveyorsEdit({
         { header: 'Name', value: (surveyor) => surveyor.name },
         { header: 'Mail ID', value: (surveyor) => surveyor.mail_id ?? '' },
         { header: 'Contact', value: (surveyor) => surveyor.contact ?? '' },
-        { header: 'Barge', value: (surveyor) => bargeName(surveyor.barge_id) },
+        {
+            header: 'Barges',
+            value: (surveyor) => bargeNames(surveyor.barge_ids),
+        },
         {
             header: 'Login User',
             value: (surveyor) => surveyor.user_name ?? '—',
@@ -95,9 +103,9 @@ export default function SurveyorsEdit({
                 cell: (surveyor) => surveyor.contact ?? '—',
             },
             {
-                header: 'Barge',
+                header: 'Barges',
                 sortKey: 'barge_id',
-                cell: (surveyor) => bargeName(surveyor.barge_id),
+                cell: (surveyor) => bargeNames(surveyor.barge_ids),
             },
             {
                 header: 'Login User',
@@ -113,9 +121,9 @@ export default function SurveyorsEdit({
             { name: 'mail_id', label: 'Mail ID', type: 'email' },
             { name: 'contact', label: 'Contact' },
             {
-                name: 'barge_id',
-                label: 'Barge',
-                type: 'select',
+                name: 'barge_ids',
+                label: 'Barges',
+                type: 'multiselect',
                 options: bargeOptions,
             },
             {
@@ -131,6 +139,7 @@ export default function SurveyorsEdit({
             mail_id: surveyor?.mail_id ?? '',
             contact: surveyor?.contact ?? '',
             barge_id: surveyor?.barge_id ?? '',
+            barge_ids: surveyor?.barge_ids ?? [],
             user_id: surveyor?.user_id ?? '',
         }),
         routes: {

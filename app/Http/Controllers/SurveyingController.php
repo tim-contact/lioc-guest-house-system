@@ -14,6 +14,7 @@ use App\Services\OrderService;
 use App\Services\SurveyorAssignment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -41,17 +42,30 @@ class SurveyingController extends Controller
                 ]);
             }
 
-            $barge = $assignment['barge_id'];
-            $assignedBarge = Barge::where('imo', $barge)->first(['imo', 'name']);
+            $assignedBargeIds = $assignment['barge_ids'];
+            $requestedBarge = $request->query('barge');
+            $barge = is_string($requestedBarge) && in_array($requestedBarge, $assignedBargeIds, true)
+                ? $requestedBarge
+                : null;
+            $assignedBarges = Barge::whereIn('imo', $assignedBargeIds)
+                ->orderBy('name')
+                ->get(['imo', 'name']);
+            $barge = $barge === null && count($assignedBargeIds) === 1
+                ? $assignedBargeIds[0]
+                : $barge;
+            $assignedBarge = $barge
+                ? $assignedBarges->firstWhere('imo', $barge)
+                : null;
         } else {
             // Privileged users: use query param as before.
             $barge = $request->query('barge');
             $assignedBarge = null;
+            $assignedBargeIds = [];
+            $assignedBarges = collect();
         }
 
-        $pendingOrders = fn (): array => $barge
-            ? OrderService::pending(dueWithinDays: 7)
-                ->where('barge_id', $barge)
+        $pendingOrders = fn (): array => ($barge || $assignedBargeIds !== [])
+            ? $this->filterByBarges(OrderService::pending(dueWithinDays: 7), $barge, $assignedBargeIds)
                 ->load(['bdn', 'enquiry'])
                 ->map(fn (Order $order): array => [
                     'id' => $order->id,
@@ -84,9 +98,8 @@ class SurveyingController extends Controller
                 ->all()
             : [];
 
-        $completedOrders = fn (): array => $barge
-            ? OrderService::completedWithin()
-                ->where('barge_id', $barge)
+        $completedOrders = fn (): array => ($barge || $assignedBargeIds !== [])
+            ? $this->filterByBarges(OrderService::completedWithin(), $barge, $assignedBargeIds)
                 ->map(fn (Order $order): array => [
                     'id' => $order->id,
                     'vessel_name' => $order->vessel_name,
@@ -101,9 +114,9 @@ class SurveyingController extends Controller
                 ->all()
             : [];
 
-        // Barges: surveyor sees only their assigned barge.
-        $barges = $user->type->value === 'surveyor' && $assignedBarge
-            ? fn () => collect([$assignedBarge])
+        // Barges: surveyor sees only their assigned barges.
+        $barges = $user->type->value === 'surveyor'
+            ? fn () => $assignedBarges
             : fn () => Barge::orderBy('name')->get(['imo', 'name']);
 
         return Inertia::render('surveyor/dashboard', [
@@ -117,6 +130,24 @@ class SurveyingController extends Controller
             'samplingMethodOptions' => $this->enumOptions(SamplingMethod::cases()),
             'assignedBarge' => $assignedBarge,
         ]);
+    }
+
+    /**
+     * @param  Collection<int, Order>  $orders
+     * @param  list<string>  $bargeIds
+     * @return Collection<int, Order>
+     */
+    private function filterByBarges(Collection $orders, ?string $barge, array $bargeIds): Collection
+    {
+        if ($barge) {
+            return $orders->where('barge_id', $barge);
+        }
+
+        if ($bargeIds !== []) {
+            return $orders->whereIn('barge_id', $bargeIds);
+        }
+
+        return $orders;
     }
 
     /**

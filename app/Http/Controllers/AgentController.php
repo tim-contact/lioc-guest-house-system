@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Agent;
 use App\Models\Bdn;
+use App\Models\ContactInformation;
 use App\Models\Order;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,20 +16,39 @@ class AgentController extends Controller
     public function index(): Response
     {
         return Inertia::render('agents/index', [
-            'agents' => Agent::orderBy('name')->get(['id', 'name', 'address', 'contact', 'mail_id']),
+            'agents' => Agent::with(['contactNumbers', 'emailAddresses'])
+                ->orderBy('name')
+                ->get(['id', 'name', 'address', 'contact', 'mail_id'])
+                ->map(fn (Agent $agent): array => [
+                    ...$agent->toArray(),
+                    'contact_numbers' => $agent->contactNumbers->pluck('value')->values(),
+                    'email_addresses' => $agent->emailAddresses->pluck('value')->values(),
+                ]),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        Agent::create($request->validate($this->rules()));
+        $validated = $request->validate($this->rules());
+        $agent = Agent::create($validated);
+
+        ContactInformation::syncFor($agent, [
+            'phone' => $validated['contact'],
+            'email' => $validated['mail_id'] ?? null,
+        ]);
 
         return $this->toast('Agent created.');
     }
 
     public function update(Request $request, Agent $agent): RedirectResponse
     {
-        $agent->update($request->validate($this->rules()));
+        $validated = $request->validate($this->rules());
+
+        $agent->update($validated);
+        ContactInformation::syncFor($agent, [
+            'phone' => $validated['contact'],
+            'email' => $validated['mail_id'] ?? null,
+        ]);
 
         return $this->toast('Agent saved.');
     }
@@ -51,7 +71,13 @@ class AgentController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string', 'max:255'],
             'contact' => ['required', 'string', 'max:255'],
-            'mail_id' => ['nullable', 'string', 'email', 'max:255'],
+            'mail_id' => ['nullable', 'string', 'max:1000', function (string $attribute, mixed $value, \Closure $fail): void {
+                foreach (ContactInformation::splitValues($value) as $email) {
+                    if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+                        $fail('Each mail ID must be a valid email address.');
+                    }
+                }
+            }],
         ];
     }
 }

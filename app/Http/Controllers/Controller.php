@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Agent;
 use App\Models\AgentPic;
 use App\Models\SupplyLocation;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -61,13 +60,22 @@ abstract class Controller
      * Agency and PIC lists backing the shared <AgentContactFields> trio.
      * Column lists mirror AgentOption / AgentPicOption in resources/js/types/ui.ts.
      *
-     * @return array<string, Collection<int, Model>>
+     * @return array<string, mixed>
      */
     protected function agentContactProps(): array
     {
         return [
             'agents' => Agent::orderBy('name')->get(['id', 'name', 'address']),
-            'agentPics' => AgentPic::orderBy('name')->get(['id', 'agent_id', 'name', 'mobile']),
+            'agentPics' => AgentPic::with('contactNumbers')
+                ->orderBy('name')
+                ->get(['id', 'agent_id', 'name', 'mobile'])
+                ->map(fn (AgentPic $pic): array => [
+                    'id' => $pic->id,
+                    'agent_id' => $pic->agent_id,
+                    'name' => $pic->name,
+                    'mobile' => $pic->mobile,
+                    'contact_numbers' => $pic->contactNumbers->pluck('value')->values(),
+                ]),
         ];
     }
 

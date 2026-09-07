@@ -32,8 +32,8 @@ class BdnController extends Controller
         $query = Bdn::with(['order.customer', 'deliveryLocation', 'agent', 'barge'])->latest();
 
         // Surveyor users: filter to their assigned barge.
-        if ($user->type->value === 'surveyor' && ! $assignment['denied'] && $assignment['barge_id']) {
-            $query->whereHas('order', fn ($q) => $q->where('barge_id', $assignment['barge_id']));
+        if ($user->type->value === 'surveyor' && ! $assignment['denied'] && $assignment['barge_ids'] !== []) {
+            $query->whereHas('order', fn ($q) => $q->whereIn('barge_id', $assignment['barge_ids']));
         }
 
         $bdns = $query->get()
@@ -97,10 +97,10 @@ class BdnController extends Controller
 
         $validated = $request->validate($this->rules($order));
 
-        // For surveyor users, force barge_id to their assigned barge.
+        // For surveyor users, force barge_id to the order's authorized barge.
         $assignment = SurveyorAssignment::resolve($request->user());
-        if ($assignment['barge_id'] && ! $request->user()->type->isPrivileged()) {
-            $validated['barge_id'] = $assignment['barge_id'];
+        if ($assignment['barge_ids'] !== [] && ! $request->user()->type->isPrivileged()) {
+            $validated['barge_id'] = $order->barge_id;
         }
 
         $bdn = Bdn::updateOrCreate(

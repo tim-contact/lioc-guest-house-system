@@ -34,6 +34,7 @@ export type AgentPicOption = {
     agent_id: number;
     name: string;
     mobile: string;
+    contact_numbers?: string[];
 };
 
 export type AuthLayoutProps = {

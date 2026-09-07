@@ -7,6 +7,7 @@ use Database\Factories\BargeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * @property string $imo
@@ -39,5 +40,13 @@ class Barge extends Model
             'mgo_capacity' => 'decimal:3',
             'hsfo_capacity' => 'decimal:3',
         ];
+    }
+
+    /** @return BelongsToMany<Surveyor, $this> */
+    public function surveyors(): BelongsToMany
+    {
+        return $this->belongsToMany(Surveyor::class, 'barge_surveyor', 'barge_id', 'surveyor_id', 'imo', 'id')
+            ->orderBy('barge_surveyor.id')
+            ->withTimestamps();
     }
 }

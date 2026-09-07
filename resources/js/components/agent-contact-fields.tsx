@@ -24,6 +24,10 @@ export function AgentContactFields({
     const pics = agentPics.filter(
         (pic) => String(pic.agent_id) === values.agent_id,
     );
+    const picContactNumbers = (pic: AgentPicOption): string =>
+        pic.contact_numbers && pic.contact_numbers.length > 0
+            ? pic.contact_numbers.join(', ')
+            : pic.mobile;
 
     return (
         <>
@@ -62,17 +66,21 @@ export function AgentContactFields({
                     items={pics.map((pic) => ({
                         value: String(pic.id),
                         label: pic.name,
-                        sublabel: pic.mobile,
+                        sublabel: picContactNumbers(pic),
                     }))}
                     value={values.agent_pic_id}
-                    onChange={(value) =>
+                    onChange={(value) => {
+                        const selectedPic = pics.find(
+                            (pic) => String(pic.id) === value,
+                        );
+
                         onChange({
                             agent_pic_id: value,
-                            mobile_no:
-                                pics.find((pic) => String(pic.id) === value)
-                                    ?.mobile ?? '',
-                        })
-                    }
+                            mobile_no: selectedPic
+                                ? picContactNumbers(selectedPic)
+                                : '',
+                        });
+                    }}
                     placeholder={
                         values.agent_id
                             ? 'Select PIC'

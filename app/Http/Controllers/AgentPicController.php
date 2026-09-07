@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Agent;
 use App\Models\AgentPic;
+use App\Models\ContactInformation;
 use App\Models\Order;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,7 +16,7 @@ class AgentPicController extends Controller
     public function index(): Response
     {
         return Inertia::render('agent-pics/index', [
-            'pics' => AgentPic::with('agent')
+            'pics' => AgentPic::with(['agent', 'contactNumbers'])
                 ->get(['id', 'agent_id', 'name', 'mobile'])
                 ->map(fn (AgentPic $pic): array => [
                     'id' => $pic->id,
@@ -23,6 +24,7 @@ class AgentPicController extends Controller
                     'agent_name' => $pic->agent->name,
                     'name' => $pic->name,
                     'mobile' => $pic->mobile,
+                    'contact_numbers' => $pic->contactNumbers->pluck('value')->values(),
                 ])
                 ->sortBy(['agent_name', 'name'])
                 ->values(),
@@ -32,14 +34,24 @@ class AgentPicController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        AgentPic::create($request->validate($this->rules()));
+        $validated = $request->validate($this->rules());
+        $agentPic = AgentPic::create($validated);
+
+        ContactInformation::syncFor($agentPic, [
+            'phone' => $validated['mobile'],
+        ]);
 
         return $this->toast('PIC created.');
     }
 
     public function update(Request $request, AgentPic $agentPic): RedirectResponse
     {
-        $agentPic->update($request->validate($this->rules()));
+        $validated = $request->validate($this->rules());
+
+        $agentPic->update($validated);
+        ContactInformation::syncFor($agentPic, [
+            'phone' => $validated['mobile'],
+        ]);
 
         return $this->toast('PIC saved.');
     }

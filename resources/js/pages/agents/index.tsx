@@ -10,6 +10,8 @@ interface Agent {
     address: string;
     contact: string;
     mail_id: string | null;
+    contact_numbers: string[];
+    email_addresses: string[];
 }
 
 interface AgentsIndexProps {
@@ -19,9 +21,21 @@ interface AgentsIndexProps {
 const agentColumns: ExportColumn<Agent>[] = [
     { header: 'Name', value: (agent) => agent.name },
     { header: 'Address', value: (agent) => agent.address },
-    { header: 'Contact', value: (agent) => agent.contact },
-    { header: 'Mail ID', value: (agent) => agent.mail_id ?? '' },
+    { header: 'Contact Numbers', value: (agent) => contactNumbers(agent) },
+    { header: 'Mail IDs', value: (agent) => emailAddresses(agent) },
 ];
+
+function contactNumbers(agent: Agent): string {
+    return agent.contact_numbers.length > 0
+        ? agent.contact_numbers.join(', ')
+        : agent.contact;
+}
+
+function emailAddresses(agent: Agent): string {
+    return agent.email_addresses.length > 0
+        ? agent.email_addresses.join(', ')
+        : (agent.mail_id ?? '');
+}
 
 const config: CrudConfig<Agent> = {
     title: 'Agencies',
@@ -46,21 +60,21 @@ const config: CrudConfig<Agent> = {
             cell: (agent) => agent.address,
         },
         {
-            header: 'Contact',
+            header: 'Contact Numbers',
             sortKey: 'contact',
-            cell: (agent) => agent.contact,
+            cell: (agent) => contactNumbers(agent),
         },
         {
-            header: 'Mail ID',
+            header: 'Mail IDs',
             sortKey: 'mail_id',
-            cell: (agent) => agent.mail_id ?? '—',
+            cell: (agent) => emailAddresses(agent) || '—',
         },
     ],
     fields: [
         { name: 'name', label: 'Name' },
         { name: 'address', label: 'Address' },
-        { name: 'contact', label: 'Contact' },
-        { name: 'mail_id', label: 'Mail ID' },
+        { name: 'contact', label: 'Contact Numbers' },
+        { name: 'mail_id', label: 'Mail IDs' },
     ],
     toFormData: (agent) => ({
         name: agent?.name ?? '',

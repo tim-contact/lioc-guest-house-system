@@ -4,6 +4,7 @@ use App\Enums\UserType;
 use App\Models\Agent;
 use App\Models\AgentPic;
 use App\Models\Bdn;
+use App\Models\ContactInformation;
 use App\Models\Order;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
@@ -44,6 +45,28 @@ test('store creates an agent', function () {
         ->mail_id->toBe('agent.smith@matrix.test');
 });
 
+test('store records multiple agent contact values separately', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $this->post(route('agents.store'), [
+        'name' => 'Multi Contact Agency',
+        'address' => '1 Port Road',
+        'contact' => '0700000001; 0700000002 / 0700000003',
+        'mail_id' => 'ops@example.test; finance@example.test',
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    $agent = Agent::sole();
+
+    expect($agent->contactNumbers()->pluck('value')->all())->toBe([
+        '0700000001',
+        '0700000002',
+        '0700000003',
+    ])->and($agent->emailAddresses()->pluck('value')->all())->toBe([
+        'ops@example.test',
+        'finance@example.test',
+    ]);
+});
+
 test('store requires the core fields', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
@@ -70,16 +93,61 @@ test('update saves edits to an agent', function () {
         ->mail_id->toBe('new.name@zion.test');
 });
 
+test('update replaces the agent contact rows', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $agent = Agent::factory()->create();
+    $agent->contactInformation()->createMany([
+        ['kind' => 'phone', 'value' => '0700000001', 'is_primary' => true],
+        ['kind' => 'email', 'value' => 'old@example.test', 'is_primary' => true],
+    ]);
+
+    $this->put(route('agents.update', $agent), [
+        'name' => 'Updated Agency',
+        'address' => '2 Harbour Road',
+        'contact' => '0710000001 / 0710000002',
+        'mail_id' => 'new@example.test',
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($agent->refresh()->contactNumbers()->pluck('value')->all())->toBe([
+        '0710000001',
+        '0710000002',
+    ])->and($agent->emailAddresses()->pluck('value')->all())->toBe([
+        'new@example.test',
+    ]);
+});
+
 test('destroy deletes an agent and cascades its PICs', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $agent = Agent::factory()->create();
     $pic = AgentPic::factory()->create(['agent_id' => $agent->id]);
+    $pic->contactInformation()->create([
+        'kind' => 'phone',
+        'value' => '0710000001',
+        'is_primary' => true,
+    ]);
 
     $this->delete(route('agents.destroy', $agent))->assertRedirect();
 
     expect(Agent::find($agent->id))->toBeNull()
-        ->and(AgentPic::find($pic->id))->toBeNull();
+        ->and(AgentPic::find($pic->id))->toBeNull()
+        ->and(ContactInformation::count())->toBe(0);
+});
+
+test('destroy removes an agents contact information', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $agent = Agent::factory()->create();
+    $agent->contactInformation()->create([
+        'kind' => 'phone',
+        'value' => '0700000001',
+        'is_primary' => true,
+    ]);
+
+    $this->delete(route('agents.destroy', $agent))->assertRedirect();
+
+    expect(ContactInformation::count())->toBe(0);
 });
 
 test('destroy is refused with an error toast when an order references the agent', function () {
