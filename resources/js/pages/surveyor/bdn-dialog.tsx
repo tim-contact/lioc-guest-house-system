@@ -454,14 +454,6 @@ export function BdnDialog({
                                 />
                             </>
                         )}
-                                <DateTimeField
-                                    id="bdn-barge-alongside"
-                                    label="Barge Alongside"
-                                    value={form.data.barge_alongside_at}
-                                    onChange={set('barge_alongside_at')}
-                                />
-                            </>
-                        )}
                     </FormSection>
 
                     <Separator />
