@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\DeliveryMode;
 use App\Enums\OrderStatus;
 use App\Enums\UserType;
 use App\Models\Agent;
@@ -24,6 +25,7 @@ test('index exposes barge, agency and PIC options alongside the edit fields', fu
     Order::factory()->create([
         'order_number' => 'ORD-OPS',
         'agent_name' => 'Direct Agent',
+        'delivery_mode' => DeliveryMode::Pipeline,
         'status' => OrderStatus::Pending,
     ]);
 
@@ -36,6 +38,7 @@ test('index exposes barge, agency and PIC options alongside the edit fields', fu
             ->has('agents')
             ->has('agentPics', 1)
             ->where('pendingOrders.0.agent_name', 'Direct Agent')
+            ->where('pendingOrders.0.delivery_mode', DeliveryMode::Pipeline->value)
             ->has('pendingOrders.0.agent_pic_id')
             ->has('pendingOrders.0.delivery_location')
             ->has('pendingOrders.0.mgo_final_qty'));
@@ -90,6 +93,7 @@ test('update persists operations fields and leaves vessel and order identifiers 
         'order_number' => 'ORD-KEEP',
         'vessel_name' => 'MV Fixed',
         'vessel_id' => '1000001',
+        'delivery_mode' => DeliveryMode::Barge,
     ]);
 
     $barge = Barge::factory()->create();
@@ -125,6 +129,22 @@ test('update persists operations fields and leaves vessel and order identifiers 
     expect($order->order_number)->toBe('ORD-KEEP');
     expect($order->vessel_name)->toBe('MV Fixed');
     expect($order->vessel_id)->toBe('1000001');
+});
+
+test('update clears barge assignment for truck and pipeline deliveries', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $barge = Barge::factory()->create();
+    $order = Order::factory()->create([
+        'delivery_mode' => DeliveryMode::Pipeline,
+        'barge_id' => $barge->imo,
+    ]);
+
+    $this->patch(route('operations.update', $order), [
+        'vlsfo_final_qty' => 812.5,
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($order->refresh()->barge_id)->toBeNull();
 });
 
 test('update clears the agency and PIC snapshot when both are unset', function () {

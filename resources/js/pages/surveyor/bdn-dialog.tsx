@@ -91,7 +91,9 @@ function buildFormData(order: PendingRow): BdnFormData {
             (order.eta ?? '').slice(0, 10),
         delivery_location_id:
             text(bdn?.delivery_location_id) ||
-            (order.delivery_location_id ? String(order.delivery_location_id) : ''),
+            (order.delivery_location_id
+                ? String(order.delivery_location_id)
+                : ''),
         vessel_flag: text(bdn?.vessel_flag),
         grt: text(bdn?.grt),
         pi_club: text(bdn?.pi_club),
@@ -101,7 +103,10 @@ function buildFormData(order: PendingRow): BdnFormData {
         destination_port: text(bdn?.destination_port),
         delivery_method:
             text(bdn?.delivery_method) || (order.delivery_mode ?? ''),
-        barge_id: text(bdn?.barge_id) || (order.barge_id ?? ''),
+        barge_id:
+            order.delivery_mode === null || order.delivery_mode === 'barge'
+                ? text(bdn?.barge_id) || (order.barge_id ?? '')
+                : '',
         barge_alongside_at: text(bdn?.barge_alongside_at),
         chief_engineer_invited: text(bdn?.chief_engineer_invited),
         chief_engineer_witnessed: text(bdn?.chief_engineer_witnessed),
@@ -258,6 +263,9 @@ export function BdnDialog({
     const selectedBarge = barges.find(
         (barge) => barge.imo === form.data.barge_id,
     );
+    const isBargeDelivery =
+        form.data.delivery_method === '' ||
+        form.data.delivery_method === 'barge';
     const errorMessage = Object.values(form.errors)[0];
 
     return (
@@ -392,36 +400,49 @@ export function BdnDialog({
                         <LabeledSelect
                             label="Delivery Method"
                             value={form.data.delivery_method}
-                            onChange={set('delivery_method')}
+                            onChange={(value) => {
+                                form.setData((data) => ({
+                                    ...data,
+                                    delivery_method: value,
+                                    barge_id:
+                                        value === 'barge' || value === ''
+                                            ? data.barge_id
+                                            : '',
+                                }));
+                            }}
                             options={deliveryMethodOptions}
                             placeholder="Select method"
                         />
-                        <div className="grid gap-1">
-                            <Label>Barge Name</Label>
-                            <SearchableCombobox
-                                items={barges.map((barge) => ({
-                                    value: barge.imo,
-                                    label: barge.name,
-                                    sublabel: `IMO ${barge.imo}`,
-                                }))}
-                                value={form.data.barge_id}
-                                onChange={set('barge_id')}
-                                placeholder="Select barge"
-                                searchPlaceholder="Search name or IMO"
-                                emptyText="No barges available."
-                            />
-                        </div>
-                        <ReadOnlyField
-                            label="Barge IMO No"
-                            value={selectedBarge?.imo ?? ''}
-                        />
+                        {isBargeDelivery && (
+                            <>
+                                <div className="grid gap-1">
+                                    <Label>Barge Name</Label>
+                                    <SearchableCombobox
+                                        items={barges.map((barge) => ({
+                                            value: barge.imo,
+                                            label: barge.name,
+                                            sublabel: `IMO ${barge.imo}`,
+                                        }))}
+                                        value={form.data.barge_id}
+                                        onChange={set('barge_id')}
+                                        placeholder="Select barge"
+                                        searchPlaceholder="Search name or IMO"
+                                        emptyText="No barges available."
+                                    />
+                                </div>
+                                <ReadOnlyField
+                                    label="Barge IMO No"
+                                    value={selectedBarge?.imo ?? ''}
+                                />
 
-                        <DateTimeField
-                            id="bdn-barge-alongside"
-                            label="Barge Alongside"
-                            value={form.data.barge_alongside_at}
-                            onChange={set('barge_alongside_at')}
-                        />
+                                <DateTimeField
+                                    id="bdn-barge-alongside"
+                                    label="Barge Alongside"
+                                    value={form.data.barge_alongside_at}
+                                    onChange={set('barge_alongside_at')}
+                                />
+                            </>
+                        )}
                     </FormSection>
 
                     <Separator />

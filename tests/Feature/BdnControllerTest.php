@@ -231,6 +231,23 @@ test('update rejects a barge that is not on the master list', function () {
         ->assertSessionHasErrors('barge_id');
 });
 
+test('update clears the BDN barge for pipeline delivery', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $barge = Barge::factory()->create();
+    $order = Order::factory()->create([
+        'delivery_mode' => DeliveryMode::Pipeline,
+        'barge_id' => null,
+    ]);
+
+    $this->put(route('surveyor.bdn.update', $order), [
+        'delivery_method' => DeliveryMode::Pipeline->value,
+        'barge_id' => $barge->imo,
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($order->bdn()->sole()->barge_id)->toBeNull();
+});
+
 test('the surveyor dashboard ships each pending order with its bdn and grades', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 

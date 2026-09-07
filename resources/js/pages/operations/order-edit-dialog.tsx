@@ -69,10 +69,13 @@ export function OrderEditDialog({
         agent_pic_id: order.agent_pic_id ? String(order.agent_pic_id) : '',
         mobile_no: order.mobile_no ?? '',
     });
+    const isBargeDelivery =
+        order.delivery_mode === null || order.delivery_mode === 'barge';
 
     function submit() {
         form.transform((data) => ({
             ...data,
+            barge_id: isBargeDelivery ? data.barge_id : null,
             eta: data.eta_date
                 ? `${data.eta_date}T${data.eta_time || '00:00'}`
                 : null,
@@ -142,28 +145,32 @@ export function OrderEditDialog({
                     placeholder="Select location"
                 />
 
-                <div className="grid gap-1">
-                    <Label>Barge Name</Label>
-                    <SearchableCombobox
-                        items={[
-                            {
-                                value: '',
-                                label: 'No barge',
-                                sublabel: 'Unassigned',
-                            },
-                            ...barges.map((barge) => ({
-                                value: barge.imo,
-                                label: barge.name,
-                                sublabel: `IMO ${barge.imo}`,
-                            })),
-                        ]}
-                        value={form.data.barge_id}
-                        onChange={(value) => form.setData('barge_id', value)}
-                        placeholder="Select barge"
-                        searchPlaceholder="Search name or IMO"
-                        emptyText="No barges available."
-                    />
-                </div>
+                {isBargeDelivery && (
+                    <div className="grid gap-1">
+                        <Label>Barge Name</Label>
+                        <SearchableCombobox
+                            items={[
+                                {
+                                    value: '',
+                                    label: 'No barge',
+                                    sublabel: 'Unassigned',
+                                },
+                                ...barges.map((barge) => ({
+                                    value: barge.imo,
+                                    label: barge.name,
+                                    sublabel: `IMO ${barge.imo}`,
+                                })),
+                            ]}
+                            value={form.data.barge_id}
+                            onChange={(value) =>
+                                form.setData('barge_id', value)
+                            }
+                            placeholder="Select barge"
+                            searchPlaceholder="Search name or IMO"
+                            emptyText="No barges available."
+                        />
+                    </div>
+                )}
             </FormSection>
 
             <Separator />

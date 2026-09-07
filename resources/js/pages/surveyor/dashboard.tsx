@@ -26,6 +26,12 @@ export interface BargeOption {
     name: string;
 }
 
+interface DeliveryScopeOption {
+    value: string;
+    label: string;
+    sublabel: string;
+}
+
 export interface PendingRow {
     id: number;
     order_number: string;
@@ -118,11 +124,13 @@ function picLabel({ pic, mobile_no }: PendingRow): string {
 
 function BargeOverviewStrip({
     barge,
+    selectedScope,
     pendingCount,
     completedCount,
     children,
 }: {
     barge: BargeOption | null;
+    selectedScope?: DeliveryScopeOption | null;
     pendingCount: number;
     completedCount: number;
     children?: ReactNode;
@@ -154,17 +162,20 @@ function BargeOverviewStrip({
                     </span>
                     <div className="min-w-0">
                         <p className="text-xs font-semibold tracking-[0.08em] text-white/75 uppercase">
-                            Selected barge
+                            Selected scope
                         </p>
                         <h1 className="mt-1 truncate text-xl leading-tight font-bold md:text-2xl">
-                            {barge?.name ?? 'Select a barge'}
+                            {barge?.name ??
+                                selectedScope?.label ??
+                                'Select a scope'}
                         </h1>
                         <p className="mt-1 flex items-center gap-1.5 text-sm text-white/78">
                             <Waves className="size-4" aria-hidden="true" />
                             <span className="truncate">
                                 {barge?.imo
                                     ? `IMO ${barge.imo}`
-                                    : 'No barge selected'}
+                                    : (selectedScope?.sublabel ??
+                                      'No scope selected')}
                             </span>
                         </p>
                     </div>
@@ -244,11 +255,26 @@ export default function SurveyorDashboard({
     const { auth } = usePage().props;
     const userType = auth.user?.type ?? '';
     const isSurveyor = userType === 'surveyor';
+    const deliveryScopeOptions: DeliveryScopeOption[] = [
+        {
+            value: 'delivery:truck',
+            label: 'Truck Deliveries',
+            sublabel: 'Delivery mode',
+        },
+        {
+            value: 'delivery:pipeline',
+            label: 'Pipeline Deliveries',
+            sublabel: 'Delivery mode',
+        },
+    ];
 
     const [selectedBarge, setSelectedBarge] = useState(
         assignedBarge?.imo ?? '',
     );
     const [bdnOrderId, setBdnOrderId] = useState<number | null>(null);
+    const selectedDeliveryScope =
+        deliveryScopeOptions.find((scope) => scope.value === selectedBarge) ??
+        null;
     const selectedBargeDetails =
         assignedBarge ??
         barges.find((barge) => barge.imo === selectedBarge) ??
@@ -264,6 +290,7 @@ export default function SurveyorDashboard({
             <div className="flex flex-col gap-6 p-4">
                 <BargeOverviewStrip
                     barge={selectedBargeDetails}
+                    selectedScope={selectedDeliveryScope}
                     pendingCount={pendingOrders.length}
                     completedCount={completedOrders.length}
                 >
@@ -277,11 +304,14 @@ export default function SurveyorDashboard({
                     ) : (
                         <div className="max-w-xs">
                             <SearchableCombobox
-                                items={barges.map((barge) => ({
-                                    value: barge.imo,
-                                    label: barge.name,
-                                    sublabel: barge.imo,
-                                }))}
+                                items={[
+                                    ...barges.map((barge) => ({
+                                        value: barge.imo,
+                                        label: barge.name,
+                                        sublabel: barge.imo,
+                                    })),
+                                    ...deliveryScopeOptions,
+                                ]}
                                 value={selectedBarge}
                                 onChange={(value) => {
                                     setSelectedBarge(value);
@@ -293,9 +323,9 @@ export default function SurveyorDashboard({
                                         ],
                                     });
                                 }}
-                                placeholder="Select barge"
-                                searchPlaceholder="Search barge name or IMO"
-                                emptyText="No barges available."
+                                placeholder="Select scope"
+                                searchPlaceholder="Search barge, truck, or pipeline"
+                                emptyText="No delivery scopes available."
                             />
                         </div>
                     )}
