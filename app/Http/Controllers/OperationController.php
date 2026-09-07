@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\DeliveryMode;
 use App\Models\Barge;
 use App\Models\Order;
 use App\Models\Port;
@@ -47,6 +48,10 @@ class OperationController extends Controller
             'agent_pic_id' => ['nullable', $this->agentPicRule($request)],
             'mobile_no' => ['nullable', 'string', 'max:255'],
         ]);
+
+        if ($order->delivery_mode !== null && $order->delivery_mode !== DeliveryMode::Barge) {
+            $validated['barge_id'] = null;
+        }
 
         $order->update(OrderService::withAgentSnapshot($validated));
 

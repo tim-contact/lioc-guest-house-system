@@ -144,6 +144,52 @@ test('index lists pending orders due within seven days and overdue ones', functi
             ->where('pendingOrders.2.vessel_name', 'MV Later'));
 });
 
+test('master can filter the surveyor dashboard by truck deliveries', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Master]));
+
+    createSurveyorOrder([
+        'vessel_name' => 'MV Truck',
+        'delivery_mode' => DeliveryMode::Truck,
+        'barge_id' => null,
+    ]);
+    createSurveyorOrder([
+        'vessel_name' => 'MV Pipeline',
+        'delivery_mode' => DeliveryMode::Pipeline,
+        'barge_id' => null,
+    ]);
+
+    $this->get(route('surveyor', ['barge' => 'delivery:truck']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('surveyor/dashboard')
+            ->has('pendingOrders', 1)
+            ->where('pendingOrders.0.vessel_name', 'MV Truck')
+            ->where('pendingOrders.0.delivery_mode', DeliveryMode::Truck->value));
+});
+
+test('super admin can filter the surveyor dashboard by pipeline deliveries', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    createSurveyorOrder([
+        'vessel_name' => 'MV Truck',
+        'delivery_mode' => DeliveryMode::Truck,
+        'barge_id' => null,
+    ]);
+    createSurveyorOrder([
+        'vessel_name' => 'MV Pipeline',
+        'delivery_mode' => DeliveryMode::Pipeline,
+        'barge_id' => null,
+    ]);
+
+    $this->get(route('surveyor', ['barge' => 'delivery:pipeline']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('surveyor/dashboard')
+            ->has('pendingOrders', 1)
+            ->where('pendingOrders.0.vessel_name', 'MV Pipeline')
+            ->where('pendingOrders.0.delivery_mode', DeliveryMode::Pipeline->value));
+});
+
 test('guests cannot update a surveyor order', function () {
     $order = createSurveyorOrder();
 

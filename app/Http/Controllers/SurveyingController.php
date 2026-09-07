@@ -58,11 +58,19 @@ class SurveyingController extends Controller
                 ? $assignedBarges->firstWhere('imo', $barge)
                 : null;
         } else {
-            // Privileged users: use query param as before.
-            $barge = $request->query('barge');
+            // Privileged users: use query param for either a barge IMO or a delivery-mode scope.
+            $selectedScope = $request->query('barge');
+            $selectedDeliveryMode = is_string($selectedScope) && str_starts_with($selectedScope, 'delivery:')
+                ? DeliveryMode::tryFrom(substr($selectedScope, 9))
+                : null;
+            $barge = $selectedDeliveryMode === null
+                ? $selectedScope
+                : null;
             $assignedBarge = null;
             $assignedBargeIds = [];
-            $assignedDeliveryModes = [];
+            $assignedDeliveryModes = $selectedDeliveryMode !== null && $selectedDeliveryMode !== DeliveryMode::Barge
+                ? [$selectedDeliveryMode->value]
+                : [];
             $assignedBarges = collect();
         }
 

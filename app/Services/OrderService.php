@@ -117,6 +117,7 @@ class OrderService
             'vessel_id' => $order->vessel_id,
             'port_id' => $order->port_id,
             'port' => $order->port?->name,
+            'delivery_mode' => $order->delivery_mode?->value,
             'delivery_location_id' => $order->delivery_location_id,
             'delivery_location' => $order->deliveryLocation?->name,
             'barging_cost' => $order->barging_cost,

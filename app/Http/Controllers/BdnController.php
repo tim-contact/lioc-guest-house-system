@@ -105,11 +105,19 @@ class BdnController extends Controller
         );
 
         $validated = $request->validate($this->rules($order));
+        $effectiveDeliveryMethod = $validated['delivery_method'] ?? $order->delivery_mode;
+        $effectiveDeliveryMethod = is_string($effectiveDeliveryMethod)
+            ? DeliveryMode::tryFrom($effectiveDeliveryMethod)
+            : $effectiveDeliveryMethod;
 
         // For surveyor users, force barge_id to the order's authorized barge.
         $assignment = SurveyorAssignment::resolve($request->user());
         if ($assignment['barge_ids'] !== [] && ! $request->user()->type->isPrivileged() && $order->barge_id !== null) {
             $validated['barge_id'] = $order->barge_id;
+        }
+
+        if ($effectiveDeliveryMethod !== null && $effectiveDeliveryMethod !== DeliveryMode::Barge) {
+            $validated['barge_id'] = null;
         }
 
         $bdn = Bdn::updateOrCreate(
