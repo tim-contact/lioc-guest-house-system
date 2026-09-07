@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\DeliveryMode;
 use App\Enums\OrderStatus;
 use App\Enums\UserType;
 use App\Models\Barge;
@@ -15,17 +16,27 @@ use Inertia\Testing\AssertableInertia;
 // =============================================================
 
 /**
- * Create a surveyor-type user, optionally with a linked Surveyor profile and assigned barge.
+ * Create a surveyor-type user, optionally with a linked Surveyor profile and delivery scopes.
  */
-function makeSurveyorUser(?string $bargeImo = null): User
+function makeSurveyorUser(?string $bargeImo = null, array $deliveryModes = []): User
 {
     $user = User::factory()->create(['type' => UserType::Surveyor]);
 
-    if ($bargeImo !== null) {
-        Surveyor::factory()->create([
+    if ($bargeImo !== null || $deliveryModes !== []) {
+        $surveyor = Surveyor::factory()->create([
             'user_id' => $user->id,
             'barge_id' => $bargeImo,
         ]);
+
+        if ($bargeImo !== null) {
+            $surveyor->barges()->sync([$bargeImo]);
+        }
+
+        foreach ($deliveryModes as $deliveryMode) {
+            $surveyor->deliveryModeAssignments()->create([
+                'delivery_mode' => $deliveryMode,
+            ]);
+        }
     }
 
     return $user;
@@ -38,6 +49,21 @@ function makeOrderOnBarge(string $bargeImo, array $attributes = []): Order
 {
     return Order::factory()->create(array_merge([
         'barge_id' => $bargeImo,
+        'delivery_mode' => DeliveryMode::Barge,
+        'status' => OrderStatus::Pending,
+        'eta' => now(),
+        'vlsfo_final_qty' => 100,
+    ], $attributes));
+}
+
+/**
+ * Create a pending truck/pipeline order that does not rely on a barge assignment.
+ */
+function makeOrderForDeliveryMode(DeliveryMode $deliveryMode, array $attributes = []): Order
+{
+    return Order::factory()->create(array_merge([
+        'barge_id' => null,
+        'delivery_mode' => $deliveryMode,
         'status' => OrderStatus::Pending,
         'eta' => now(),
         'vlsfo_final_qty' => 100,
@@ -91,6 +117,20 @@ test('surveyor can be assigned multiple barges', function () {
     expect($surveyor->barges()->pluck('imo')->all())->toBe([
         $bargeA->imo,
         $bargeB->imo,
+    ]);
+});
+
+test('surveyor can be assigned truck and pipeline delivery modes', function () {
+    $surveyor = Surveyor::factory()->create(['barge_id' => null]);
+
+    $surveyor->deliveryModeAssignments()->createMany([
+        ['delivery_mode' => DeliveryMode::Truck],
+        ['delivery_mode' => DeliveryMode::Pipeline],
+    ]);
+
+    expect($surveyor->deliveryModeAssignments()->pluck('delivery_mode')->all())->toBe([
+        DeliveryMode::Truck,
+        DeliveryMode::Pipeline,
     ]);
 });
 
@@ -160,6 +200,38 @@ test('surveyor with multiple assigned barges can filter to one assigned barge', 
             ->has('pendingOrders', 1)
             ->where('pendingOrders.0.vessel_name', 'MV On Beta')
             ->where('assignedBarge.imo', $bargeB->imo));
+});
+
+test('surveyor assigned to truck sees truck orders only', function () {
+    $surveyorUser = makeSurveyorUser(deliveryModes: [DeliveryMode::Truck->value]);
+    $this->actingAs($surveyorUser);
+
+    makeOrderForDeliveryMode(DeliveryMode::Truck, ['vessel_name' => 'MV Truck']);
+    makeOrderForDeliveryMode(DeliveryMode::Pipeline, ['vessel_name' => 'MV Pipeline']);
+
+    $this->get(route('surveyor'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('surveyor/dashboard')
+            ->has('pendingOrders', 1)
+            ->where('pendingOrders.0.vessel_name', 'MV Truck')
+            ->where('pendingOrders.0.delivery_mode', DeliveryMode::Truck->value));
+});
+
+test('surveyor assigned to pipeline sees pipeline orders only', function () {
+    $surveyorUser = makeSurveyorUser(deliveryModes: [DeliveryMode::Pipeline->value]);
+    $this->actingAs($surveyorUser);
+
+    makeOrderForDeliveryMode(DeliveryMode::Truck, ['vessel_name' => 'MV Truck']);
+    makeOrderForDeliveryMode(DeliveryMode::Pipeline, ['vessel_name' => 'MV Pipeline']);
+
+    $this->get(route('surveyor'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('surveyor/dashboard')
+            ->has('pendingOrders', 1)
+            ->where('pendingOrders.0.vessel_name', 'MV Pipeline')
+            ->where('pendingOrders.0.delivery_mode', DeliveryMode::Pipeline->value));
 });
 
 test('surveyor cannot see orders for another barge by passing ?barge= param', function () {
@@ -301,6 +373,30 @@ test('surveyor can update BDN quantities for any assigned barge', function () {
     expect((float) $orderOnB->refresh()->vlsfo_bdn_qty)->toBe(200.0);
 });
 
+test('surveyor can update BDN quantities for assigned truck delivery', function () {
+    $surveyorUser = makeSurveyorUser(deliveryModes: [DeliveryMode::Truck->value]);
+    $this->actingAs($surveyorUser);
+
+    $order = makeOrderForDeliveryMode(DeliveryMode::Truck, ['vlsfo_bdn_qty' => 50]);
+
+    $this->patch(route('surveyor.update', $order), [
+        'vlsfo_bdn_qty' => 200,
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect((float) $order->refresh()->vlsfo_bdn_qty)->toBe(200.0);
+});
+
+test('surveyor cannot update BDN quantities for unassigned pipeline delivery', function () {
+    $surveyorUser = makeSurveyorUser(deliveryModes: [DeliveryMode::Truck->value]);
+    $this->actingAs($surveyorUser);
+
+    $order = makeOrderForDeliveryMode(DeliveryMode::Pipeline);
+
+    $this->patch(route('surveyor.update', $order), [
+        'vlsfo_bdn_qty' => 200,
+    ])->assertForbidden();
+});
+
 test('surveyor cannot update BDN quantities for another barge', function () {
     $bargeA = Barge::factory()->create();
     $bargeB = Barge::factory()->create();
@@ -421,6 +517,24 @@ test('master can assign multiple barges to surveyor profile', function () {
     ]);
 });
 
+test('master can assign truck and pipeline deliveries to surveyor profile', function () {
+    $master = User::factory()->create(['type' => UserType::Master]);
+    $this->actingAs($master);
+
+    $surveyor = Surveyor::factory()->create(['barge_id' => null]);
+
+    $this->patch(route('surveyors.update', $surveyor), [
+        'survey_company' => $surveyor->survey_company,
+        'name' => $surveyor->name,
+        'delivery_modes' => [DeliveryMode::Truck->value, DeliveryMode::Pipeline->value],
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($surveyor->deliveryModeAssignments()->pluck('delivery_mode')->all())->toBe([
+        DeliveryMode::Truck,
+        DeliveryMode::Pipeline,
+    ]);
+});
+
 test('super_admin can assign user and barge to surveyor profile', function () {
     $admin = User::factory()->create(['type' => UserType::SuperAdmin]);
     $this->actingAs($admin);
@@ -537,6 +651,32 @@ test('bdns are filtered for surveyors in index', function () {
             ->component('bdns/index')
             ->has('bdns', 1)
             ->where('bdns.0.bdn_number', 'BDN-ALPHA'));
+});
+
+test('bdns are filtered by assigned delivery modes for surveyors in index', function () {
+    $surveyorUser = makeSurveyorUser(deliveryModes: [DeliveryMode::Truck->value]);
+    $this->actingAs($surveyorUser);
+
+    $truckOrder = makeOrderForDeliveryMode(DeliveryMode::Truck);
+    $pipelineOrder = makeOrderForDeliveryMode(DeliveryMode::Pipeline);
+
+    Bdn::factory()->create([
+        'order_id' => $truckOrder->id,
+        'bdn_number' => 'BDN-TRUCK',
+        'delivery_method' => DeliveryMode::Truck,
+    ]);
+    Bdn::factory()->create([
+        'order_id' => $pipelineOrder->id,
+        'bdn_number' => 'BDN-PIPELINE',
+        'delivery_method' => DeliveryMode::Pipeline,
+    ]);
+
+    $this->get(route('bdns.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('bdns/index')
+            ->has('bdns', 1)
+            ->where('bdns.0.bdn_number', 'BDN-TRUCK'));
 });
 
 test('privileged users see all bdns in index', function () {

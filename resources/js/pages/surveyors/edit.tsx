@@ -11,6 +11,7 @@ interface Surveyor {
     contact: string | null;
     barge_id: string | null;
     barge_ids: string[];
+    delivery_modes: string[];
     user_id: string | null;
     user_name?: string | null;
     user_email?: string | null;
@@ -26,12 +27,14 @@ interface AvailableUser {
 interface SurveyorsEditProps {
     surveyors: Surveyor[];
     barges: { imo: string; name: string }[];
+    deliveryModeOptions: { value: string; label: string }[];
     availableUsers: AvailableUser[];
 }
 
 export default function SurveyorsEdit({
     surveyors,
     barges,
+    deliveryModeOptions,
     availableUsers,
 }: SurveyorsEditProps) {
     const bargeOptions = barges.map((barge) => ({
@@ -45,6 +48,17 @@ export default function SurveyorsEdit({
         imos.length > 0
             ? imos.map((imo) => bargeName(imo)).join(', ')
             : bargeName(null);
+    const deliveryModeNames = (modes: string[]): string =>
+        modes.length > 0
+            ? modes
+                  .map(
+                      (mode) =>
+                          deliveryModeOptions.find(
+                              (option) => option.value === mode,
+                          )?.label ?? mode,
+                  )
+                  .join(', ')
+            : '—';
 
     const userOptions = availableUsers.map((user) => ({
         value: user.id,
@@ -62,6 +76,10 @@ export default function SurveyorsEdit({
         {
             header: 'Barges',
             value: (surveyor) => bargeNames(surveyor.barge_ids),
+        },
+        {
+            header: 'Truck/Pipeline',
+            value: (surveyor) => deliveryModeNames(surveyor.delivery_modes),
         },
         {
             header: 'Login User',
@@ -108,6 +126,10 @@ export default function SurveyorsEdit({
                 cell: (surveyor) => bargeNames(surveyor.barge_ids),
             },
             {
+                header: 'Truck/Pipeline',
+                cell: (surveyor) => deliveryModeNames(surveyor.delivery_modes),
+            },
+            {
                 header: 'Login User',
                 cell: (surveyor) =>
                     surveyor.user_name
@@ -127,6 +149,12 @@ export default function SurveyorsEdit({
                 options: bargeOptions,
             },
             {
+                name: 'delivery_modes',
+                label: 'Truck/Pipeline Deliveries',
+                type: 'multiselect',
+                options: deliveryModeOptions,
+            },
+            {
                 name: 'user_id',
                 label: 'Login User',
                 type: 'select',
@@ -140,6 +168,7 @@ export default function SurveyorsEdit({
             contact: surveyor?.contact ?? '',
             barge_id: surveyor?.barge_id ?? '',
             barge_ids: surveyor?.barge_ids ?? [],
+            delivery_modes: surveyor?.delivery_modes ?? [],
             user_id: surveyor?.user_id ?? '',
         }),
         routes: {
