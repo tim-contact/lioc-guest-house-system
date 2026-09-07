@@ -43,6 +43,7 @@ class SurveyingController extends Controller
             }
 
             $assignedBargeIds = $assignment['barge_ids'];
+            $assignedDeliveryModes = $assignment['delivery_modes'];
             $requestedBarge = $request->query('barge');
             $barge = is_string($requestedBarge) && in_array($requestedBarge, $assignedBargeIds, true)
                 ? $requestedBarge
@@ -61,11 +62,12 @@ class SurveyingController extends Controller
             $barge = $request->query('barge');
             $assignedBarge = null;
             $assignedBargeIds = [];
+            $assignedDeliveryModes = [];
             $assignedBarges = collect();
         }
 
-        $pendingOrders = fn (): array => ($barge || $assignedBargeIds !== [])
-            ? $this->filterByBarges(OrderService::pending(dueWithinDays: 7), $barge, $assignedBargeIds)
+        $pendingOrders = fn (): array => ($barge || $assignedBargeIds !== [] || $assignedDeliveryModes !== [])
+            ? $this->filterByAssignment(OrderService::pending(dueWithinDays: 7), $barge, $assignedBargeIds, $assignedDeliveryModes)
                 ->load(['bdn', 'enquiry'])
                 ->map(fn (Order $order): array => [
                     'id' => $order->id,
@@ -98,8 +100,8 @@ class SurveyingController extends Controller
                 ->all()
             : [];
 
-        $completedOrders = fn (): array => ($barge || $assignedBargeIds !== [])
-            ? $this->filterByBarges(OrderService::completedWithin(), $barge, $assignedBargeIds)
+        $completedOrders = fn (): array => ($barge || $assignedBargeIds !== [] || $assignedDeliveryModes !== [])
+            ? $this->filterByAssignment(OrderService::completedWithin(), $barge, $assignedBargeIds, $assignedDeliveryModes)
                 ->map(fn (Order $order): array => [
                     'id' => $order->id,
                     'vessel_name' => $order->vessel_name,
@@ -137,17 +139,19 @@ class SurveyingController extends Controller
      * @param  list<string>  $bargeIds
      * @return Collection<int, Order>
      */
-    private function filterByBarges(Collection $orders, ?string $barge, array $bargeIds): Collection
+    private function filterByAssignment(Collection $orders, ?string $barge, array $bargeIds, array $deliveryModes): Collection
     {
         if ($barge) {
             return $orders->where('barge_id', $barge);
         }
 
-        if ($bargeIds !== []) {
-            return $orders->whereIn('barge_id', $bargeIds);
-        }
-
-        return $orders;
+        return $orders->filter(fn (Order $order): bool => (($order->delivery_mode === DeliveryMode::Barge
+            || ($order->delivery_mode === null && $order->barge_id !== null))
+            && $order->barge_id !== null
+            && in_array($order->barge_id, $bargeIds, true))
+            || ($order->delivery_mode !== null
+                && $order->delivery_mode !== DeliveryMode::Barge
+                && in_array($order->delivery_mode->value, $deliveryModes, true)));
     }
 
     /**
@@ -169,7 +173,7 @@ class SurveyingController extends Controller
 
     public function update(Request $request, Order $order): RedirectResponse
     {
-        SurveyorAssignment::authorizeOrder($request->user(), $order->barge_id);
+        SurveyorAssignment::authorizeOrder($request->user(), $order);
 
         $validated = $request->validate([
             'vlsfo_bdn_qty' => ['nullable', 'numeric', 'min:0'],
@@ -185,7 +189,7 @@ class SurveyingController extends Controller
 
     public function complete(Order $order): RedirectResponse
     {
-        SurveyorAssignment::authorizeOrder(request()->user(), $order->barge_id);
+        SurveyorAssignment::authorizeOrder(request()->user(), $order);
 
         OrderService::complete($order);
 

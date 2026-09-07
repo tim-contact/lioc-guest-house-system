@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
@@ -36,6 +37,12 @@ class Surveyor extends Model
         return $this->belongsToMany(Barge::class, 'barge_surveyor', 'surveyor_id', 'barge_id', 'id', 'imo')
             ->orderBy('barge_surveyor.id')
             ->withTimestamps();
+    }
+
+    /** @return HasMany<SurveyorDeliveryMode, $this> */
+    public function deliveryModeAssignments(): HasMany
+    {
+        return $this->hasMany(SurveyorDeliveryMode::class)->orderBy('id');
     }
 
     /** @return BelongsTo<User, $this> */

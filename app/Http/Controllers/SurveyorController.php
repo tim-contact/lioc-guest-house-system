@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\DeliveryMode;
 use App\Enums\UserType;
 use App\Models\Barge;
 use App\Models\Surveyor;
@@ -31,7 +32,7 @@ class SurveyorController extends Controller
             ]);
 
         return Inertia::render('surveyors/edit', [
-            'surveyors' => Surveyor::with(['user', 'barges'])->latest()->get()
+            'surveyors' => Surveyor::with(['user', 'barges', 'deliveryModeAssignments'])->latest()->get()
                 ->map(fn (Surveyor $s) => [
                     'id' => $s->id,
                     'survey_company' => $s->survey_company,
@@ -40,11 +41,16 @@ class SurveyorController extends Controller
                     'contact' => $s->contact,
                     'barge_id' => $s->barge_id,
                     'barge_ids' => $s->barges->pluck('imo')->values(),
+                    'delivery_modes' => $s->deliveryModeAssignments
+                        ->pluck('delivery_mode')
+                        ->map(fn (DeliveryMode|string $mode): string => $mode instanceof DeliveryMode ? $mode->value : $mode)
+                        ->values(),
                     'user_id' => $s->user_id,
                     'user_name' => $s->user?->name,
                     'user_email' => $s->user?->email,
                 ]),
             'barges' => Barge::orderBy('name')->get(['imo', 'name']),
+            'deliveryModeOptions' => $this->enumOptions([DeliveryMode::Truck, DeliveryMode::Pipeline]),
             'availableUsers' => $availableUsers,
         ]);
     }
@@ -53,12 +59,14 @@ class SurveyorController extends Controller
     {
         $validated = $request->validate($this->rules());
         $bargeIds = $this->bargeIdsFrom($validated);
-        unset($validated['barge_ids']);
+        $deliveryModes = $this->deliveryModesFrom($validated);
+        unset($validated['barge_ids'], $validated['delivery_modes']);
 
         $validated['barge_id'] = $bargeIds[0] ?? null;
 
         $surveyor = Surveyor::create($validated);
         $surveyor->barges()->sync($bargeIds);
+        $this->syncDeliveryModes($surveyor, $deliveryModes);
 
         return $this->toast('Surveyor created.');
     }
@@ -67,12 +75,14 @@ class SurveyorController extends Controller
     {
         $validated = $request->validate($this->rules($surveyor));
         $bargeIds = $this->bargeIdsFrom($validated);
-        unset($validated['barge_ids']);
+        $deliveryModes = $this->deliveryModesFrom($validated);
+        unset($validated['barge_ids'], $validated['delivery_modes']);
 
         $validated['barge_id'] = $bargeIds[0] ?? null;
 
         $surveyor->update($validated);
         $surveyor->barges()->sync($bargeIds);
+        $this->syncDeliveryModes($surveyor, $deliveryModes);
 
         return $this->toast('Surveyor saved.');
     }
@@ -105,6 +115,8 @@ class SurveyorController extends Controller
             'barge_id' => ['nullable', 'exists:barges,imo'],
             'barge_ids' => ['nullable', 'array'],
             'barge_ids.*' => ['string', 'exists:barges,imo'],
+            'delivery_modes' => ['nullable', 'array'],
+            'delivery_modes.*' => [Rule::in([DeliveryMode::Truck->value, DeliveryMode::Pipeline->value])],
             'user_id' => $userIdRule,
         ];
     }
@@ -122,5 +134,30 @@ class SurveyorController extends Controller
         return filled($validated['barge_id'] ?? null)
             ? [(string) $validated['barge_id']]
             : [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return list<string>
+     */
+    private function deliveryModesFrom(array $validated): array
+    {
+        return array_key_exists('delivery_modes', $validated)
+            ? collect($validated['delivery_modes'])->filter()->unique()->values()->all()
+            : [];
+    }
+
+    /**
+     * @param  list<string>  $deliveryModes
+     */
+    private function syncDeliveryModes(Surveyor $surveyor, array $deliveryModes): void
+    {
+        $surveyor->deliveryModeAssignments()->delete();
+
+        foreach ($deliveryModes as $deliveryMode) {
+            $surveyor->deliveryModeAssignments()->create([
+                'delivery_mode' => $deliveryMode,
+            ]);
+        }
     }
 }

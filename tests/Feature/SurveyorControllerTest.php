@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\CreditTerms;
+use App\Enums\DeliveryMode;
 use App\Enums\OrderStatus;
 use App\Enums\QualityClaim;
 use App\Enums\Sampling;
@@ -369,6 +370,26 @@ test('store creates a surveyor with multiple barges', function () {
     ]);
 });
 
+test('store creates a surveyor with delivery mode assignments', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $this->post(route('surveyors.store'), [
+        'survey_company' => 'Intertek',
+        'name' => 'Pipeline Inspector',
+        'mail_id' => 'pipeline@intertek.test',
+        'contact' => '+65 1234 5678',
+        'delivery_modes' => [DeliveryMode::Truck->value, DeliveryMode::Pipeline->value],
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    $surveyor = Surveyor::sole();
+
+    expect($surveyor->barge_id)->toBeNull();
+    expect($surveyor->deliveryModeAssignments()->pluck('delivery_mode')->all())->toBe([
+        DeliveryMode::Truck,
+        DeliveryMode::Pipeline,
+    ]);
+});
+
 test('store requires survey company and name', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
@@ -413,6 +434,27 @@ test('update replaces the surveyors assigned barges', function () {
 
     expect($surveyor->refresh()->barge_id)->toBe($bargeC->imo);
     expect($surveyor->barges()->pluck('imo')->all())->toBe([$bargeC->imo]);
+});
+
+test('update replaces the surveyors delivery mode assignments', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $surveyor = Surveyor::factory()->create(['barge_id' => null]);
+    $surveyor->deliveryModeAssignments()->create([
+        'delivery_mode' => DeliveryMode::Truck,
+    ]);
+
+    $this->patch(route('surveyors.update', $surveyor), [
+        'survey_company' => 'SGS',
+        'name' => 'New Name',
+        'mail_id' => null,
+        'contact' => null,
+        'delivery_modes' => [DeliveryMode::Pipeline->value],
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($surveyor->deliveryModeAssignments()->pluck('delivery_mode')->all())->toBe([
+        DeliveryMode::Pipeline,
+    ]);
 });
 
 test('destroy deletes the surveyor', function () {

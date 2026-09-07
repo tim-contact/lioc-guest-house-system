@@ -31,9 +31,18 @@ class BdnController extends Controller
 
         $query = Bdn::with(['order.customer', 'deliveryLocation', 'agent', 'barge'])->latest();
 
-        // Surveyor users: filter to their assigned barge.
-        if ($user->type->value === 'surveyor' && ! $assignment['denied'] && $assignment['barge_ids'] !== []) {
-            $query->whereHas('order', fn ($q) => $q->whereIn('barge_id', $assignment['barge_ids']));
+        if ($user->type->value === 'surveyor') {
+            if ($assignment['denied']) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->whereHas('order', fn ($q) => $q
+                    ->where(fn ($orders) => $orders
+                        ->where(fn ($bargeOrders) => $bargeOrders
+                            ->where('delivery_mode', DeliveryMode::Barge->value)
+                            ->orWhereNull('delivery_mode'))
+                        ->whereIn('barge_id', $assignment['barge_ids']))
+                    ->orWhereIn('delivery_mode', $assignment['delivery_modes']));
+            }
         }
 
         $bdns = $query->get()
@@ -58,7 +67,7 @@ class BdnController extends Controller
 
     public function ebdn(Order $order): PdfBuilder
     {
-        SurveyorAssignment::authorizeOrder(request()->user(), $order->barge_id);
+        SurveyorAssignment::authorizeOrder(request()->user(), $order);
 
         $order->load(['port', 'bdn.deliveryLocation', 'bdn.agent', 'bdn.barge']);
         $bdn = $order->bdn;
@@ -92,14 +101,14 @@ class BdnController extends Controller
 
         SurveyorAssignment::authorizeBdnBarge(
             $request->user(),
-            $order->barge_id,
+            $order,
         );
 
         $validated = $request->validate($this->rules($order));
 
         // For surveyor users, force barge_id to the order's authorized barge.
         $assignment = SurveyorAssignment::resolve($request->user());
-        if ($assignment['barge_ids'] !== [] && ! $request->user()->type->isPrivileged()) {
+        if ($assignment['barge_ids'] !== [] && ! $request->user()->type->isPrivileged() && $order->barge_id !== null) {
             $validated['barge_id'] = $order->barge_id;
         }
 
