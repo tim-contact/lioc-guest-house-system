@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * @property int $id
@@ -27,6 +28,14 @@ class Surveyor extends Model
     public function barge(): BelongsTo
     {
         return $this->belongsTo(Barge::class, 'barge_id');
+    }
+
+    /** @return BelongsToMany<Barge, $this> */
+    public function barges(): BelongsToMany
+    {
+        return $this->belongsToMany(Barge::class, 'barge_surveyor', 'surveyor_id', 'barge_id', 'id', 'imo')
+            ->orderBy('barge_surveyor.id')
+            ->withTimestamps();
     }
 
     /** @return BelongsTo<User, $this> */

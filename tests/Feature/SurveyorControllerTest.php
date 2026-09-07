@@ -346,6 +346,29 @@ test('store creates a surveyor', function () {
         ->barge_id->toBe($barge->imo);
 });
 
+test('store creates a surveyor with multiple barges', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $bargeA = Barge::factory()->create();
+    $bargeB = Barge::factory()->create();
+
+    $this->post(route('surveyors.store'), [
+        'survey_company' => 'Intertek',
+        'name' => 'John Inspector',
+        'mail_id' => 'john@intertek.test',
+        'contact' => '+65 1234 5678',
+        'barge_ids' => [$bargeA->imo, $bargeB->imo],
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    $surveyor = Surveyor::sole();
+
+    expect($surveyor->barge_id)->toBe($bargeA->imo);
+    expect($surveyor->barges()->pluck('imo')->all())->toBe([
+        $bargeA->imo,
+        $bargeB->imo,
+    ]);
+});
+
 test('store requires survey company and name', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
@@ -369,6 +392,27 @@ test('update saves the surveyor', function () {
     expect($surveyor->refresh())
         ->survey_company->toBe('SGS')
         ->name->toBe('New Name');
+});
+
+test('update replaces the surveyors assigned barges', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $bargeA = Barge::factory()->create();
+    $bargeB = Barge::factory()->create();
+    $bargeC = Barge::factory()->create();
+    $surveyor = Surveyor::factory()->create(['barge_id' => $bargeA->imo]);
+    $surveyor->barges()->sync([$bargeA->imo, $bargeB->imo]);
+
+    $this->patch(route('surveyors.update', $surveyor), [
+        'survey_company' => 'SGS',
+        'name' => 'New Name',
+        'mail_id' => null,
+        'contact' => null,
+        'barge_ids' => [$bargeC->imo],
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($surveyor->refresh()->barge_id)->toBe($bargeC->imo);
+    expect($surveyor->barges()->pluck('imo')->all())->toBe([$bargeC->imo]);
 });
 
 test('destroy deletes the surveyor', function () {

@@ -11,6 +11,7 @@ interface AgentPic {
     agent_name: string;
     name: string;
     mobile: string;
+    contact_numbers: string[];
 }
 
 interface AgentPicsIndexProps {
@@ -21,8 +22,14 @@ interface AgentPicsIndexProps {
 const picColumns: ExportColumn<AgentPic>[] = [
     { header: 'Agency', value: (pic) => pic.agent_name },
     { header: 'PIC', value: (pic) => pic.name },
-    { header: 'Mobile No', value: (pic) => pic.mobile },
+    { header: 'Mobile Numbers', value: (pic) => mobileNumbers(pic) },
 ];
+
+function mobileNumbers(pic: AgentPic): string {
+    return pic.contact_numbers.length > 0
+        ? pic.contact_numbers.join(', ')
+        : pic.mobile;
+}
 
 export default function AgentPicsIndex({ pics, agents }: AgentPicsIndexProps) {
     const config: CrudConfig<AgentPic> = {
@@ -44,9 +51,9 @@ export default function AgentPicsIndex({ pics, agents }: AgentPicsIndexProps) {
             },
             { header: 'PIC', sortKey: 'name', cell: (pic) => pic.name },
             {
-                header: 'Mobile No',
+                header: 'Mobile Numbers',
                 sortKey: 'mobile',
-                cell: (pic) => pic.mobile,
+                cell: (pic) => mobileNumbers(pic),
             },
         ],
         fields: [
@@ -60,7 +67,7 @@ export default function AgentPicsIndex({ pics, agents }: AgentPicsIndexProps) {
                 })),
             },
             { name: 'name', label: 'PIC' },
-            { name: 'mobile', label: 'Mobile No' },
+            { name: 'mobile', label: 'Mobile Numbers' },
         ],
         toFormData: (pic) => ({
             agent_id: pic ? String(pic.agent_id) : '',

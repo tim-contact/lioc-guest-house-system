@@ -31,7 +31,7 @@ class SurveyorController extends Controller
             ]);
 
         return Inertia::render('surveyors/edit', [
-            'surveyors' => Surveyor::with('user')->latest()->get()
+            'surveyors' => Surveyor::with(['user', 'barges'])->latest()->get()
                 ->map(fn (Surveyor $s) => [
                     'id' => $s->id,
                     'survey_company' => $s->survey_company,
@@ -39,6 +39,7 @@ class SurveyorController extends Controller
                     'mail_id' => $s->mail_id,
                     'contact' => $s->contact,
                     'barge_id' => $s->barge_id,
+                    'barge_ids' => $s->barges->pluck('imo')->values(),
                     'user_id' => $s->user_id,
                     'user_name' => $s->user?->name,
                     'user_email' => $s->user?->email,
@@ -50,14 +51,28 @@ class SurveyorController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        Surveyor::create($request->validate($this->rules()));
+        $validated = $request->validate($this->rules());
+        $bargeIds = $this->bargeIdsFrom($validated);
+        unset($validated['barge_ids']);
+
+        $validated['barge_id'] = $bargeIds[0] ?? null;
+
+        $surveyor = Surveyor::create($validated);
+        $surveyor->barges()->sync($bargeIds);
 
         return $this->toast('Surveyor created.');
     }
 
     public function update(Request $request, Surveyor $surveyor): RedirectResponse
     {
-        $surveyor->update($request->validate($this->rules($surveyor)));
+        $validated = $request->validate($this->rules($surveyor));
+        $bargeIds = $this->bargeIdsFrom($validated);
+        unset($validated['barge_ids']);
+
+        $validated['barge_id'] = $bargeIds[0] ?? null;
+
+        $surveyor->update($validated);
+        $surveyor->barges()->sync($bargeIds);
 
         return $this->toast('Surveyor saved.');
     }
@@ -88,7 +103,24 @@ class SurveyorController extends Controller
             'mail_id' => ['nullable', 'email', 'max:255'],
             'contact' => ['nullable', 'string', 'max:255'],
             'barge_id' => ['nullable', 'exists:barges,imo'],
+            'barge_ids' => ['nullable', 'array'],
+            'barge_ids.*' => ['string', 'exists:barges,imo'],
             'user_id' => $userIdRule,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return list<string>
+     */
+    private function bargeIdsFrom(array $validated): array
+    {
+        if (array_key_exists('barge_ids', $validated)) {
+            return collect($validated['barge_ids'])->filter()->unique()->values()->all();
+        }
+
+        return filled($validated['barge_id'] ?? null)
+            ? [(string) $validated['barge_id']]
+            : [];
     }
 }

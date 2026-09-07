@@ -6,6 +6,7 @@ import { SummaryBand } from '@/components/edit-panel/summary-band';
 import InputError from '@/components/input-error';
 import { MoneyInput } from '@/components/money-input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     DialogFooter,
     DialogHeader,
@@ -15,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import type { CrudConfig, CrudField } from './crud-types';
+import type { CrudConfig, CrudField, CrudFormData } from './crud-types';
 
 const controlClass =
     'h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80';
@@ -28,10 +29,10 @@ function FieldControl({
     onChange,
 }: {
     field: CrudField;
-    value: string;
-    formData: Record<string, string>;
+    value: string | string[];
+    formData: CrudFormData;
     disabled: boolean;
-    onChange: (value: string) => void;
+    onChange: (value: string | string[]) => void;
 }) {
     if (field.type === 'select') {
         const options =
@@ -42,7 +43,7 @@ function FieldControl({
         return (
             <select
                 id={field.name}
-                value={value}
+                value={Array.isArray(value) ? value[0] : value}
                 disabled={disabled}
                 onChange={(e) => onChange(e.target.value)}
                 className={cn(controlClass, 'cursor-pointer')}
@@ -57,23 +58,76 @@ function FieldControl({
         );
     }
 
+    if (field.type === 'multiselect') {
+        const options =
+            typeof field.options === 'function'
+                ? field.options(formData)
+                : field.options;
+        const selected = Array.isArray(value) ? value : value ? [value] : [];
+        const toggleValue = (optionValue: string, checked: boolean): void => {
+            onChange(
+                checked
+                    ? [...selected, optionValue]
+                    : selected.filter(
+                          (selectedValue) => selectedValue !== optionValue,
+                      ),
+            );
+        };
+
+        return (
+            <div
+                id={field.name}
+                className="max-h-48 overflow-y-auto rounded-lg border border-input bg-transparent p-2"
+            >
+                {options?.map((option) => (
+                    <label
+                        key={option.value}
+                        className={cn(
+                            'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-muted',
+                            disabled && 'cursor-not-allowed opacity-50',
+                        )}
+                    >
+                        <Checkbox
+                            checked={selected.includes(option.value)}
+                            disabled={disabled}
+                            onCheckedChange={(checked) =>
+                                toggleValue(option.value, checked === true)
+                            }
+                        />
+                        <span>{option.label}</span>
+                    </label>
+                ))}
+            </div>
+        );
+    }
+
     if (field.type === 'textarea') {
         return (
             <Textarea
                 id={field.name}
-                value={value}
+                value={Array.isArray(value) ? value.join(', ') : value}
                 onChange={(e) => onChange(e.target.value)}
             />
         );
     }
 
     if ((field.type as string) === 'currency') {
-        return <MoneyInput id={field.name} value={value} onChange={onChange} />;
+        return (
+            <MoneyInput
+                id={field.name}
+                value={Array.isArray(value) ? value[0] : value}
+                onChange={onChange}
+            />
+        );
     }
 
     if (field.type === 'datetime-local') {
         return (
-            <DateTimePicker id={field.name} value={value} onChange={onChange} />
+            <DateTimePicker
+                id={field.name}
+                value={Array.isArray(value) ? value[0] : value}
+                onChange={onChange}
+            />
         );
     }
 
@@ -82,26 +136,32 @@ function FieldControl({
             id={field.name}
             type={field.type ?? 'text'}
             step={field.step}
-            value={value}
+            value={Array.isArray(value) ? value.join(', ') : value}
             onChange={(e) => onChange(e.target.value)}
         />
     );
 }
 
 /** Resolves a select field's stored value to its option label for display. */
-function fieldDisplayValue(field: CrudField, value: string): string {
-    if (field.type === 'select') {
+function fieldDisplayValue(field: CrudField, value: string | string[]): string {
+    if (field.type === 'select' || field.type === 'multiselect') {
         const options =
             typeof field.options === 'function'
                 ? field.options({})
                 : field.options;
+        const values = Array.isArray(value) ? value : [value];
 
-        return (
-            options?.find((option) => option.value === value)?.label ?? value
-        );
+        return values
+            .filter(Boolean)
+            .map(
+                (selectedValue) =>
+                    options?.find((option) => option.value === selectedValue)
+                        ?.label ?? selectedValue,
+            )
+            .join(', ');
     }
 
-    return value;
+    return Array.isArray(value) ? value.join(', ') : value;
 }
 
 /** Consecutive fields sharing a `section` are grouped under one heading. */
@@ -133,9 +193,7 @@ export function ResourceForm<T>({
     row: T | null;
     onDone: () => void;
 }) {
-    const form = useForm<Record<string, string>>(
-        config.toFormData?.(row) ?? {},
-    );
+    const form = useForm<CrudFormData>(config.toFormData?.(row) ?? {});
     const isEdit = row !== null;
     const isLocked = (field: CrudField) => isEdit && !!field.disabledOnEdit;
     const isDisabled = (field: CrudField) => !!field.disabledWhen?.(form.data);
@@ -211,7 +269,7 @@ export function ResourceForm<T>({
                                         formData={form.data}
                                         disabled={isDisabled(field)}
                                         onChange={(value) => {
-                                            const nextData = {
+                                            const nextData: CrudFormData = {
                                                 ...form.data,
                                                 [field.name]: value,
                                             };

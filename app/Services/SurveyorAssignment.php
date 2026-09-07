@@ -9,7 +9,7 @@ use App\Models\User;
  * Centralized resolver for surveyor barge assignment authorization.
  *
  * - super_admin and master: unrestricted access (returns null).
- * - surveyor: returns the linked Surveyor record and assigned barge_id.
+ * - surveyor: returns the linked Surveyor record and assigned barge IDs.
  * - No assignment: returns a denied state.
  */
 class SurveyorAssignment
@@ -17,7 +17,7 @@ class SurveyorAssignment
     /**
      * Resolve the authenticated user's surveyor assignment.
      *
-     * @return array{surveyor: Surveyor|null, barge_id: string|null, denied: bool}
+     * @return array{surveyor: Surveyor|null, barge_id: string|null, barge_ids: list<string>, denied: bool}
      */
     public static function resolve(User $user): array
     {
@@ -26,6 +26,7 @@ class SurveyorAssignment
             return [
                 'surveyor' => null,
                 'barge_id' => null,
+                'barge_ids' => [],
                 'denied' => false,
             ];
         }
@@ -35,24 +36,32 @@ class SurveyorAssignment
             return [
                 'surveyor' => null,
                 'barge_id' => null,
+                'barge_ids' => [],
                 'denied' => true,
             ];
         }
 
-        $surveyor = $user->surveyor;
+        $surveyor = $user->surveyor?->loadMissing('barges');
+        $bargeIds = $surveyor?->barges->pluck('imo')->values()->all() ?? [];
+
+        if ($surveyor?->barge_id && ! in_array($surveyor->barge_id, $bargeIds, true)) {
+            $bargeIds = [$surveyor->barge_id, ...$bargeIds];
+        }
 
         // Surveyor user with no linked profile or no barge assigned.
-        if (! $surveyor || ! $surveyor->barge_id) {
+        if (! $surveyor || $bargeIds === []) {
             return [
                 'surveyor' => $surveyor,
                 'barge_id' => null,
+                'barge_ids' => [],
                 'denied' => true,
             ];
         }
 
         return [
             'surveyor' => $surveyor,
-            'barge_id' => $surveyor->barge_id,
+            'barge_id' => $bargeIds[0],
+            'barge_ids' => $bargeIds,
             'denied' => false,
         ];
     }
@@ -74,7 +83,7 @@ class SurveyorAssignment
             return;
         }
 
-        if ($orderBargeId !== $assignment['barge_id']) {
+        if (! in_array($orderBargeId, $assignment['barge_ids'], true)) {
             abort(403);
         }
     }
@@ -100,7 +109,7 @@ class SurveyorAssignment
         }
 
         // The order's barge must match the surveyor's assignment.
-        if ($orderBargeId !== $assignment['barge_id']) {
+        if (! in_array($orderBargeId, $assignment['barge_ids'], true)) {
             abort(403);
         }
     }

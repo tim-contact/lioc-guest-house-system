@@ -73,10 +73,25 @@ test('surveyor can be assigned a barge', function () {
     $barge = Barge::factory()->create();
 
     $surveyor = Surveyor::factory()->create(['barge_id' => $barge->imo]);
+    $surveyor->barges()->attach($barge->imo);
 
     expect($surveyor->barge_id)->toBe($barge->imo);
     expect($surveyor->barge)->not->toBeNull();
     expect($surveyor->barge->imo)->toBe($barge->imo);
+    expect($surveyor->barges()->pluck('imo')->all())->toBe([$barge->imo]);
+});
+
+test('surveyor can be assigned multiple barges', function () {
+    $bargeA = Barge::factory()->create();
+    $bargeB = Barge::factory()->create();
+
+    $surveyor = Surveyor::factory()->create(['barge_id' => $bargeA->imo]);
+    $surveyor->barges()->sync([$bargeA->imo, $bargeB->imo]);
+
+    expect($surveyor->barges()->pluck('imo')->all())->toBe([
+        $bargeA->imo,
+        $bargeB->imo,
+    ]);
 });
 
 // =============================================================
@@ -102,6 +117,49 @@ test('surveyor with assigned barge sees pending orders for that barge only', fun
             ->where('pendingOrders.0.barge_id', $bargeA->imo)
             ->where('assignedBarge.imo', $bargeA->imo)
             ->where('assignedBarge.name', 'Barge Alpha'));
+});
+
+test('surveyor with multiple assigned barges sees orders for all assigned barges', function () {
+    $bargeA = Barge::factory()->create(['name' => 'Barge Alpha']);
+    $bargeB = Barge::factory()->create(['name' => 'Barge Beta']);
+    $bargeC = Barge::factory()->create(['name' => 'Barge Gamma']);
+
+    $surveyorUser = makeSurveyorUser($bargeA->imo);
+    $surveyorUser->surveyor->barges()->sync([$bargeA->imo, $bargeB->imo]);
+    $this->actingAs($surveyorUser);
+
+    makeOrderOnBarge($bargeA->imo, ['vessel_name' => 'MV On Alpha']);
+    makeOrderOnBarge($bargeB->imo, ['vessel_name' => 'MV On Beta']);
+    makeOrderOnBarge($bargeC->imo, ['vessel_name' => 'MV On Gamma']);
+
+    $this->get(route('surveyor'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('surveyor/dashboard')
+            ->has('pendingOrders', 2)
+            ->where('pendingOrders.0.vessel_name', 'MV On Alpha')
+            ->where('pendingOrders.1.vessel_name', 'MV On Beta')
+            ->has('barges', 2));
+});
+
+test('surveyor with multiple assigned barges can filter to one assigned barge', function () {
+    $bargeA = Barge::factory()->create(['name' => 'Barge Alpha']);
+    $bargeB = Barge::factory()->create(['name' => 'Barge Beta']);
+
+    $surveyorUser = makeSurveyorUser($bargeA->imo);
+    $surveyorUser->surveyor->barges()->sync([$bargeA->imo, $bargeB->imo]);
+    $this->actingAs($surveyorUser);
+
+    makeOrderOnBarge($bargeA->imo, ['vessel_name' => 'MV On Alpha']);
+    makeOrderOnBarge($bargeB->imo, ['vessel_name' => 'MV On Beta']);
+
+    $this->get(route('surveyor', ['barge' => $bargeB->imo]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('surveyor/dashboard')
+            ->has('pendingOrders', 1)
+            ->where('pendingOrders.0.vessel_name', 'MV On Beta')
+            ->where('assignedBarge.imo', $bargeB->imo));
 });
 
 test('surveyor cannot see orders for another barge by passing ?barge= param', function () {
@@ -226,6 +284,23 @@ test('surveyor can update BDN quantities for an order on their assigned barge', 
     expect((float) $order->hsfo_bdn_qty)->toBe(30.0);
 });
 
+test('surveyor can update BDN quantities for any assigned barge', function () {
+    $bargeA = Barge::factory()->create();
+    $bargeB = Barge::factory()->create();
+
+    $surveyorUser = makeSurveyorUser($bargeA->imo);
+    $surveyorUser->surveyor->barges()->sync([$bargeA->imo, $bargeB->imo]);
+    $this->actingAs($surveyorUser);
+
+    $orderOnB = makeOrderOnBarge($bargeB->imo, ['vlsfo_bdn_qty' => 50]);
+
+    $this->patch(route('surveyor.update', $orderOnB), [
+        'vlsfo_bdn_qty' => 200,
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect((float) $orderOnB->refresh()->vlsfo_bdn_qty)->toBe(200.0);
+});
+
 test('surveyor cannot update BDN quantities for another barge', function () {
     $bargeA = Barge::factory()->create();
     $bargeB = Barge::factory()->create();
@@ -321,6 +396,29 @@ test('master can assign barge to surveyor profile', function () {
 
     $surveyor->refresh();
     expect($surveyor->barge_id)->toBe($barge->imo);
+    expect($surveyor->barges()->pluck('imo')->all())->toBe([$barge->imo]);
+});
+
+test('master can assign multiple barges to surveyor profile', function () {
+    $master = User::factory()->create(['type' => UserType::Master]);
+    $this->actingAs($master);
+
+    $bargeA = Barge::factory()->create();
+    $bargeB = Barge::factory()->create();
+    $surveyor = Surveyor::factory()->create(['barge_id' => null]);
+
+    $this->patch(route('surveyors.update', $surveyor), [
+        'survey_company' => $surveyor->survey_company,
+        'name' => $surveyor->name,
+        'barge_ids' => [$bargeA->imo, $bargeB->imo],
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    $surveyor->refresh();
+    expect($surveyor->barge_id)->toBe($bargeA->imo);
+    expect($surveyor->barges()->pluck('imo')->all())->toBe([
+        $bargeA->imo,
+        $bargeB->imo,
+    ]);
 });
 
 test('super_admin can assign user and barge to surveyor profile', function () {
