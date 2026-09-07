@@ -43,52 +43,6 @@ function summarise(rows: OrderRow[]): Summary {
     };
 }
 
-function PortMetricRow({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[#475569]">{label}</span>
-            <span className="font-semibold text-[#0F172A] tabular-nums">
-                {value}
-            </span>
-        </div>
-    );
-}
-
-function SummarySection({
-    label,
-    summary,
-    tone,
-    className,
-}: {
-    label: string;
-    summary: Summary;
-    tone: 'pending' | 'completed';
-    className?: string;
-}) {
-    return (
-        <div className={cn('flex flex-col gap-2', className)}>
-            <span
-                className={cn(
-                    'text-xs font-bold tracking-[0.035em] uppercase',
-                    tone === 'pending' ? 'text-[#F36F21]' : 'text-[#0F766E]',
-                )}
-            >
-                {label}
-            </span>
-            <div className="flex flex-col gap-1.5 text-sm">
-                <PortMetricRow label="Orders" value={String(summary.count)} />
-                {FUEL_GRADES.map((product) => (
-                    <PortMetricRow
-                        key={product.key}
-                        label={`Volume ${product.label}`}
-                        value={formatVolume(summary.volumes[product.key])}
-                    />
-                ))}
-            </div>
-        </div>
-    );
-}
-
 function CommandMetric({ label, value }: { label: string; value: string }) {
     return (
         <div className="min-w-0">
@@ -98,6 +52,76 @@ function CommandMetric({ label, value }: { label: string; value: string }) {
             <p className="mt-1 text-[clamp(1.5rem,2vw,2rem)] leading-tight font-bold text-white tabular-nums">
                 {value}
             </p>
+        </div>
+    );
+}
+
+function CompactVolumeRow({
+    label,
+    value,
+}: {
+    label: string;
+    value: string;
+}) {
+    return (
+        <div className="flex min-w-0 items-center justify-between gap-3 whitespace-nowrap rounded-md border border-[#E7EDF4] bg-white/72 px-2 py-1.5">
+            <span className="shrink-0 text-[0.64rem] leading-none font-semibold tracking-[0.035em] text-[#64748B] uppercase">
+                {label}
+            </span>
+            <span className="min-w-0 truncate text-right text-xs leading-tight font-semibold text-[#0F172A] tabular-nums">
+                {value}
+            </span>
+        </div>
+    );
+}
+
+function CompactStatusPanel({
+    label,
+    summary,
+    tone,
+}: {
+    label: string;
+    summary: Summary;
+    tone: 'pending' | 'completed';
+}) {
+    const Icon = tone === 'pending' ? Clock3 : CheckCircle2;
+    const toneClassName =
+        tone === 'pending'
+            ? 'border-[#FED7AA] bg-[#FFF7ED] text-[#C2410C]'
+            : 'border-[#99F6E4] bg-[#F0FDFA] text-[#0F766E]';
+
+    return (
+        <div
+            className={cn(
+                'min-w-0 rounded-lg border px-3 py-2.5',
+                toneClassName,
+            )}
+        >
+            <div className="flex items-start justify-between gap-2">
+                <div className="flex shrink-0 items-center gap-1.5">
+                    <Icon className="size-3.5 shrink-0" />
+                    <span className="text-[0.68rem] leading-none font-bold tracking-[0.025em] uppercase">
+                        {label}
+                    </span>
+                </div>
+                <div className="text-right">
+                    <p className="text-2xl leading-none font-bold tabular-nums">
+                        {summary.count}
+                    </p>
+                    <p className="mt-0.5 text-[0.62rem] leading-none font-semibold tracking-[0.06em] uppercase opacity-75">
+                        Orders
+                    </p>
+                </div>
+            </div>
+            <div className="mt-2 grid gap-1.5">
+                {FUEL_GRADES.map((product) => (
+                    <CompactVolumeRow
+                        key={product.key}
+                        label={product.label}
+                        value={formatVolume(summary.volumes[product.key])}
+                    />
+                ))}
+            </div>
         </div>
     );
 }
@@ -201,7 +225,7 @@ export function PortSummaryCards({
                 </CardContent>
             </Card>
 
-            <div className="grid auto-cols-[minmax(13rem,1fr)] grid-flow-col gap-4 overflow-x-auto pb-1">
+            <div className="grid auto-cols-[minmax(22rem,1fr)] grid-flow-col gap-4 overflow-x-auto pb-1">
                 {byPort.map((summary) => {
                     const hasActivity =
                         summary.pending.count > 0 ||
@@ -243,17 +267,18 @@ export function PortSummaryCards({
                                 </div>
                             </CardHeader>
                             <CardContent className="flex flex-col gap-3 px-4">
-                                <SummarySection
-                                    label="Pending"
-                                    summary={summary.pending}
-                                    tone="pending"
-                                />
-                                <SummarySection
-                                    label="Completed"
-                                    summary={summary.completed}
-                                    tone="completed"
-                                    className="border-t border-[#E7EDF4] pt-3"
-                                />
+                                <div className="grid grid-cols-2 gap-2">
+                                    <CompactStatusPanel
+                                        label="Pending"
+                                        summary={summary.pending}
+                                        tone="pending"
+                                    />
+                                    <CompactStatusPanel
+                                        label="Completed"
+                                        summary={summary.completed}
+                                        tone="completed"
+                                    />
+                                </div>
                             </CardContent>
                         </Card>
                     );

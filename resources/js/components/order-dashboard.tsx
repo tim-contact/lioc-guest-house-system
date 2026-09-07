@@ -1,4 +1,5 @@
 import { ChevronDown, Pencil } from 'lucide-react';
+import { useState } from 'react';
 import { SortableHead } from '@/components/sortable-head';
 import { TableFrame } from '@/components/table-frame';
 import { Button } from '@/components/ui/button';
@@ -92,17 +93,27 @@ export default function OrderDashboard<T extends OrderRow>({
     pendingActions,
     completedActions,
 }: OrderDashboardProps<T>) {
+    const visiblePorts = ports.length > 0 ? ports : [...PORTS];
+    const [selectedPort, setSelectedPort] = useState(visiblePorts[0]);
+    const activePort = visiblePorts.includes(selectedPort)
+        ? selectedPort
+        : visiblePorts[0];
+
     return (
         <div className="flex flex-col gap-4">
             <Section
                 title="Pending Orders"
-                ports={ports}
+                ports={visiblePorts}
+                selectedPort={activePort}
+                onPortChange={setSelectedPort}
                 rows={pendingOrders}
                 actions={pendingActions}
             />
             <Section
                 title="Completed Orders (last 30 days)"
-                ports={ports}
+                ports={visiblePorts}
+                selectedPort={activePort}
+                onPortChange={setSelectedPort}
                 rows={completedOrders}
                 actions={completedActions}
             />
@@ -113,16 +124,19 @@ export default function OrderDashboard<T extends OrderRow>({
 function Section<T extends OrderRow>({
     title,
     ports,
+    selectedPort,
+    onPortChange,
     rows,
     actions,
 }: {
     title: string;
     ports: string[];
+    selectedPort: string;
+    onPortChange: (port: string) => void;
     rows: T[];
     actions: RowAction<T>[];
 }) {
-    const visiblePorts = ports.length > 0 ? ports : [...PORTS];
-    const rowsByPort = visiblePorts.map((port) => ({
+    const rowsByPort = ports.map((port) => ({
         port,
         rows: rows.filter((row) => row.port === port),
     }));
@@ -143,14 +157,15 @@ function Section<T extends OrderRow>({
             </CollapsibleTrigger>
             <CollapsibleContent>
                 <Tabs
-                    defaultValue={visiblePorts[0]}
+                    value={selectedPort}
+                    onValueChange={onPortChange}
                     className="gap-4 px-4 pb-4"
                 >
                     <TabsList
                         variant="line"
                         className="h-auto! w-full justify-start overflow-x-auto border-b border-[#E7EDF4] pb-2 sm:grid sm:auto-cols-fr sm:grid-flow-col sm:overflow-visible"
                     >
-                        {visiblePorts.map((port) => (
+                        {ports.map((port) => (
                             <TabsTrigger
                                 key={port}
                                 value={port}

@@ -54,6 +54,11 @@ export function OrderEditDialog({
 }) {
     const eta = order.eta ? new Date(order.eta) : null;
     const validEta = eta && !Number.isNaN(eta.getTime()) ? eta : null;
+    const canAssignBarge =
+        order.delivery_mode === undefined ||
+        order.delivery_mode === null ||
+        order.delivery_mode === '' ||
+        order.delivery_mode === 'barge';
 
     const form = useForm<OpsFormData>({
         eta_date: validEta ? format(validEta, 'yyyy-MM-dd') : '',
@@ -61,7 +66,7 @@ export function OrderEditDialog({
         delivery_location_id: order.delivery_location_id
             ? String(order.delivery_location_id)
             : '',
-        barge_id: order.barge_id ?? '',
+        barge_id: canAssignBarge ? (order.barge_id ?? '') : '',
         vlsfo_final_qty: order.vlsfo_final_qty ?? '',
         mgo_final_qty: order.mgo_final_qty ?? '',
         hsfo_final_qty: order.hsfo_final_qty ?? '',

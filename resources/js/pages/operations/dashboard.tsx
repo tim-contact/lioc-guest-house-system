@@ -6,8 +6,8 @@ import {
     ALL_PORTS_VALUE,
     filterPortScopedRows,
     PortScopedOrderSearch,
-    type PortSearchState,
 } from '@/components/port-scoped-order-search';
+import type { PortSearchState } from '@/components/port-scoped-order-search';
 import { PortSummaryCards } from '@/components/port-summary-cards';
 import type {
     AgentOption,

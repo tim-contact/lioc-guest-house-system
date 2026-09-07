@@ -260,6 +260,17 @@ export function BdnDialog({
     const set = (field: string) => (value: string) =>
         form.setData(field, value);
 
+    function setDeliveryMethod(value: string) {
+        form.setData({
+            ...form.data,
+            delivery_method: value,
+            ...(value === 'barge'
+                ? {}
+                : { barge_id: '', barge_alongside_at: '' }),
+        });
+    }
+
+    const usesBarge = form.data.delivery_method === 'barge';
     const selectedBarge = barges.find(
         (barge) => barge.imo === form.data.barge_id,
     );
@@ -435,6 +446,14 @@ export function BdnDialog({
                                     value={selectedBarge?.imo ?? ''}
                                 />
 
+                                <DateTimeField
+                                    id="bdn-barge-alongside"
+                                    label="Barge Alongside"
+                                    value={form.data.barge_alongside_at}
+                                    onChange={set('barge_alongside_at')}
+                                />
+                            </>
+                        )}
                                 <DateTimeField
                                     id="bdn-barge-alongside"
                                     label="Barge Alongside"
