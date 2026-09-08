@@ -116,7 +116,7 @@ export default function OrderDashboard<T extends OrderRow>({
                 actions={pendingActions}
             />
             <Section
-                title="Completed Orders (last 30 days)"
+                title="Completed Orders (current month)"
                 ports={visiblePorts}
                 selectedPort={activePort}
                 onPortChange={setSelectedPort}

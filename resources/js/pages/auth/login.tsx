@@ -45,7 +45,7 @@ export default function Login({ status }: Props) {
                     <section className="hidden max-w-[560px] pl-4 lg:block xl:pl-12">
                         <img
                             alt="BOSS"
-                            className="-mb-16 block w-[min(30vw,320px)] object-contain drop-shadow-[0_18px_38px_rgba(0,10,24,0.32)]"
+                                className="max-h-[60px] sm:max-h-[80px] md:max-h-[100px] w-[min(62vw,190px)] sm:w-[min(62vw,250px)] md:w-[min(62vw,320px)] object-contain"
                             src="/images/boss_logo.png"
                         />
                         <h1 className="text-[clamp(2.4rem,3.2vw,4rem)] leading-[1.05] font-bold tracking-normal text-white">

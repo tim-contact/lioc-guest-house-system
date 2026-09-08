@@ -39,7 +39,7 @@ test('guests are redirected from the orders page', function () {
     $this->get(route('orders'))->assertRedirect(route('login'));
 });
 
-test('index renders pending and completed orders grouped by port', function () {
+test('index renders pending and current month completed orders grouped by port', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     createOrder([
@@ -50,14 +50,14 @@ test('index renders pending and completed orders grouped by port', function () {
     createOrder([
         'vessel_name' => 'MV Delivered Recently',
         'status' => OrderStatus::Delivered,
-        'invoice_date' => now()->subDays(10),
+        'invoice_date' => now()->startOfMonth(),
         'vlsfo_final_qty' => 375,
     ]);
 
     createOrder([
-        'vessel_name' => 'MV Delivered Long Ago',
+        'vessel_name' => 'MV Delivered Previous Month',
         'status' => OrderStatus::Delivered,
-        'invoice_date' => now()->subDays(45),
+        'invoice_date' => now()->subMonth()->startOfMonth(),
     ]);
 
     createOrder([

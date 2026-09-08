@@ -5,6 +5,7 @@ import {
     Anchor,
     AlertTriangle,
     Banknote,
+    BarChart3,
     CheckCircle2,
     Clock3,
     CircleDollarSign,
@@ -22,6 +23,7 @@ import {
     PieCenter,
     PieSlice,
 } from '@/components/charts/pie-chart';
+import { ProductComparisonLineChart } from '@/components/charts/product-comparison-line-chart';
 import { Ring, RingCenter, RingChart } from '@/components/charts/ring-chart';
 import {
     Card,
@@ -30,13 +32,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import {
-    ANALYTICS_STAGE_COLORS,
-    analyticsStageColor,
-    portColor,
-    portIconPath,
-    productColor,
-} from '@/lib/utils';
+import { portColor, portIconPath, productColor } from '@/lib/utils';
 
 type FunnelStage = {
     label: string;
@@ -59,6 +55,18 @@ type MonthlyTrend = {
     enquiries: number;
     orders: number;
     completed: number;
+};
+
+type CyLySalesMetric = {
+    label: string;
+    currentYear: number;
+    lastYear: number;
+};
+
+type CyLyProductSalesMetric = {
+    key: string;
+    label: string;
+    months: CyLySalesMetric[];
 };
 
 type PortStatusMetric = {
@@ -89,6 +97,8 @@ type AnalyticsProps = {
     topPorts: CountMetric[];
     topCustomers: ValueMetric[];
     productMix: ValueMetric[];
+    rebondProductMix: ValueMetric[];
+    cyLyProductSales: CyLyProductSalesMetric[];
 };
 
 const compactNumber = new Intl.NumberFormat('en-US', {
@@ -150,6 +160,11 @@ const metricCards: {
 const chartCardClassName = 'rounded-lg border-[#E3EAF2] bg-white shadow-sm';
 const analyticsCardTitleClassName =
     'text-lg font-bold tracking-normal text-[#172033] sm:text-xl';
+const funnelGradients = [
+    ['#00c996', '#003d4d'],
+    ['#29EAC4', '#4284DB'],
+    ['#0A2A88', '#59CDE9'],
+] as const;
 
 export default function ReportAnalytics({
     summary,
@@ -159,6 +174,8 @@ export default function ReportAnalytics({
     topPorts,
     topCustomers,
     productMix,
+    rebondProductMix,
+    cyLyProductSales,
 }: AnalyticsProps) {
     const maxTrend = Math.max(
         ...monthlyTrend.flatMap((month) => [
@@ -197,9 +214,9 @@ export default function ReportAnalytics({
                     ))}
                 </section>
 
-                <section className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.55fr)]">
+                <section className="grid gap-6 xl:grid-cols-[minmax(0,7fr)_minmax(300px,3fr)]">
                     <Card className={chartCardClassName}>
-                        <CardHeader>
+                        <CardHeader className="p-4 pb-2">
                             <CardTitle
                                 className={`flex items-center gap-2 ${analyticsCardTitleClassName}`}
                             >
@@ -211,25 +228,27 @@ export default function ReportAnalytics({
                                 deliveries.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <div className="min-h-[280px] overflow-visible">
+                        <CardContent className="p-4 pt-0">
+                            <div className="h-180 overflow-visible">
                                 <FunnelChart
+                                    className="h-full"
+                                    color="var(--chart-1)"
                                     data={funnel.map((stage, index) => ({
                                         ...stage,
                                         gradient: [
                                             {
                                                 offset: '0%',
-                                                color: analyticsStageColor(
-                                                    stage.label,
-                                                    index,
-                                                ),
+                                                color: funnelGradients[
+                                                    index %
+                                                        funnelGradients.length
+                                                ][0],
                                             },
                                             {
                                                 offset: '100%',
-                                                color: analyticsStageColor(
-                                                    stage.label,
-                                                    index,
-                                                ),
+                                                color: funnelGradients[
+                                                    index %
+                                                        funnelGradients.length
+                                                ][1],
                                             },
                                         ],
                                     }))}
@@ -243,9 +262,11 @@ export default function ReportAnalytics({
                                     }}
                                     labelLayout="grouped"
                                     layers={3}
+                                    orientation="vertical"
                                     showLabels
                                     showPercentage
                                     showValues
+                                    style={{ aspectRatio: 'auto' }}
                                 />
                             </div>
                         </CardContent>
@@ -254,14 +275,28 @@ export default function ReportAnalytics({
                     <PortStatusBentoGrid data={portStatusMetrics} />
                 </section>
 
-                <section className="grid gap-6 xl:grid-cols-3">
-                    <TrendCard data={monthlyTrend} max={maxTrend} />
-                    <TopPortsRingCard data={topPorts} />
-                    <ProductMixPieCard data={productMix} />
+                <section>
+                    <CyLySalesCard products={cyLyProductSales} />
                 </section>
 
-                <section>
+                <section className="grid gap-6 xl:grid-cols-3">
+                    <TopPortsRingCard data={topPorts} />
+                    <ProductMixPieCard
+                        data={productMix}
+                        title="Current Month Sales"
+                        description="Product-wise sales from current month BDN quantities."
+                    />
+                    <ProductMixPieCard
+                        data={rebondProductMix}
+                        title="Rebond Sales"
+                        description="Current month rebond sales by product."
+                        emptyMessage="No rebond quantity yet."
+                    />
+                </section>
+
+                <section className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
                     <TopCustomersBarCard data={topCustomers} />
+                    <TrendCard data={monthlyTrend} max={maxTrend} />
                 </section>
             </main>
         </>
@@ -269,26 +304,37 @@ export default function ReportAnalytics({
 }
 
 function TrendCard({ data, max }: { data: MonthlyTrend[]; max: number }) {
+    const [activeIndex, setActiveIndex] = useState<number | null>(null);
     const series = [
         {
             key: 'enquiries',
             label: 'Enquiries',
-            color: ANALYTICS_STAGE_COLORS.enquiries,
+            color: funnelGradients[0][0],
+            background: `linear-gradient(to top, ${funnelGradients[0][1]}, ${funnelGradients[0][0]})`,
         },
         {
             key: 'orders',
             label: 'Orders',
-            color: ANALYTICS_STAGE_COLORS.orders,
+            color: funnelGradients[1][0],
+            background: `linear-gradient(to top, ${funnelGradients[1][1]}, ${funnelGradients[1][0]})`,
         },
         {
             key: 'completed',
             label: 'Completed',
-            color: ANALYTICS_STAGE_COLORS.completed,
+            color: funnelGradients[2][0],
+            background: `linear-gradient(to top, ${funnelGradients[2][1]}, ${funnelGradients[2][0]})`,
         },
     ] as const;
+    const activeMonth = activeIndex === null ? null : data[activeIndex];
+    const activeLeft =
+        activeIndex === null || data.length === 0
+            ? 0
+            : ((activeIndex + 0.5) / data.length) * 100;
 
     return (
-        <Card className={`${chartCardClassName} xl:col-span-1`}>
+        <Card
+            className={`${chartCardClassName} [--card-spacing:--spacing(3)] xl:col-span-1`}
+        >
             <CardHeader>
                 <CardTitle className={analyticsCardTitleClassName}>
                     Six-Month Trend
@@ -298,7 +344,10 @@ function TrendCard({ data, max }: { data: MonthlyTrend[]; max: number }) {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="relative flex h-80 items-end gap-4 overflow-hidden rounded-2xl border border-[#E3EAF2] bg-white px-4 pt-5 pb-8">
+                <div
+                    className="relative flex h-80 items-end gap-4 overflow-hidden rounded-2xl border border-[#E3EAF2] bg-white px-4 pt-5 pb-8"
+                    onPointerLeave={() => setActiveIndex(null)}
+                >
                     <div className="pointer-events-none absolute inset-x-4 top-5 bottom-8 grid grid-rows-4">
                         {Array.from({ length: 5 }).map((_, index) => (
                             <span
@@ -307,29 +356,75 @@ function TrendCard({ data, max }: { data: MonthlyTrend[]; max: number }) {
                             />
                         ))}
                     </div>
-                    {data.map((month) => (
+                    {activeMonth && (
+                        <div
+                            className="pointer-events-none absolute top-4 z-30 w-44 rounded-lg border border-slate-200/80 bg-white/95 px-3 py-2 text-xs backdrop-blur-sm transition-[left] duration-150 ease-out"
+                            style={{
+                                left: `clamp(8px, calc(${activeLeft}% - 5.5rem), calc(100% - 11.5rem))`,
+                            }}
+                        >
+                            <p className="mb-1.5 font-bold text-[#172033]">
+                                {activeMonth.label}
+                            </p>
+                            <div className="grid gap-1.5">
+                                {series.map((item) => (
+                                    <div
+                                        key={`trend-tooltip-${item.key}`}
+                                        className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2"
+                                    >
+                                        <span
+                                            className="size-2 rounded-full"
+                                            style={{
+                                                backgroundColor: item.color,
+                                            }}
+                                        />
+                                        <span className="truncate text-slate-500">
+                                            {item.label}
+                                        </span>
+                                        <span className="text-right font-semibold text-[#172033] tabular-nums">
+                                            {compactNumber.format(
+                                                activeMonth[item.key],
+                                            )}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {data.map((month, index) => (
                         <div
                             key={month.label}
-                            className="relative z-10 grid min-w-0 flex-1 gap-2 text-center"
+                            className="relative z-10 grid min-w-0 flex-1 gap-2 text-center outline-none"
+                            onBlur={() => setActiveIndex(null)}
+                            onFocus={() => setActiveIndex(index)}
+                            onPointerEnter={() => setActiveIndex(index)}
+                            role="group"
+                            tabIndex={0}
                         >
                             <div className="flex h-64 items-end justify-center gap-1.5">
                                 {series.map((item) => (
                                     <TrendBar
                                         key={`${month.label}-${item.key}`}
-                                        color={item.color}
+                                        background={item.background}
                                         label={item.label}
                                         max={max}
                                         value={month[item.key]}
                                     />
                                 ))}
                             </div>
-                            <span className="truncate text-xs font-medium text-muted-foreground">
+                            <span
+                                className={`mx-auto truncate rounded-full px-2 py-1 text-xs font-medium transition-colors ${
+                                    activeIndex === index
+                                        ? 'bg-[#020617] text-white'
+                                        : 'text-muted-foreground'
+                                }`}
+                            >
                                 {month.label}
                             </span>
                         </div>
                     ))}
                 </div>
-                <div className="mt-5 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
                     {series.map((item) => (
                         <Legend
                             key={item.key}
@@ -358,7 +453,7 @@ function PortStatusBentoGrid({ data }: { data: PortStatusMetric[] }) {
                     disputes by port.
                 </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 sm:px-4">
                 {data.length === 0 ? (
                     <p className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-muted-foreground">
                         No port status data yet.
@@ -444,6 +539,120 @@ function PortStatusMiniCard({
                 {value}
             </span>
         </div>
+    );
+}
+
+function CyLySalesCard({ products }: { products: CyLyProductSalesMetric[] }) {
+    const [selectedProductKey, setSelectedProductKey] = useState(
+        products[0]?.key ?? '',
+    );
+    const selectedProduct =
+        products.find((product) => product.key === selectedProductKey) ??
+        products[0];
+    const selectedProductIndex = Math.max(
+        products.findIndex((product) => product.key === selectedProduct?.key),
+        0,
+    );
+    const selectedProductColor = selectedProduct
+        ? productColor(selectedProduct.label, selectedProductIndex)
+        : '#3155E7';
+    const data = selectedProduct?.months ?? [];
+    const max = Math.max(
+        ...data.flatMap((month) => [month.currentYear, month.lastYear]),
+        1,
+    );
+    const currentYearTotal = data.reduce(
+        (sum, month) => sum + month.currentYear,
+        0,
+    );
+    const lastYearTotal = data.reduce((sum, month) => sum + month.lastYear, 0);
+
+    return (
+        <Card className={chartCardClassName}>
+            <CardHeader>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="min-w-0">
+                        <CardTitle
+                            className={`flex items-center gap-2 ${analyticsCardTitleClassName}`}
+                        >
+                            <BarChart3 className="size-5 text-[#3155E7]" />
+                            CY vs LY Sales
+                        </CardTitle>
+                        <CardDescription>
+                            Product-wise monthly BDN quantity comparison.
+                        </CardDescription>
+                    </div>
+                    <div className="flex shrink-0 rounded-full border border-[#D8E2EE] bg-[#F8FAFD] p-1">
+                        {products.map((product, index) => {
+                            const active = product.key === selectedProduct?.key;
+
+                            return (
+                                <button
+                                    key={product.key}
+                                    type="button"
+                                    className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                                        active
+                                            ? 'bg-[#3155E7] text-white shadow-sm'
+                                            : 'text-slate-500 hover:bg-white hover:text-[#172033]'
+                                    }`}
+                                    onClick={() =>
+                                        setSelectedProductKey(product.key)
+                                    }
+                                    style={
+                                        active
+                                            ? {
+                                                  backgroundColor: productColor(
+                                                      product.label,
+                                                      index,
+                                                  ),
+                                              }
+                                            : undefined
+                                    }
+                                >
+                                    {product.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <div className="hidden shrink-0 text-right lg:block">
+                        <p className="text-xs font-semibold tracking-[0.08em] text-slate-400 uppercase">
+                            CY Total
+                        </p>
+                        <p className="mt-1 text-xl leading-none font-bold text-[#172033] tabular-nums">
+                            {compactNumber.format(currentYearTotal)}
+                        </p>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent className="px-1 sm:px-2">
+                {data.length === 0 ? (
+                    <p className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-muted-foreground">
+                        No CY vs LY product sales yet.
+                    </p>
+                ) : (
+                    <div className="grid gap-4">
+                        <ProductComparisonLineChart
+                            currentColor={selectedProductColor}
+                            data={data}
+                            max={max}
+                            productLabel={selectedProduct?.label ?? ''}
+                        />
+                        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+                            <div className="flex flex-wrap gap-3">
+                                <Legend
+                                    color={selectedProductColor}
+                                    label="Current Year"
+                                />
+                                <Legend color="#94A3B8" label="Last Year" />
+                            </div>
+                            <span className="font-semibold tabular-nums">
+                                LY Total {compactNumber.format(lastYearTotal)}
+                            </span>
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     );
 }
 
@@ -553,12 +762,12 @@ function TopPortsRingCard({ data }: { data: CountMetric[] }) {
 }
 
 function TrendBar({
-    color,
+    background,
     label,
     value,
     max,
 }: {
-    color: string;
+    background: string;
     label: string;
     value: number;
     max: number;
@@ -569,7 +778,7 @@ function TrendBar({
             title={`${label}: ${value}`}
             className="w-3 rounded-t-md rounded-b-sm shadow-[0_8px_18px_rgba(15,23,42,0.12)] transition-[height,opacity] duration-200 hover:opacity-80"
             style={{
-                backgroundColor: color,
+                background,
                 height: `${Math.max((value / max) * 100, 4)}%`,
             }}
         />
@@ -577,8 +786,6 @@ function TrendBar({
 }
 
 function TopCustomersBarCard({ data }: { data: ValueMetric[] }) {
-    const max = Math.max(...data.map((item) => item.value), 1);
-
     return (
         <Card className={chartCardClassName}>
             <CardHeader>
@@ -595,50 +802,31 @@ function TopCustomersBarCard({ data }: { data: ValueMetric[] }) {
                         No customer invoice data yet.
                     </p>
                 ) : (
-                    <div className="grid gap-3">
-                        {data.map((customer, index) => {
-                            const width = Math.max(
-                                (customer.value / max) * 100,
-                                4,
-                            );
-
-                            return (
-                                <div
-                                    key={customer.label}
-                                    className="grid gap-2 rounded-xl border border-[#E3EAF2] bg-white p-3 ring-1 ring-slate-950/[0.04]"
-                                >
-                                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-sm">
-                                        <span className="truncate font-semibold text-[#172033]">
-                                            {customer.label}
-                                        </span>
-                                        <span className="font-semibold text-slate-500 tabular-nums">
-                                            <NumberFlow
-                                                value={customer.value}
-                                                format={{
-                                                    currency: 'USD',
-                                                    maximumFractionDigits: 1,
-                                                    notation: 'compact',
-                                                    style: 'currency',
-                                                }}
-                                            />
-                                        </span>
-                                    </div>
-                                    <div className="grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-3">
-                                        <span className="text-xs font-bold text-slate-400 tabular-nums">
-                                            {String(index + 1).padStart(2, '0')}
-                                        </span>
-                                        <div className="h-3 overflow-hidden rounded-full bg-slate-200/80">
-                                            <div
-                                                className="h-full rounded-full bg-[#003049] shadow-[0_6px_14px_rgba(0,48,73,0.24)] transition-[width] duration-200"
-                                                style={{
-                                                    width: `${width}%`,
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
+                    <div className="grid gap-2">
+                        {data.map((customer, index) => (
+                            <div
+                                key={customer.label}
+                                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-[#E3EAF2] bg-white px-3 py-2.5 text-sm ring-1 ring-slate-950/[0.04]"
+                            >
+                                <span className="text-xs font-bold text-slate-400 tabular-nums">
+                                    {String(index + 1).padStart(2, '0')}
+                                </span>
+                                <span className="truncate font-semibold text-[#172033]">
+                                    {customer.label}
+                                </span>
+                                <span className="font-semibold text-slate-500 tabular-nums">
+                                    <NumberFlow
+                                        value={customer.value}
+                                        format={{
+                                            currency: 'USD',
+                                            maximumFractionDigits: 1,
+                                            notation: 'compact',
+                                            style: 'currency',
+                                        }}
+                                    />
+                                </span>
+                            </div>
+                        ))}
                     </div>
                 )}
             </CardContent>
@@ -646,7 +834,17 @@ function TopCustomersBarCard({ data }: { data: ValueMetric[] }) {
     );
 }
 
-function ProductMixPieCard({ data }: { data: ValueMetric[] }) {
+function ProductMixPieCard({
+    data,
+    title,
+    description,
+    emptyMessage = 'No product quantity yet.',
+}: {
+    data: ValueMetric[];
+    title: string;
+    description: string;
+    emptyMessage?: string;
+}) {
     const total = data.reduce((sum, item) => sum + item.value, 0);
     const pieData = data.map((item, index) => ({
         ...item,
@@ -660,14 +858,14 @@ function ProductMixPieCard({ data }: { data: ValueMetric[] }) {
         <Card className={chartCardClassName}>
             <CardHeader>
                 <CardTitle className={analyticsCardTitleClassName}>
-                    Product Mix
+                    {title}
                 </CardTitle>
-                <CardDescription>Derived from BDN Quantities</CardDescription>
+                <CardDescription>{description}</CardDescription>
             </CardHeader>
             <CardContent>
                 {pieData.length === 0 || total <= 0 ? (
                     <p className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-muted-foreground">
-                        No product quantity yet.
+                        {emptyMessage}
                     </p>
                 ) : (
                     <div className="grid gap-5">

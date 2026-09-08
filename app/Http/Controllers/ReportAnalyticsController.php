@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\DisputeStatus;
 use App\Enums\FuelGrade;
 use App\Enums\OrderStatus;
+use App\Enums\ProductType;
 use App\Models\Dispute;
 use App\Models\Enquiry;
 use App\Models\Order;
@@ -21,6 +22,12 @@ class ReportAnalyticsController extends Controller
         $orders = Order::with(['customer', 'port'])->get();
         $disputes = Dispute::with('order.port')->get();
         $completedStatuses = [OrderStatus::Delivered->value, OrderStatus::Closed->value];
+        $currentMonthSales = $orders->filter(
+            fn (Order $order): bool => $this->isCurrentMonthSale($order, $completedStatuses),
+        );
+        $currentMonthRebondSales = $currentMonthSales->filter(
+            fn (Order $order): bool => $order->product_type === ProductType::Bonded,
+        );
 
         $totalEnquiries = $enquiries->count();
         $totalOrders = $orders->count();
@@ -60,7 +67,9 @@ class ReportAnalyticsController extends Controller
             'monthlyTrend' => $this->monthlyTrend($enquiries, $orders, $completedStatuses),
             'topPorts' => $this->topPorts($orders),
             'topCustomers' => $this->topCustomers($orders),
-            'productMix' => $this->productMix($orders),
+            'productMix' => $this->productMix($currentMonthSales),
+            'rebondProductMix' => $this->productMix($currentMonthRebondSales),
+            'cyLyProductSales' => $this->cyLyProductSales($orders, $completedStatuses),
         ]);
     }
 
@@ -71,6 +80,15 @@ class ReportAnalyticsController extends Controller
         }
 
         return round(($part / $total) * 100, 1);
+    }
+
+    /**
+     * @param  list<string>  $completedStatuses
+     */
+    private function isCurrentMonthSale(Order $order, array $completedStatuses): bool
+    {
+        return $order->invoice_date?->isCurrentMonth() === true
+            && in_array($order->status->value, $completedStatuses, true);
     }
 
     /**
@@ -161,6 +179,46 @@ class ReportAnalyticsController extends Controller
                 ];
             })
             ->all();
+    }
+
+    /**
+     * @param  Collection<int, Order>  $orders
+     * @param  list<string>  $completedStatuses
+     * @return list<array{key: string, label: string, months: list<array{label: string, currentYear: float, lastYear: float}>}>
+     */
+    private function cyLyProductSales(Collection $orders, array $completedStatuses): array
+    {
+        $currentYear = CarbonImmutable::now()->year;
+        $lastYear = $currentYear - 1;
+
+        return collect(FuelGrade::cases())
+            ->map(fn (FuelGrade $grade): array => [
+                'key' => $grade->value,
+                'label' => $grade->label(),
+                'months' => collect(range(1, 12))
+                    ->map(fn (int $month): array => [
+                        'label' => CarbonImmutable::create($currentYear, $month, 1)->format('M'),
+                        'currentYear' => $this->productSalesQuantityForMonth($orders, $completedStatuses, $grade, $currentYear, $month),
+                        'lastYear' => $this->productSalesQuantityForMonth($orders, $completedStatuses, $grade, $lastYear, $month),
+                    ])
+                    ->all(),
+            ])
+            ->all();
+    }
+
+    /**
+     * @param  Collection<int, Order>  $orders
+     * @param  list<string>  $completedStatuses
+     */
+    private function productSalesQuantityForMonth(Collection $orders, array $completedStatuses, FuelGrade $grade, int $year, int $month): float
+    {
+        $key = $grade->value;
+
+        return round((float) $orders
+            ->filter(fn (Order $order): bool => $order->invoice_date?->year === $year
+                && $order->invoice_date?->month === $month
+                && in_array($order->status->value, $completedStatuses, true))
+            ->sum(fn (Order $order): float => (float) ($order->{"{$key}_bdn_qty"} ?? $order->{"{$key}_final_qty"} ?? 0)), 3);
     }
 
     /**

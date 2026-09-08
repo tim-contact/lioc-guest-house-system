@@ -2,6 +2,7 @@
 
 use App\Enums\DisputeStatus;
 use App\Enums\OrderStatus;
+use App\Enums\ProductType;
 use App\Enums\UserType;
 use App\Models\Customer;
 use App\Models\Dispute;
@@ -24,7 +25,10 @@ test('super admins can view report analytics', function () {
             ->has('monthlyTrend', 6)
             ->has('topPorts')
             ->has('topCustomers')
-            ->has('productMix', 3));
+            ->has('productMix', 3)
+            ->has('rebondProductMix', 3)
+            ->has('cyLyProductSales', 3)
+            ->has('cyLyProductSales.0.months', 12));
 });
 
 test('report analytics includes enquiry to completed funnel counts', function () {
@@ -92,4 +96,75 @@ test('report analytics includes enquiry to completed funnel counts', function ()
             ->where('portStatusMetrics.0.completedDeliveries', 2)
             ->where('portStatusMetrics.0.pendingDisputes', 2)
             ->where('portStatusMetrics.0.total', 5));
+});
+
+test('product mix is scoped to current month sales', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    Order::factory()->create([
+        'status' => OrderStatus::Delivered,
+        'invoice_date' => now()->startOfMonth(),
+        'product_type' => ProductType::Bonded,
+        'invoice_value' => 1000,
+        'vlsfo_bdn_qty' => 120,
+        'mgo_bdn_qty' => 45,
+        'hsfo_bdn_qty' => 0,
+    ]);
+
+    Order::factory()->create([
+        'status' => OrderStatus::Closed,
+        'invoice_date' => now()->endOfMonth(),
+        'product_type' => ProductType::DutyPaid,
+        'invoice_value' => 500,
+        'vlsfo_bdn_qty' => 30,
+        'mgo_bdn_qty' => 5,
+        'hsfo_bdn_qty' => 70,
+    ]);
+
+    Order::factory()->create([
+        'status' => OrderStatus::Delivered,
+        'invoice_date' => now()->subMonth()->startOfMonth(),
+        'invoice_value' => 9999,
+        'vlsfo_bdn_qty' => 999,
+        'mgo_bdn_qty' => 999,
+        'hsfo_bdn_qty' => 999,
+    ]);
+
+    Order::factory()->create([
+        'status' => OrderStatus::Pending,
+        'invoice_date' => now()->startOfMonth(),
+        'invoice_value' => 8888,
+        'vlsfo_bdn_qty' => 999,
+        'mgo_bdn_qty' => 999,
+        'hsfo_bdn_qty' => 999,
+    ]);
+
+    Order::factory()->create([
+        'status' => OrderStatus::Delivered,
+        'invoice_date' => now()->subYear()->startOfMonth(),
+        'invoice_value' => 700,
+        'vlsfo_bdn_qty' => 77,
+    ]);
+
+    $currentMonthIndex = now()->month - 1;
+    $currentMonthPath = "cyLyProductSales.0.months.{$currentMonthIndex}";
+
+    $this->get(route('reports.analytics'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('productMix.0.label', 'VLSFO')
+            ->where('productMix.0.value', 150)
+            ->where('productMix.1.label', 'MGO')
+            ->where('productMix.1.value', 50)
+            ->where('productMix.2.label', 'HSFO')
+            ->where('productMix.2.value', 70)
+            ->where('rebondProductMix.0.label', 'VLSFO')
+            ->where('rebondProductMix.0.value', 120)
+            ->where('rebondProductMix.1.label', 'MGO')
+            ->where('rebondProductMix.1.value', 45)
+            ->where('rebondProductMix.2.label', 'HSFO')
+            ->where('rebondProductMix.2.value', 0)
+            ->where('cyLyProductSales.0.label', 'VLSFO')
+            ->where("{$currentMonthPath}.currentYear", 150)
+            ->where("{$currentMonthPath}.lastYear", 77));
 });

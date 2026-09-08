@@ -59,6 +59,34 @@ class OrderService
     }
 
     /**
+     * Orders completed during the current calendar month.
+     *
+     * With $keepOpenDisputes, orders carrying an unresolved dispute stay on the
+     * list however old they are, so the dispute remains reachable.
+     *
+     * @return Collection<int, Order>
+     */
+    public static function completedForCurrentMonth(bool $keepOpenDisputes = false): Collection
+    {
+        $month = Carbon::today();
+
+        return Order::with(['customer', 'port', 'deliveryLocation'])
+            ->whereIn('status', OrderStatus::completedStatuses())
+            ->where(fn ($query) => $query
+                ->whereBetween('invoice_date', [
+                    $month->copy()->startOfMonth(),
+                    $month->copy()->endOfMonth(),
+                ])
+                ->when($keepOpenDisputes, fn ($disputed) => $disputed->orWhereHas(
+                    'disputes',
+                    fn ($dispute) => $dispute->where('dispute_status', DisputeStatus::Open),
+                )))
+            ->orderBy('port_id')
+            ->orderBy('eta')
+            ->get();
+    }
+
+    /**
      * Mark an order delivered and stamp its invoice: value is the sum of each
      * grade's BDN quantity times its rate, due date is invoice date plus credit terms.
      */

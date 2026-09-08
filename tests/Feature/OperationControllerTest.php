@@ -60,7 +60,7 @@ test('index exposes the ordered quantity bounds', function () {
             ->where('pendingOrders.0.vlsfo_quantity_high', '250.000'));
 });
 
-test('index exposes recent completed orders with their port and final quantities', function () {
+test('index exposes current month completed orders with their port and final quantities', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $port = Port::factory()->create(['name' => 'Galle']);
@@ -68,7 +68,7 @@ test('index exposes recent completed orders with their port and final quantities
     Order::factory()->create([
         'port_id' => $port->id,
         'status' => OrderStatus::Delivered,
-        'invoice_date' => now()->subDays(10),
+        'invoice_date' => now()->startOfMonth(),
         'vlsfo_final_qty' => 812.5,
     ]);
 

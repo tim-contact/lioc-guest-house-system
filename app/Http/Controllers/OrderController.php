@@ -41,7 +41,7 @@ class OrderController extends Controller
 
         $pendingOrders = OrderService::pending()->load('disputes')->map($mapOrder);
 
-        $completedOrders = OrderService::completedWithin(keepOpenDisputes: true)->load('disputes')->map($mapOrder);
+        $completedOrders = OrderService::completedForCurrentMonth(keepOpenDisputes: true)->load('disputes')->map($mapOrder);
 
         return Inertia::render('orders/dashboard', [
             'pendingOrders' => $pendingOrders,
