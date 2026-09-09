@@ -725,9 +725,9 @@ export function BdnDialog({
                     <DialogHeader className="gap-0 px-4 py-2 sm:px-5">
                         <div className="flex min-h-12 items-center gap-3">
                             <div className="min-w-0 flex-1">
-                                <DialogTitle className="truncate text-sm font-bold text-[#172033] sm:text-base">
+                                <DialogTitle className="text-sm leading-tight font-bold text-[#172033] sm:text-base">
                                     Bunker Delivery Note{' '}
-                                    <span className="font-semibold text-slate-500">
+                                    <span className="block font-semibold break-all text-slate-500 sm:inline sm:break-normal">
                                         #
                                         {order.bdn?.bdn_number ??
                                             order.order_number}
