@@ -42,6 +42,7 @@ export interface OrderRow {
     vlsfo_quantity_high: string | null;
     mgo_quantity_high: string | null;
     hsfo_quantity_high: string | null;
+    product_type?: string | null;
     eta: string | null;
     laycan_from: string | null;
     status: string;
@@ -242,8 +243,14 @@ function PortTable<T extends OrderRow>({
                                     key={grade.key}
                                     className="px-3 py-3 font-medium text-[#334155] tabular-nums"
                                 >
-                                    {(row as OrderRow)[`${grade.key}_qty`] ??
-                                        '-'}
+                                    <ProductQuantityCell
+                                        quantity={
+                                            (row as OrderRow)[
+                                                `${grade.key}_qty`
+                                            ] ?? null
+                                        }
+                                        productType={row.product_type ?? null}
+                                    />
                                 </TableCell>
                             ))}
                             <TableCell className="px-3 py-3 text-[#334155] tabular-nums">
@@ -290,6 +297,49 @@ function PortTable<T extends OrderRow>({
             </Table>
         </TableFrame>
     );
+}
+
+function ProductQuantityCell({
+    quantity,
+    productType,
+}: {
+    quantity: string | null;
+    productType: string | null;
+}) {
+    const showProductType = productType && hasOrderedQuantity(quantity);
+
+    return (
+        <div className="grid gap-1">
+            <span>{quantity ?? '-'}</span>
+            {showProductType && (
+                <span className="w-fit rounded-full bg-blue-50 px-1.5 py-px text-[9px] leading-none font-bold tracking-[0.08em] text-blue-600 uppercase">
+                    {productTypeLabelFor(productType)}
+                </span>
+            )}
+        </div>
+    );
+}
+
+function hasOrderedQuantity(value: string | null): boolean {
+    if (!value) {
+        return false;
+    }
+
+    const quantities = value.match(/\d+(?:\.\d+)?/g) ?? [];
+
+    return quantities.some((quantity) => Number(quantity) > 0);
+}
+
+function productTypeLabelFor(value: string): string {
+    if (value === 'bonded') {
+        return 'Bonded';
+    }
+
+    if (value === 'duty_paid') {
+        return 'Duty paid';
+    }
+
+    return value;
 }
 
 function picLabel(row: OrderRow): string {

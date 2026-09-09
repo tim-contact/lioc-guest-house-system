@@ -54,17 +54,24 @@ export function ResourceCrudPage<T>({
             <Head title={config.title} />
 
             <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-5 px-4 py-5 md:px-8 md:py-6">
-                <div className="flex items-center justify-end gap-2 py-1">
-                    <ExportButton
-                        rows={sorted}
-                        columns={config.exportColumns}
-                        filename={config.filename}
-                    />
-                    {config.canCreate !== false && (
-                        <Button onClick={() => setCreating(true)}>
-                            + Add {config.entityLabel}
-                        </Button>
+                <div className="flex flex-col gap-3 py-1 md:flex-row md:items-center md:justify-between">
+                    {config.toolbar ? (
+                        <div className="min-w-0 flex-1">{config.toolbar}</div>
+                    ) : (
+                        <span />
                     )}
+                    <div className="flex items-center justify-end gap-2">
+                        <ExportButton
+                            rows={sorted}
+                            columns={config.exportColumns}
+                            filename={config.filename}
+                        />
+                        {config.canCreate !== false && (
+                            <Button onClick={() => setCreating(true)}>
+                                + Add {config.entityLabel}
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 <TableFrame>

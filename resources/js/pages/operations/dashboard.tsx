@@ -23,6 +23,7 @@ export interface OpsEditRow extends OrderRow {
     delivery_mode: string | null;
     delivery_location_id: number | null;
     delivery_location: string | null;
+    product_type: string | null;
     barge_id: string | null;
     agent_id: number | null;
     agent_pic_id: number | null;

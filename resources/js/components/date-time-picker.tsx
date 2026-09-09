@@ -16,6 +16,7 @@ interface DateTimePickerProps {
     /** 'yyyy-mm-ddThh:mm', or '' when unset. */
     value: string;
     onChange: (value: string) => void;
+    enterAdvances?: boolean;
     placeholder?: string;
 }
 
@@ -23,6 +24,7 @@ export function DateTimePicker({
     id,
     value,
     onChange,
+    enterAdvances = false,
     placeholder = 'Pick date & time',
 }: DateTimePickerProps) {
     const [open, setOpen] = useState(false);
@@ -39,6 +41,7 @@ export function DateTimePicker({
                     id={id}
                     type="button"
                     variant="outline"
+                    data-bdn-enter-next={enterAdvances ? 'true' : undefined}
                     className={cn(
                         'w-full justify-between font-normal',
                         !date && 'text-muted-foreground',

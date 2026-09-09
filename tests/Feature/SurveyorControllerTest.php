@@ -108,7 +108,6 @@ test('index renders the operational instructions from the pending order enquiry'
             ->where('pendingOrders.0.pic', 'Nimal Perera')
             ->where('pendingOrders.0.mobile_no', '+94 77 123 4567')
             ->where('pendingOrders.0.sampling', 'Vessel Manifold')
-            ->where('pendingOrders.0.quality_claim', '30 days')
             ->where('pendingOrders.0.instructions', 'Deliver port side, two hoses.')
             ->missing('pendingOrders.0.barging_cost'));
 });
@@ -321,7 +320,7 @@ test('completed orders show all fuel grade quantities in one row for the selecte
     $order = createSurveyorOrder([
         'vessel_name' => 'MV Delivered Recently',
         'status' => OrderStatus::Delivered,
-        'invoice_date' => now()->subDays(10),
+        'invoice_date' => now()->subDays(6),
         'vlsfo_final_qty' => 500,
         'vlsfo_bdn_qty' => 510,
         'mgo_final_qty' => 75,
@@ -347,7 +346,7 @@ test('completed orders show all fuel grade quantities in one row for the selecte
     createSurveyorOrder([
         'vessel_name' => 'MV Other Barge',
         'status' => OrderStatus::Delivered,
-        'invoice_date' => now()->subDays(10),
+        'invoice_date' => now()->subDays(6),
         'vlsfo_final_qty' => 700,
     ]);
 

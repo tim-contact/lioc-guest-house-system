@@ -18,6 +18,7 @@ class OperationController extends Controller
     {
         $mapOrder = fn (Order $order): array => [
             ...OrderService::toRow($order),
+            'product_type' => $order->product_type?->value,
             'delivery_mode' => $order->delivery_mode?->value,
             'barge_id' => $order->barge_id,
         ];

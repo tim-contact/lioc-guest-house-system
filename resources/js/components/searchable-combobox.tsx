@@ -78,7 +78,7 @@ export function SearchableCombobox({
                                 setQuery('');
                                 setOpen(false);
                             }}
-                            className="flex w-full flex-col items-start rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
+                            className="flex w-full flex-col items-start rounded px-2 py-1.5 text-left text-sm transition-colors hover:bg-[#EAF6F7] hover:text-[#0F766E] focus-visible:bg-[#EAF6F7] focus-visible:text-[#0F766E] focus-visible:outline-none"
                         >
                             <span>{item.label}</span>
                             <span className="text-xs text-muted-foreground">

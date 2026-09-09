@@ -15,11 +15,13 @@ export function AgentContactFields({
     agentPics,
     values,
     onChange,
+    contactNumberReadOnly = false,
 }: {
     agents: AgentOption[];
     agentPics: AgentPicOption[];
     values: AgentContactValues;
     onChange: (patch: Partial<AgentContactValues>) => void;
+    contactNumberReadOnly?: boolean;
 }) {
     const pics = agentPics.filter(
         (pic) => String(pic.agent_id) === values.agent_id,
@@ -95,12 +97,21 @@ export function AgentContactFields({
                 />
             </div>
 
-            <LabeledField
-                id="agent-contact-no"
-                label="Contact No"
-                value={values.mobile_no}
-                onChange={(value) => onChange({ mobile_no: value })}
-            />
+            {contactNumberReadOnly ? (
+                <div className="grid gap-1">
+                    <Label>Contact No</Label>
+                    <div className="min-h-9 rounded-md border border-input bg-muted/35 px-3 py-2 text-sm font-medium break-words text-muted-foreground">
+                        {values.mobile_no || 'Auto-filled after PIC selection'}
+                    </div>
+                </div>
+            ) : (
+                <LabeledField
+                    id="agent-contact-no"
+                    label="Contact No"
+                    value={values.mobile_no}
+                    onChange={(value) => onChange({ mobile_no: value })}
+                />
+            )}
         </>
     );
 }

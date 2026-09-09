@@ -412,6 +412,22 @@ test('orders table paginates orders', function () {
             ->where('orders.data.0.order_number', 'ORD-026'));
 });
 
+test('orders table can be searched by vessel name', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    createOrder(['vessel_name' => 'MV Coral Star', 'order_number' => 'ORD-CORAL']);
+    createOrder(['vessel_name' => 'MV Lagoon Wave', 'order_number' => 'ORD-LAGOON']);
+
+    $this->get(route('orders.table', ['vessel' => 'coral']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('orders/table')
+            ->has('orders.data', 1)
+            ->where('orders.data.0.order_number', 'ORD-CORAL')
+            ->where('orders.total', 1)
+            ->where('filters.vessel', 'coral'));
+});
+
 test('guests cannot save an order from the admin table', function () {
     $order = createOrder();
 

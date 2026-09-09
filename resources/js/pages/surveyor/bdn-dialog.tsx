@@ -1,19 +1,18 @@
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { update } from '@/actions/App/Http/Controllers/BdnController';
-import { DatePicker } from '@/components/date-picker';
 import { DateTimePicker } from '@/components/date-time-picker';
-import {
-    LabeledField,
-    ReadOnlyField,
-    ReadOnlyValue,
-} from '@/components/edit-panel/fields';
-import { FormSection } from '@/components/edit-panel/form-section';
-import { SummaryBand } from '@/components/edit-panel/summary-band';
-import { SearchableCombobox } from '@/components/searchable-combobox';
+import StepWizard from '@/components/step-wizard';
 import { Button } from '@/components/ui/button';
 import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
     Dialog,
+    DialogClose,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -29,13 +28,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { useAutosave } from '@/hooks/use-autosave';
 import type { AutosaveStatus } from '@/hooks/use-autosave';
 import { QUALITY_FIELDS, SEALS, TIMESHEET_FIELDS } from '@/lib/bdn-fields';
-import { cn, dateOnlyToDate, dateToDateOnly } from '@/lib/utils';
+import { cn, optionLabel } from '@/lib/utils';
 import { complete } from '@/routes/surveyor';
 import type { AgentOption, EnumOption, SupplyLocationOption } from '@/types';
+import { AlertCircle, CheckCircle2, ChevronDown, X } from 'lucide-react';
 import type { BargeOption, PendingRow } from './dashboard';
 
 const DECLARATIONS = [
@@ -54,12 +53,50 @@ const DECLARATIONS = [
 ] as const;
 
 const STATUS_LABELS: Record<AutosaveStatus, string> = {
-    idle: 'Changes save automatically',
+    idle: 'Saved just now',
     pending: 'Unsaved changes…',
     saving: 'Saving…',
-    saved: 'All changes saved',
-    error: 'Could not save.',
+    saved: 'Saved just now',
+    error: 'Unable to save',
 };
+
+const STEPS = [
+    {
+        key: 'delivery',
+        label: 'Vessel & Delivery',
+        shortLabel: 'Delivery',
+        description: 'Vessel, location, barge and timing details',
+    },
+    {
+        key: 'products',
+        label: 'Products',
+        shortLabel: 'Products',
+        description: 'Timesheets, quality values and delivered quantities',
+    },
+    {
+        key: 'sampling',
+        label: 'Sampling & Confirmation',
+        shortLabel: 'Sampling',
+        description: 'Chief engineer, sampling and seal details',
+    },
+    {
+        key: 'review',
+        label: 'Review & Generate',
+        shortLabel: 'Review',
+        description: 'Check missing fields before final BDN generation',
+    },
+] as const;
+
+const PRODUCT_UNITS: Record<string, string> = {
+    density_15: 'kg/L',
+    sulphur_pct: '%',
+    viscosity_50: 'cSt',
+    flash_point: '°C',
+    kilo_liter: 'KL',
+    metric_ton: 'MT',
+};
+
+type StepKey = (typeof STEPS)[number]['key'];
 
 export interface BdnRow {
     bdn_number: string | null;
@@ -144,8 +181,13 @@ function DateTimeField({
 }) {
     return (
         <div className="grid gap-1">
-            <Label htmlFor={id}>{label}</Label>
-            <DateTimePicker id={id} value={value} onChange={onChange} />
+            <FieldLabel htmlFor={id}>{label}</FieldLabel>
+            <DateTimePicker
+                id={id}
+                value={value}
+                onChange={onChange}
+                enterAdvances
+            />
         </div>
     );
 }
@@ -156,18 +198,24 @@ function LabeledSelect({
     onChange,
     options,
     placeholder,
+    required = false,
 }: {
     label: string;
     value: string;
     onChange: (value: string) => void;
     options: EnumOption[];
     placeholder: string;
+    required?: boolean;
 }) {
     return (
-        <div className="grid gap-1">
-            <Label>{label}</Label>
+        <div className="grid gap-1.5">
+            <FieldLabel required={required}>{label}</FieldLabel>
             <Select value={value} onValueChange={onChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger
+                    data-bdn-enter-next="true"
+                    className="h-10 w-full rounded-xl border-[#D8E2EE] bg-white"
+                    aria-required={required}
+                >
                     <SelectValue placeholder={placeholder} />
                 </SelectTrigger>
                 <SelectContent>
@@ -180,6 +228,345 @@ function LabeledSelect({
             </Select>
         </div>
     );
+}
+
+function FieldLabel({
+    children,
+    required = false,
+    htmlFor,
+}: {
+    children: ReactNode;
+    required?: boolean;
+    htmlFor?: string;
+}) {
+    return (
+        <Label
+            htmlFor={htmlFor}
+            className="text-xs font-semibold text-slate-500"
+        >
+            {children}
+            {required && (
+                <span className="ml-1 text-[#E9563D]" aria-hidden="true">
+                    *
+                </span>
+            )}
+        </Label>
+    );
+}
+
+function TextInputField({
+    id,
+    label,
+    value,
+    onChange,
+    type = 'text',
+    step,
+    unit,
+    required = false,
+}: {
+    id: string;
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    type?: React.HTMLInputTypeAttribute;
+    step?: string;
+    unit?: string;
+    required?: boolean;
+}) {
+    return (
+        <div className="grid gap-1.5">
+            <FieldLabel htmlFor={id} required={required}>
+                {label}
+            </FieldLabel>
+            <div className="relative">
+                <Input
+                    id={id}
+                    type={type}
+                    value={value}
+                    onChange={(event) => onChange(event.target.value)}
+                    step={step}
+                    aria-required={required}
+                    data-bdn-enter-next="true"
+                    className={cn(
+                        'h-10 rounded-xl border-[#D8E2EE] bg-white',
+                        unit && 'pr-14',
+                    )}
+                />
+                {unit && (
+                    <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs font-bold text-slate-400">
+                        {unit}
+                    </span>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function ReadOnlyData({
+    label,
+    value,
+    required = false,
+}: {
+    label: string;
+    value?: string | null;
+    required?: boolean;
+}) {
+    return (
+        <div className="rounded-xl border border-[#E3EAF2] bg-[#F8FAFD] px-3 py-2.5">
+            <FieldLabel required={required}>{label}</FieldLabel>
+            <p className="mt-1 min-h-5 text-sm font-semibold break-words text-[#172033]">
+                {value || '—'}
+            </p>
+        </div>
+    );
+}
+
+function BorderedSection({
+    children,
+    compact = false,
+    description,
+    title,
+}: {
+    children: ReactNode;
+    compact?: boolean;
+    description?: string;
+    title: string;
+}) {
+    return (
+        <section
+            className={cn(
+                'rounded-2xl border border-[#E3EAF2] bg-white shadow-sm',
+                compact ? 'p-3' : 'p-4',
+            )}
+        >
+            <div className={cn('grid', description ? 'gap-1' : 'gap-0')}>
+                <h3 className="text-sm font-bold text-[#172033]">{title}</h3>
+                {description && (
+                    <p className="text-xs text-muted-foreground">
+                        {description}
+                    </p>
+                )}
+            </div>
+            <div className="mt-4">{children}</div>
+        </section>
+    );
+}
+
+function FieldGrid({ children }: { children: ReactNode }) {
+    return (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {children}
+        </div>
+    );
+}
+
+function SaveStatus({
+    label,
+    status,
+}: {
+    label: string;
+    status: AutosaveStatus;
+}) {
+    return (
+        <span
+            className={cn(
+                'inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold',
+                status === 'error'
+                    ? 'bg-red-50 text-destructive'
+                    : status === 'saving' || status === 'pending'
+                      ? 'bg-amber-50 text-amber-700'
+                      : 'bg-emerald-50 text-emerald-700',
+            )}
+        >
+            <span
+                className={cn(
+                    'size-2 rounded-full',
+                    status === 'error'
+                        ? 'bg-destructive'
+                        : status === 'saving' || status === 'pending'
+                          ? 'bg-amber-500'
+                          : 'bg-emerald-500',
+                )}
+            />
+            {label}
+        </span>
+    );
+}
+
+function CompletionBadge({ complete }: { complete: boolean }) {
+    return (
+        <span
+            className={cn(
+                'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold',
+                complete
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : 'bg-amber-50 text-amber-700',
+            )}
+        >
+            {complete ? (
+                <CheckCircle2 className="size-3.5" />
+            ) : (
+                <AlertCircle className="size-3.5" />
+            )}
+            {complete ? 'Complete' : 'Needs input'}
+        </span>
+    );
+}
+
+function YesNoControl({
+    label,
+    value,
+    onChange,
+}: {
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+}) {
+    const options = [
+        { label: 'Yes', value: '1' },
+        { label: 'No', value: '0' },
+        { label: 'N/A', value: '' },
+    ];
+
+    return (
+        <div className="grid gap-2 rounded-xl border border-[#E3EAF2] bg-[#F8FAFD] p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <FieldLabel>{label}</FieldLabel>
+            <div className="grid grid-cols-3 rounded-xl border border-[#D8E2EE] bg-white p-1">
+                {options.map((option) => {
+                    const active = value === option.value;
+
+                    return (
+                        <button
+                            key={option.label}
+                            type="button"
+                            className={cn(
+                                'h-9 rounded-lg px-3 text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-[#3155E7]/35 focus-visible:outline-none',
+                                active
+                                    ? 'bg-[#172033] text-white'
+                                    : 'text-slate-500 hover:bg-[#F8FAFD]',
+                            )}
+                            onClick={() => onChange(option.value)}
+                        >
+                            {option.label}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+function ReviewItem({
+    label,
+    value,
+}: {
+    label: string;
+    value: string | number | null | undefined;
+}) {
+    return (
+        <div className="grid gap-0.5">
+            <span className="text-xs font-semibold text-slate-500">
+                {label}
+            </span>
+            <span className="min-h-5 text-sm font-semibold break-words text-[#172033]">
+                {value || '—'}
+            </span>
+        </div>
+    );
+}
+
+function productComplete(data: BdnFormData, grade: string): boolean {
+    return ['density_15', 'kilo_liter', 'metric_ton'].every(
+        (field) => data[`${grade}_${field}`]?.trim() !== '',
+    );
+}
+
+function requiredFields(
+    order: PendingRow,
+    data: BdnFormData,
+    isBargeDelivery: boolean,
+): string[] {
+    const missing: string[] = [];
+
+    if (data.delivery_date.trim() === '') {
+        missing.push('Delivery Date');
+    }
+
+    if (data.delivery_location_id.trim() === '') {
+        missing.push('Delivery Location');
+    }
+
+    if (data.delivery_method.trim() === '') {
+        missing.push('Delivery Method');
+    }
+
+    if (isBargeDelivery && data.barge_id.trim() === '') {
+        missing.push('Barge Name');
+    }
+
+    order.grades.forEach((grade) => {
+        if (!productComplete(data, grade.value)) {
+            missing.push(`${grade.label} density, KL and MT`);
+        }
+    });
+
+    return missing;
+}
+
+function formatDateOnly(value: string): string {
+    const [year, month, day] = value.split('-');
+
+    if (!year || !month || !day) {
+        return value;
+    }
+
+    return `${day}/${month}/${year}`;
+}
+
+function focusNextBdnField(event: KeyboardEvent<HTMLElement>) {
+    if (
+        event.key !== 'Enter' ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey
+    ) {
+        return;
+    }
+
+    const target = event.target as HTMLElement | null;
+
+    const currentField = target?.closest<HTMLElement>(
+        '[data-bdn-enter-next="true"]',
+    );
+
+    if (!currentField) {
+        return;
+    }
+
+    const fields = Array.from(
+        event.currentTarget.querySelectorAll<HTMLElement>(
+            '[data-bdn-enter-next="true"]',
+        ),
+    ).filter(
+        (field) =>
+            !field.hasAttribute('disabled') &&
+            field.getAttribute('aria-disabled') !== 'true' &&
+            field.offsetParent !== null,
+    );
+    const currentIndex = fields.findIndex((field) => field === currentField);
+    const nextField = fields[currentIndex + 1];
+
+    if (!nextField) {
+        return;
+    }
+
+    event.preventDefault();
+    nextField.focus();
+
+    if (nextField instanceof HTMLInputElement) {
+        nextField.select();
+    }
 }
 
 export function BdnDialog({
@@ -205,6 +592,10 @@ export function BdnDialog({
 }) {
     const form = useForm<BdnFormData>(buildFormData(order));
     const [confirming, setConfirming] = useState(false);
+    const [activeStep, setActiveStep] = useState<StepKey>('delivery');
+    const [openProduct, setOpenProduct] = useState(
+        order.grades[0]?.value ?? '',
+    );
 
     // Defaults have to be the payload that was sent, not the current data,
     // or keystrokes made mid-request are marked clean and never saved.
@@ -260,350 +651,598 @@ export function BdnDialog({
     const set = (field: string) => (value: string) =>
         form.setData(field, value);
 
-    function setDeliveryMethod(value: string) {
-        form.setData({
+    function setQualityField(grade: string, field: string, value: string) {
+        const nextData = {
             ...form.data,
-            delivery_method: value,
-            ...(value === 'barge'
-                ? {}
-                : { barge_id: '', barge_alongside_at: '' }),
-        });
+            [`${grade}_${field}`]: value,
+        };
+
+        if (field === 'density_15' || field === 'kilo_liter') {
+            const density = Number(
+                field === 'density_15'
+                    ? value
+                    : nextData[`${grade}_density_15`],
+            );
+            const kiloLiter = Number(
+                field === 'kilo_liter'
+                    ? value
+                    : nextData[`${grade}_kilo_liter`],
+            );
+
+            if (Number.isFinite(density) && Number.isFinite(kiloLiter)) {
+                nextData[`${grade}_metric_ton`] = String(
+                    Math.round(density * kiloLiter * 1000) / 1000,
+                );
+            }
+        }
+
+        form.setData(nextData);
     }
 
-    const usesBarge = form.data.delivery_method === 'barge';
     const selectedBarge = barges.find(
         (barge) => barge.imo === form.data.barge_id,
+    );
+    const selectedAgent = agents.find(
+        (agent) => String(agent.id) === form.data.agent_id,
+    );
+    const deliveryLocationLabel = optionLabel(
+        supplyLocationOptions,
+        form.data.delivery_location_id,
+    );
+    const deliveryMethodLabel = optionLabel(
+        deliveryMethodOptions,
+        form.data.delivery_method,
     );
     const isBargeDelivery =
         form.data.delivery_method === '' ||
         form.data.delivery_method === 'barge';
     const errorMessage = Object.values(form.errors)[0];
+    const missingFields = requiredFields(order, form.data, isBargeDelivery);
+    const activeStepIndex = STEPS.findIndex((step) => step.key === activeStep);
+    const isFirstStep = activeStepIndex === 0;
+    const isLastStep = activeStepIndex === STEPS.length - 1;
+    const visibleStatusLabel =
+        status === 'error'
+            ? (errorMessage ?? STATUS_LABELS.error)
+            : STATUS_LABELS[status];
+
+    function goToStep(offset: number) {
+        const nextStep = STEPS[activeStepIndex + offset];
+
+        if (nextStep) {
+            setActiveStep(nextStep.key);
+        }
+    }
 
     return (
         <Dialog open={open} onOpenChange={(next) => !next && close()}>
             <DialogContent
-                className="sm:max-w-4xl"
+                className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[90dvh] sm:max-w-6xl sm:rounded-2xl"
                 onInteractOutside={(e) => e.preventDefault()}
+                showCloseButton={false}
             >
-                <SummaryBand>
-                    <DialogHeader>
-                        <DialogTitle>
-                            Bunker Delivery Note —{' '}
-                            {order.bdn?.bdn_number ?? order.order_number}
-                        </DialogTitle>
-                        <p
-                            className={cn(
-                                'text-xs',
-                                status === 'error'
-                                    ? 'text-destructive'
-                                    : 'text-muted-foreground',
-                            )}
-                        >
-                            {status === 'error'
-                                ? (errorMessage ?? STATUS_LABELS.error)
-                                : STATUS_LABELS[status]}
-                        </p>
+                <div className="sticky top-0 z-20 border-b border-[#D8E2EE] bg-[#F8FAFD]">
+                    <DialogHeader className="gap-0 px-4 py-2 sm:px-5">
+                        <div className="flex min-h-12 items-center gap-3">
+                            <div className="min-w-0 flex-1">
+                                <DialogTitle className="truncate text-sm font-bold text-[#172033] sm:text-base">
+                                    Bunker Delivery Note{' '}
+                                    <span className="font-semibold text-slate-500">
+                                        #
+                                        {order.bdn?.bdn_number ??
+                                            order.order_number}
+                                    </span>
+                                </DialogTitle>
+                                <DialogDescription className="sr-only">
+                                    Complete the bunker delivery note in four
+                                    steps.
+                                </DialogDescription>
+                                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-slate-500">
+                                    <span className="truncate text-[#172033]">
+                                        {order.vessel_name}
+                                    </span>
+                                    <span className="hidden sm:inline">
+                                        IMO {order.vessel_id || '—'}
+                                    </span>
+                                    <span className="hidden md:inline">
+                                        {order.port}
+                                    </span>
+                                </div>
+                            </div>
+                            <SaveStatus
+                                status={status}
+                                label={visibleStatusLabel}
+                            />
+                            <DialogClose asChild>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    className="shrink-0"
+                                >
+                                    <X className="size-4" />
+                                    <span className="sr-only">Close</span>
+                                </Button>
+                            </DialogClose>
+                        </div>
                     </DialogHeader>
 
-                    <FormSection cols={3}>
-                        <ReadOnlyValue
-                            label="Delivery Port"
-                            value={order.port}
-                        />
-                        <ReadOnlyValue
-                            label="Vessel Name"
-                            value={order.vessel_name}
-                        />
-                        <ReadOnlyValue label="IMO No" value={order.vessel_id} />
-                    </FormSection>
-                </SummaryBand>
-
-                <div className="flex flex-col gap-6">
-                    <FormSection cols={3}>
-                        <div className="grid gap-1">
-                            <Label htmlFor="bdn-delivery-date">
-                                Delivery Date
-                            </Label>
-                            <DatePicker
-                                id="bdn-delivery-date"
-                                value={dateOnlyToDate(form.data.delivery_date)}
-                                onChange={(date) =>
-                                    form.setData(
-                                        'delivery_date',
-                                        dateToDateOnly(date),
-                                    )
-                                }
-                            />
-                        </div>
-                        <LabeledSelect
-                            label="Delivery Location"
-                            value={form.data.delivery_location_id}
-                            onChange={set('delivery_location_id')}
-                            options={supplyLocationOptions.filter(
-                                (option) =>
-                                    order.port_id === null ||
-                                    option.port_id === order.port_id,
-                            )}
-                            placeholder="Select location"
-                        />
-                        <LabeledField
-                            id="bdn-vessel-flag"
-                            label="Flag"
-                            value={form.data.vessel_flag}
-                            onChange={set('vessel_flag')}
-                        />
-
-                        <LabeledField
-                            id="bdn-grt"
-                            label="GRT"
-                            type="number"
-                            value={form.data.grt}
-                            onChange={set('grt')}
-                        />
-                        <LabeledField
-                            id="bdn-pi-club"
-                            label="P&I Club"
-                            value={form.data.pi_club}
-                            onChange={set('pi_club')}
-                        />
-                        <LabeledField
-                            id="bdn-owner-operator"
-                            label="Owner / Operator"
-                            value={form.data.owner_operator}
-                            onChange={set('owner_operator')}
-                        />
-
-                        <div className="grid gap-1">
-                            <Label>Vessel Agent</Label>
-                            <SearchableCombobox
-                                items={[
-                                    {
-                                        value: '',
-                                        label: 'No agent',
-                                        sublabel: 'Unassigned',
-                                    },
-                                    ...agents.map((agent) => ({
-                                        value: String(agent.id),
-                                        label: agent.name,
-                                        sublabel: agent.address ?? '',
-                                    })),
-                                ]}
-                                value={form.data.agent_id}
-                                onChange={set('agent_id')}
-                                placeholder="Select agent"
-                                searchPlaceholder="Search name or address"
-                                emptyText="No agents available."
-                            />
-                        </div>
-                        <LabeledField
-                            id="bdn-last-port"
-                            label="Last Port of Call"
-                            value={form.data.last_port_of_call}
-                            onChange={set('last_port_of_call')}
-                        />
-                        <LabeledField
-                            id="bdn-destination-port"
-                            label="Destination Port"
-                            value={form.data.destination_port}
-                            onChange={set('destination_port')}
-                        />
-
-                        <LabeledSelect
-                            label="Delivery Method"
-                            value={form.data.delivery_method}
-                            onChange={(value) => {
-                                form.setData((data) => ({
-                                    ...data,
-                                    delivery_method: value,
-                                    barge_id:
-                                        value === 'barge' || value === ''
-                                            ? data.barge_id
-                                            : '',
-                                }));
-                            }}
-                            options={deliveryMethodOptions}
-                            placeholder="Select method"
-                        />
-                        {isBargeDelivery && (
-                            <>
-                                <div className="grid gap-1">
-                                    <Label>Barge Name</Label>
-                                    <SearchableCombobox
-                                        items={barges.map((barge) => ({
-                                            value: barge.imo,
-                                            label: barge.name,
-                                            sublabel: `IMO ${barge.imo}`,
-                                        }))}
-                                        value={form.data.barge_id}
-                                        onChange={set('barge_id')}
-                                        placeholder="Select barge"
-                                        searchPlaceholder="Search name or IMO"
-                                        emptyText="No barges available."
-                                    />
-                                </div>
-                                <ReadOnlyField
-                                    label="Barge IMO No"
-                                    value={selectedBarge?.imo ?? ''}
-                                />
-
-                                <DateTimeField
-                                    id="bdn-barge-alongside"
-                                    label="Barge Alongside"
-                                    value={form.data.barge_alongside_at}
-                                    onChange={set('barge_alongside_at')}
-                                />
-                            </>
-                        )}
-                    </FormSection>
-
-                    <Separator />
-
-                    {order.grades.map((grade) => (
-                        <FormSection key={grade.value} title={grade.label}>
-                            {TIMESHEET_FIELDS.map((row) => (
-                                <DateTimeField
-                                    key={row.field}
-                                    id={`bdn-${grade.value}-${row.field}`}
-                                    label={row.label}
-                                    value={
-                                        form.data[`${grade.value}_${row.field}`]
-                                    }
-                                    onChange={set(
-                                        `${grade.value}_${row.field}`,
-                                    )}
-                                />
-                            ))}
-                        </FormSection>
-                    ))}
-
-                    <Separator />
-
-                    {order.grades.map((grade) => (
-                        <FormSection key={grade.value} title={grade.label}>
-                            {QUALITY_FIELDS.map((row) => (
-                                <LabeledField
-                                    key={row.field}
-                                    id={`bdn-${grade.value}-${row.field}`}
-                                    label={row.label}
-                                    type="number"
-                                    step={row.step}
-                                    value={
-                                        form.data[`${grade.value}_${row.field}`]
-                                    }
-                                    onChange={set(
-                                        `${grade.value}_${row.field}`,
-                                    )}
-                                />
-                            ))}
-                        </FormSection>
-                    ))}
-
-                    <Separator />
-
-                    <div className="flex flex-col gap-3">
-                        {DECLARATIONS.map((declaration) => (
-                            <div
-                                key={declaration.field}
-                                className="flex items-center justify-between gap-4"
-                            >
-                                <Label className="font-normal">
-                                    {declaration.label}
-                                </Label>
-                                <Select
-                                    value={form.data[declaration.field]}
-                                    onValueChange={set(declaration.field)}
-                                >
-                                    <SelectTrigger className="w-28">
-                                        <SelectValue placeholder="—" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="1">Yes</SelectItem>
-                                        <SelectItem value="0">No</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        ))}
-                    </div>
-
-                    <Separator />
-
-                    <FormSection>
-                        <LabeledSelect
-                            label="Location of Sampling"
-                            value={form.data.sampling_location}
-                            onChange={set('sampling_location')}
-                            options={samplingLocationOptions}
-                            placeholder="Select location"
-                        />
-                        <LabeledSelect
-                            label="Method of Sampling"
-                            value={form.data.sampling_method}
-                            onChange={set('sampling_method')}
-                            options={samplingMethodOptions}
-                            placeholder="Select method"
-                        />
-                    </FormSection>
-
-                    <div className="overflow-x-auto">
-                        <div className="min-w-lg space-y-2">
-                            <div className="flex items-center gap-3">
-                                <div className="w-56 shrink-0" />
-                                <div className="flex-1 text-xs font-medium text-muted-foreground">
-                                    Barge Seal Number
-                                </div>
-                                <div className="flex-1 text-xs font-medium text-muted-foreground">
-                                    Counter Seal Number (If Any)
-                                </div>
-                            </div>
-                            {SEALS.map((seal) => (
-                                <div
-                                    key={seal.prefix}
-                                    className="flex items-center gap-3"
-                                >
-                                    <Label className="w-56 shrink-0 font-normal">
-                                        {seal.label}
-                                    </Label>
-                                    <Input
-                                        className="flex-1"
-                                        value={
-                                            form.data[
-                                                `${seal.prefix}_seal_number`
-                                            ]
-                                        }
-                                        onChange={(e) =>
-                                            form.setData(
-                                                `${seal.prefix}_seal_number`,
-                                                e.target.value,
-                                            )
-                                        }
-                                    />
-                                    <Input
-                                        className="flex-1"
-                                        value={
-                                            form.data[
-                                                `${seal.prefix}_counter_seal_number`
-                                            ]
-                                        }
-                                        onChange={(e) =>
-                                            form.setData(
-                                                `${seal.prefix}_counter_seal_number`,
-                                                e.target.value,
-                                            )
-                                        }
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                    <StepWizard
+                        steps={STEPS}
+                        currentStep={activeStepIndex}
+                        onStepClick={(step) => setActiveStep(STEPS[step].key)}
+                        variant="compact"
+                    />
                 </div>
 
-                <DialogFooter>
+                <div
+                    className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-5"
+                    onKeyDownCapture={focusNextBdnField}
+                >
+                    {activeStep === 'delivery' && (
+                        <div className="grid gap-4">
+                            <BorderedSection
+                                title="Vessel particulars"
+                                description="Ship and voyage details used on the final BDN."
+                            >
+                                <FieldGrid>
+                                    <ReadOnlyData
+                                        label="Delivery Date"
+                                        required
+                                        value={formatDateOnly(
+                                            form.data.delivery_date,
+                                        )}
+                                    />
+                                    <TextInputField
+                                        id="bdn-vessel-flag"
+                                        label="Flag"
+                                        value={form.data.vessel_flag}
+                                        onChange={set('vessel_flag')}
+                                    />
+                                    <TextInputField
+                                        id="bdn-grt"
+                                        label="GRT"
+                                        type="number"
+                                        value={form.data.grt}
+                                        onChange={set('grt')}
+                                    />
+                                    <TextInputField
+                                        id="bdn-pi-club"
+                                        label="P&I Club"
+                                        value={form.data.pi_club}
+                                        onChange={set('pi_club')}
+                                    />
+                                    <TextInputField
+                                        id="bdn-owner-operator"
+                                        label="Owner / Operator"
+                                        value={form.data.owner_operator}
+                                        onChange={set('owner_operator')}
+                                    />
+                                    <ReadOnlyData
+                                        label="Vessel Agent"
+                                        value={
+                                            selectedAgent?.name ??
+                                            (form.data.agent_id
+                                                ? form.data.agent_id
+                                                : 'No agent')
+                                        }
+                                    />
+                                    <TextInputField
+                                        id="bdn-last-port"
+                                        label="Last Port of Call"
+                                        value={form.data.last_port_of_call}
+                                        onChange={set('last_port_of_call')}
+                                    />
+                                    <TextInputField
+                                        id="bdn-destination-port"
+                                        label="Destination Port"
+                                        value={form.data.destination_port}
+                                        onChange={set('destination_port')}
+                                    />
+                                </FieldGrid>
+                            </BorderedSection>
+
+                            <BorderedSection
+                                title="Delivery location and method"
+                                description="Where and how the bunker delivery was completed."
+                            >
+                                <FieldGrid>
+                                    <ReadOnlyData
+                                        label="Delivery Location"
+                                        required
+                                        value={deliveryLocationLabel}
+                                    />
+                                    <ReadOnlyData
+                                        label="Delivery Method"
+                                        required
+                                        value={deliveryMethodLabel}
+                                    />
+                                </FieldGrid>
+                            </BorderedSection>
+
+                            {isBargeDelivery && (
+                                <BorderedSection
+                                    title="Barge information"
+                                    description="Barge identity and alongside timing."
+                                >
+                                    <FieldGrid>
+                                        <ReadOnlyData
+                                            label="Barge Name"
+                                            required
+                                            value={
+                                                selectedBarge?.name ??
+                                                form.data.barge_id
+                                            }
+                                        />
+                                        <ReadOnlyData
+                                            label="Barge IMO No"
+                                            value={selectedBarge?.imo ?? ''}
+                                        />
+                                        <DateTimeField
+                                            id="bdn-barge-alongside"
+                                            label="Barge Alongside"
+                                            value={form.data.barge_alongside_at}
+                                            onChange={set('barge_alongside_at')}
+                                        />
+                                    </FieldGrid>
+                                </BorderedSection>
+                            )}
+                        </div>
+                    )}
+
+                    {activeStep === 'products' && (
+                        <div className="grid gap-3">
+                            {order.grades.map((grade) => {
+                                const open = openProduct === grade.value;
+                                const complete = productComplete(
+                                    form.data,
+                                    grade.value,
+                                );
+
+                                return (
+                                    <Collapsible
+                                        key={grade.value}
+                                        open={open}
+                                        onOpenChange={(next) =>
+                                            setOpenProduct(
+                                                next ? grade.value : '',
+                                            )
+                                        }
+                                    >
+                                        <div className="overflow-hidden rounded-2xl border border-[#E3EAF2] bg-white shadow-sm">
+                                            <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[#F8FAFD] focus-visible:ring-2 focus-visible:ring-[#3155E7]/35 focus-visible:outline-none">
+                                                <span>
+                                                    <span className="block text-sm font-bold text-[#172033]">
+                                                        {grade.label}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        Timesheet and product
+                                                        quality
+                                                    </span>
+                                                </span>
+                                                <span className="flex items-center gap-2">
+                                                    <CompletionBadge
+                                                        complete={complete}
+                                                    />
+                                                    <ChevronDown
+                                                        className={cn(
+                                                            'size-4 text-slate-400 transition-transform',
+                                                            open &&
+                                                                'rotate-180',
+                                                        )}
+                                                    />
+                                                </span>
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent>
+                                                <div className="grid gap-4 border-t border-[#E3EAF2] p-4">
+                                                    <BorderedSection
+                                                        title="Operational timestamps"
+                                                        compact
+                                                    >
+                                                        <FieldGrid>
+                                                            {TIMESHEET_FIELDS.map(
+                                                                (row) => (
+                                                                    <DateTimeField
+                                                                        key={
+                                                                            row.field
+                                                                        }
+                                                                        id={`bdn-${grade.value}-${row.field}`}
+                                                                        label={
+                                                                            row.label
+                                                                        }
+                                                                        value={
+                                                                            form
+                                                                                .data[
+                                                                                `${grade.value}_${row.field}`
+                                                                            ]
+                                                                        }
+                                                                        onChange={set(
+                                                                            `${grade.value}_${row.field}`,
+                                                                        )}
+                                                                    />
+                                                                ),
+                                                            )}
+                                                        </FieldGrid>
+                                                    </BorderedSection>
+
+                                                    <BorderedSection
+                                                        title="Product measurements"
+                                                        compact
+                                                    >
+                                                        <FieldGrid>
+                                                            {QUALITY_FIELDS.map(
+                                                                (row) => (
+                                                                    <TextInputField
+                                                                        key={
+                                                                            row.field
+                                                                        }
+                                                                        id={`bdn-${grade.value}-${row.field}`}
+                                                                        label={
+                                                                            row.label
+                                                                        }
+                                                                        type="number"
+                                                                        step={
+                                                                            row.step
+                                                                        }
+                                                                        unit={
+                                                                            PRODUCT_UNITS[
+                                                                                row
+                                                                                    .field
+                                                                            ]
+                                                                        }
+                                                                        value={
+                                                                            form
+                                                                                .data[
+                                                                                `${grade.value}_${row.field}`
+                                                                            ]
+                                                                        }
+                                                                        onChange={(
+                                                                            value,
+                                                                        ) =>
+                                                                            setQualityField(
+                                                                                grade.value,
+                                                                                row.field,
+                                                                                value,
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                ),
+                                                            )}
+                                                        </FieldGrid>
+                                                    </BorderedSection>
+                                                </div>
+                                            </CollapsibleContent>
+                                        </div>
+                                    </Collapsible>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {activeStep === 'sampling' && (
+                        <div className="grid gap-4">
+                            <BorderedSection
+                                title="Chief engineer confirmations"
+                                description="Use N/A when the confirmation does not apply."
+                            >
+                                <div className="grid gap-3">
+                                    {DECLARATIONS.map((declaration) => (
+                                        <YesNoControl
+                                            key={declaration.field}
+                                            label={declaration.label}
+                                            value={form.data[declaration.field]}
+                                            onChange={set(declaration.field)}
+                                        />
+                                    ))}
+                                </div>
+                            </BorderedSection>
+
+                            <BorderedSection
+                                title="Sampling location and method"
+                                description="Sampling details recorded against this delivery."
+                            >
+                                <FieldGrid>
+                                    <LabeledSelect
+                                        label="Location of Sampling"
+                                        value={form.data.sampling_location}
+                                        onChange={set('sampling_location')}
+                                        options={samplingLocationOptions}
+                                        placeholder="Select location"
+                                    />
+                                    <LabeledSelect
+                                        label="Method of Sampling"
+                                        value={form.data.sampling_method}
+                                        onChange={set('sampling_method')}
+                                        options={samplingMethodOptions}
+                                        placeholder="Select method"
+                                    />
+                                </FieldGrid>
+                            </BorderedSection>
+
+                            <BorderedSection
+                                title="Barge and counter-seal numbers"
+                                description="Seal numbers for each retained sample."
+                            >
+                                <div className="grid gap-3">
+                                    {SEALS.map((seal) => (
+                                        <div
+                                            key={seal.prefix}
+                                            className="grid gap-3 rounded-xl border border-[#E3EAF2] bg-[#F8FAFD] p-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1fr)] lg:items-end"
+                                        >
+                                            <div>
+                                                <p className="text-sm font-semibold text-[#172033]">
+                                                    {seal.name}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {seal.label}
+                                                </p>
+                                            </div>
+                                            <TextInputField
+                                                id={`${seal.prefix}-seal-number`}
+                                                label="Barge Seal Number"
+                                                value={
+                                                    form.data[
+                                                        `${seal.prefix}_seal_number`
+                                                    ]
+                                                }
+                                                onChange={set(
+                                                    `${seal.prefix}_seal_number`,
+                                                )}
+                                            />
+                                            <TextInputField
+                                                id={`${seal.prefix}-counter-seal-number`}
+                                                label="Counter Seal Number"
+                                                value={
+                                                    form.data[
+                                                        `${seal.prefix}_counter_seal_number`
+                                                    ]
+                                                }
+                                                onChange={set(
+                                                    `${seal.prefix}_counter_seal_number`,
+                                                )}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </BorderedSection>
+                        </div>
+                    )}
+
+                    {activeStep === 'review' && (
+                        <div className="grid gap-4">
+                            <BorderedSection
+                                title="Missing required fields"
+                                description="The draft can still be saved, but complete these before generating the final BDN."
+                            >
+                                {missingFields.length === 0 ? (
+                                    <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
+                                        <CheckCircle2 className="size-4" />
+                                        Required fields are complete.
+                                    </div>
+                                ) : (
+                                    <div className="grid gap-2">
+                                        {missingFields.map((field) => (
+                                            <div
+                                                key={field}
+                                                className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900"
+                                            >
+                                                <AlertCircle className="size-4" />
+                                                {field}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </BorderedSection>
+
+                            <BorderedSection title="BDN summary">
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                    <ReviewItem
+                                        label="Delivery Date"
+                                        value={formatDateOnly(
+                                            form.data.delivery_date,
+                                        )}
+                                    />
+                                    <ReviewItem
+                                        label="Delivery Method"
+                                        value={deliveryMethodLabel}
+                                    />
+                                    <ReviewItem
+                                        label="Delivery Location"
+                                        value={deliveryLocationLabel}
+                                    />
+                                    <ReviewItem
+                                        label="Barge"
+                                        value={
+                                            selectedBarge?.name ??
+                                            form.data.barge_id
+                                        }
+                                    />
+                                    <ReviewItem
+                                        label="Sampling Location"
+                                        value={optionLabel(
+                                            samplingLocationOptions,
+                                            form.data.sampling_location,
+                                        )}
+                                    />
+                                    <ReviewItem
+                                        label="Sampling Method"
+                                        value={optionLabel(
+                                            samplingMethodOptions,
+                                            form.data.sampling_method,
+                                        )}
+                                    />
+                                </div>
+                            </BorderedSection>
+
+                            <BorderedSection title="Product summary">
+                                <div className="grid gap-2">
+                                    {order.grades.map((grade) => (
+                                        <div
+                                            key={`${grade.value}-review`}
+                                            className="grid gap-2 rounded-xl border border-[#E3EAF2] bg-[#F8FAFD] p-3 sm:grid-cols-3"
+                                        >
+                                            <ReviewItem
+                                                label="Product"
+                                                value={grade.label}
+                                            />
+                                            <ReviewItem
+                                                label="KL"
+                                                value={
+                                                    form.data[
+                                                        `${grade.value}_kilo_liter`
+                                                    ]
+                                                }
+                                            />
+                                            <ReviewItem
+                                                label="MT"
+                                                value={
+                                                    form.data[
+                                                        `${grade.value}_metric_ton`
+                                                    ]
+                                                }
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </BorderedSection>
+                        </div>
+                    )}
+                </div>
+
+                <DialogFooter className="sticky bottom-0 z-20 flex-col gap-2 border-t border-[#D8E2EE] bg-white px-4 py-3 sm:flex-row sm:px-5">
                     <Button type="button" variant="outline" onClick={close}>
-                        Close
+                        Save draft
                     </Button>
-                    <Button type="button" onClick={() => setConfirming(true)}>
-                        Submit
-                    </Button>
+                    <div className="flex flex-1 justify-end gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            disabled={isFirstStep}
+                            onClick={() => goToStep(-1)}
+                        >
+                            Back
+                        </Button>
+                        {isLastStep ? (
+                            <Button
+                                type="button"
+                                disabled={
+                                    form.processing || missingFields.length > 0
+                                }
+                                title={
+                                    missingFields.length > 0
+                                        ? 'Complete the missing required fields before generating the BDN.'
+                                        : undefined
+                                }
+                                onClick={() => setConfirming(true)}
+                            >
+                                Generate BDN
+                            </Button>
+                        ) : (
+                            <Button type="button" onClick={() => goToStep(1)}>
+                                Continue
+                            </Button>
+                        )}
+                    </div>
                 </DialogFooter>
 
                 <Dialog open={confirming} onOpenChange={setConfirming}>

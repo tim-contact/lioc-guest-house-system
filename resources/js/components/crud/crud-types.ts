@@ -58,6 +58,8 @@ export interface CrudConfig<T> {
     form?: (props: { row: T | null; onDone: () => void }) => ReactNode;
     /** Extra buttons rendered before Edit/Delete in each row's Actions cell. */
     rowActions?: (row: T) => ReactNode;
+    /** Optional controls rendered beside the page actions above the table. */
+    toolbar?: ReactNode;
     editTitle?: (row: T) => string;
     /** Names the row in the delete confirmation; defaults to its primary key. */
     deleteLabel?: (row: T) => string;

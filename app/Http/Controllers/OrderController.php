@@ -105,9 +105,11 @@ class OrderController extends Controller
     {
         $perPage = (int) $request->input('per_page', 25);
         $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 25;
+        $vesselSearch = trim((string) $request->input('vessel', ''));
 
         return Inertia::render('orders/table', [
             'orders' => Order::with('deliveryLocation')
+                ->when($vesselSearch !== '', fn ($query) => $query->where('vessel_name', 'like', '%'.$vesselSearch.'%'))
                 ->orderBy('id')
                 ->paginate($perPage)
                 ->withQueryString()
@@ -115,6 +117,9 @@ class OrderController extends Controller
                     ...$order->toArray(),
                     'delivery_location' => $order->deliveryLocation?->name,
                 ]),
+            'filters' => [
+                'vessel' => $vesselSearch,
+            ],
             ...$this->agentContactProps(),
             'statusOptions' => $this->enumOptions(OrderStatus::cases()),
             'deliveryModeOptions' => $this->enumOptions(DeliveryMode::cases()),

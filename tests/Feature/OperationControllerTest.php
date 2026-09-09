@@ -2,6 +2,7 @@
 
 use App\Enums\DeliveryMode;
 use App\Enums\OrderStatus;
+use App\Enums\ProductType;
 use App\Enums\UserType;
 use App\Models\Agent;
 use App\Models\AgentPic;
@@ -26,6 +27,7 @@ test('index exposes barge, agency and PIC options alongside the edit fields', fu
         'order_number' => 'ORD-OPS',
         'agent_name' => 'Direct Agent',
         'delivery_mode' => DeliveryMode::Pipeline,
+        'product_type' => ProductType::Bonded,
         'status' => OrderStatus::Pending,
     ]);
 
@@ -39,6 +41,7 @@ test('index exposes barge, agency and PIC options alongside the edit fields', fu
             ->has('agentPics', 1)
             ->where('pendingOrders.0.agent_name', 'Direct Agent')
             ->where('pendingOrders.0.delivery_mode', DeliveryMode::Pipeline->value)
+            ->where('pendingOrders.0.product_type', ProductType::Bonded->value)
             ->has('pendingOrders.0.agent_pic_id')
             ->has('pendingOrders.0.delivery_location')
             ->has('pendingOrders.0.mgo_final_qty'));

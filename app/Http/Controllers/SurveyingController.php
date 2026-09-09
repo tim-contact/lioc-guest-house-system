@@ -92,7 +92,6 @@ class SurveyingController extends Controller
                     'pic' => $order->pic,
                     'mobile_no' => $order->mobile_no,
                     'sampling' => $order->enquiry?->sampling?->label(),
-                    'quality_claim' => $order->enquiry?->quality_claim?->label(),
                     'instructions' => $order->enquiry?->instructions,
                     'vlsfo_qty' => $order->vlsfo_final_qty,
                     'mgo_qty' => $order->mgo_final_qty,
@@ -109,7 +108,7 @@ class SurveyingController extends Controller
             : [];
 
         $completedOrders = fn (): array => ($barge || $assignedBargeIds !== [] || $assignedDeliveryModes !== [])
-            ? $this->filterByAssignment(OrderService::completedWithin(), $barge, $assignedBargeIds, $assignedDeliveryModes)
+            ? $this->filterByAssignment(OrderService::completedWithin(7), $barge, $assignedBargeIds, $assignedDeliveryModes)
                 ->map(fn (Order $order): array => [
                     'id' => $order->id,
                     'vessel_name' => $order->vessel_name,

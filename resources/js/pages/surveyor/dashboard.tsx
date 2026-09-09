@@ -47,7 +47,6 @@ export interface PendingRow {
     pic: string | null;
     mobile_no: string | null;
     sampling: string | null;
-    quality_claim: string | null;
     instructions: string | null;
     vlsfo_qty: string | null;
     mgo_qty: string | null;
@@ -201,10 +200,7 @@ function BargeOverviewStrip({
 }
 
 function OperationalInstruction({ row }: { row: PendingRow }) {
-    const pairs: [string, string][] = [
-        ['Sampling', row.sampling ?? '—'],
-        ['Claim', row.quality_claim ?? '—'],
-    ];
+    const pairs: [string, string][] = [['Sampling', row.sampling ?? '—']];
 
     return (
         <div className="grid grid-cols-[auto_1fr_auto_1fr] items-baseline gap-x-3 gap-y-1 text-xs">
@@ -392,7 +388,7 @@ export default function SurveyorDashboard({
 
                 <section className="flex flex-col gap-4">
                     <h2 className="text-xl font-semibold tracking-tight">
-                        Completed Orders (last 30 days)
+                        Completed Orders (last 7 days)
                     </h2>
                     <TableFrame>
                         <Table>
