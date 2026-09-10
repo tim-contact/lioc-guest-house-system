@@ -19,14 +19,11 @@ class ReportAnalyticsController extends Controller
     public function index(): Response
     {
         $enquiries = Enquiry::with('port')->get();
-        $orders = Order::with(['customer', 'port'])->get();
+        $orders = Order::with(['customer', 'enquiry', 'port'])->get();
         $disputes = Dispute::with('order.port')->get();
         $completedStatuses = [OrderStatus::Delivered->value, OrderStatus::Closed->value];
         $currentMonthSales = $orders->filter(
             fn (Order $order): bool => $this->isCurrentMonthSale($order, $completedStatuses),
-        );
-        $currentMonthRebondSales = $currentMonthSales->filter(
-            fn (Order $order): bool => $order->product_type === ProductType::Bonded,
         );
 
         $totalEnquiries = $enquiries->count();
@@ -68,7 +65,7 @@ class ReportAnalyticsController extends Controller
             'topPorts' => $this->topPorts($orders),
             'topCustomers' => $this->topCustomers($orders),
             'productMix' => $this->productMix($currentMonthSales),
-            'rebondProductMix' => $this->productMix($currentMonthRebondSales),
+            'rebondProductMix' => $this->productMix($currentMonthSales, ProductType::Bonded),
             'cyLyProductSales' => $this->cyLyProductSales($orders, $completedStatuses),
         ]);
     }
@@ -261,19 +258,37 @@ class ReportAnalyticsController extends Controller
      * @param  Collection<int, Order>  $orders
      * @return list<array{label: string, value: float}>
      */
-    private function productMix(Collection $orders): array
+    private function productMix(Collection $orders, ?ProductType $productType = null): array
     {
         return collect(FuelGrade::cases())
-            ->map(function (FuelGrade $grade) use ($orders): array {
+            ->map(function (FuelGrade $grade) use ($orders, $productType): array {
                 $key = $grade->value;
+                $filteredOrders = $productType === null
+                    ? $orders
+                    : $orders->filter(fn (Order $order): bool => $this->productTypeFor($order, $grade) === $productType);
 
                 return [
                     'label' => $grade->label(),
-                    'value' => round((float) $orders->sum(
+                    'value' => round((float) $filteredOrders->sum(
                         fn (Order $order): float => (float) ($order->{"{$key}_bdn_qty"} ?? $order->{"{$key}_final_qty"} ?? 0),
                     ), 3),
                 ];
             })
             ->all();
+    }
+
+    private function productTypeFor(Order $order, FuelGrade $grade): ?ProductType
+    {
+        $enquiryProductType = $order->enquiry?->{"{$grade->value}_product_type"};
+
+        if ($enquiryProductType instanceof ProductType) {
+            return $enquiryProductType;
+        }
+
+        if (is_string($enquiryProductType)) {
+            return ProductType::tryFrom($enquiryProductType);
+        }
+
+        return $order->product_type;
     }
 }

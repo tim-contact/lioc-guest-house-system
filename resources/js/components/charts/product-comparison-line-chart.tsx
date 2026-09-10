@@ -141,7 +141,7 @@ export function ProductComparisonLineChart({
     };
 
     return (
-        <div className="flex w-full flex-col gap-2" style={{ height: 540 }}>
+        <div className="flex h-full min-h-[360px] w-full flex-col gap-2">
             <div className="flex justify-end px-2">
                 <div className="flex w-full flex-row flex-wrap gap-x-4 gap-y-2">
                     {series.map((item) => (

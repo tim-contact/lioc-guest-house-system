@@ -101,7 +101,14 @@ test('report analytics includes enquiry to completed funnel counts', function ()
 test('product mix is scoped to current month sales', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
+    $mixedProductEnquiry = Enquiry::factory()->create([
+        'vlsfo_product_type' => ProductType::Bonded,
+        'mgo_product_type' => ProductType::DutyPaid,
+        'hsfo_product_type' => ProductType::Bonded,
+    ]);
+
     Order::factory()->create([
+        'enquiry_id' => $mixedProductEnquiry->id,
         'status' => OrderStatus::Delivered,
         'invoice_date' => now()->startOfMonth(),
         'product_type' => ProductType::Bonded,
@@ -161,7 +168,7 @@ test('product mix is scoped to current month sales', function () {
             ->where('rebondProductMix.0.label', 'VLSFO')
             ->where('rebondProductMix.0.value', 120)
             ->where('rebondProductMix.1.label', 'MGO')
-            ->where('rebondProductMix.1.value', 45)
+            ->where('rebondProductMix.1.value', 0)
             ->where('rebondProductMix.2.label', 'HSFO')
             ->where('rebondProductMix.2.value', 0)
             ->where('cyLyProductSales.0.label', 'VLSFO')

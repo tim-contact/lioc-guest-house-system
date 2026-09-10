@@ -16,6 +16,7 @@ import {
     TrendingUp,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { FunnelChart } from '@/components/charts/funnel-chart';
 import {
@@ -24,7 +25,6 @@ import {
     PieSlice,
 } from '@/components/charts/pie-chart';
 import { ProductComparisonLineChart } from '@/components/charts/product-comparison-line-chart';
-import { Ring, RingCenter, RingChart } from '@/components/charts/ring-chart';
 import {
     Card,
     CardContent,
@@ -32,7 +32,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { portColor, portIconPath, productColor } from '@/lib/utils';
+import { cn, portColor, portIconPath, productColor } from '@/lib/utils';
 
 type FunnelStage = {
     label: string;
@@ -113,50 +113,6 @@ const money = new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 1,
 });
 
-const metricCards: {
-    key: keyof Summary;
-    label: string;
-    icon: LucideIcon;
-    format: (value: number) => string;
-}[] = [
-    {
-        key: 'enquiries',
-        label: 'Enquiries',
-        icon: FileText,
-        format: (value) => compactNumber.format(value),
-    },
-    {
-        key: 'orders',
-        label: 'Orders',
-        icon: Ship,
-        format: (value) => compactNumber.format(value),
-    },
-    {
-        key: 'completed',
-        label: 'Completed',
-        icon: ClipboardCheck,
-        format: (value) => compactNumber.format(value),
-    },
-    {
-        key: 'conversionRate',
-        label: 'Conversion',
-        icon: TrendingUp,
-        format: (value) => `${value}%`,
-    },
-    {
-        key: 'amountReceived',
-        label: 'Received',
-        icon: CircleDollarSign,
-        format: (value) => money.format(value),
-    },
-    {
-        key: 'outstanding',
-        label: 'Outstanding',
-        icon: Banknote,
-        format: (value) => money.format(value),
-    },
-];
-
 const chartCardClassName = 'rounded-lg border-[#E3EAF2] bg-white shadow-sm';
 const analyticsCardTitleClassName =
     'text-lg font-bold tracking-normal text-[#172033] sm:text-xl';
@@ -185,33 +141,35 @@ export default function ReportAnalytics({
         ]),
         1,
     );
+    const pendingDeliveries = portStatusMetrics.reduce(
+        (total, port) => total + Number(port.pendingDeliveries || 0),
+        0,
+    );
+    const disputes = portStatusMetrics.reduce(
+        (total, port) => total + Number(port.pendingDisputes || 0),
+        0,
+    );
 
     return (
         <>
             <Head title="Report Analytics" />
 
             <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6 px-4 py-5 md:px-8 md:py-6">
-                <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-                    {metricCards.map((metric) => (
-                        <Card
-                            key={metric.key}
-                            className="rounded-[1.25rem] bg-[radial-gradient(ellipse_at_82%_18%,#040F3A_0%,#062894_45%,#2C55E8_81%,#486AF1_97%)] py-5 text-white shadow-[0_18px_38px_rgba(37,77,255,0.22)]"
-                        >
-                            <CardHeader className="flex flex-row items-center justify-between gap-3 px-4">
-                                <div className="min-w-0">
-                                    <CardDescription className="text-[0.95rem] font-bold text-white/85">
-                                        {metric.label}
-                                    </CardDescription>
-                                    <CardTitle className="mt-2 truncate text-4xl leading-none font-bold text-white">
-                                        {metric.format(summary[metric.key])}
-                                    </CardTitle>
-                                </div>
-                                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/15 text-white shadow-sm">
-                                    <metric.icon className="size-5" />
-                                </span>
-                            </CardHeader>
-                        </Card>
-                    ))}
+                <section className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-12 xl:items-stretch">
+                    <section className="min-w-0 xl:col-span-7">
+                        <CyLySalesCard
+                            products={cyLyProductSales}
+                            className="h-[430px] sm:h-[500px] xl:h-full xl:min-h-[600px]"
+                        />
+                    </section>
+
+                    <section className="min-w-0 xl:col-span-5">
+                        <OperationalBentoGrid
+                            summary={summary}
+                            pendingDeliveries={pendingDeliveries}
+                            disputes={disputes}
+                        />
+                    </section>
                 </section>
 
                 <section className="grid gap-6 xl:grid-cols-[minmax(0,7fr)_minmax(300px,3fr)]">
@@ -275,12 +233,8 @@ export default function ReportAnalytics({
                     <PortStatusBentoGrid data={portStatusMetrics} />
                 </section>
 
-                <section>
-                    <CyLySalesCard products={cyLyProductSales} />
-                </section>
-
                 <section className="grid gap-6 xl:grid-cols-3">
-                    <TopPortsRingCard data={topPorts} />
+                    <TopPortsBarCard data={topPorts} />
                     <ProductMixPieCard
                         data={productMix}
                         title="Current Month Sales"
@@ -300,6 +254,169 @@ export default function ReportAnalytics({
                 </section>
             </main>
         </>
+    );
+}
+
+function BentoCard({
+    children,
+    className,
+    ariaLabel,
+}: {
+    children: ReactNode;
+    className?: string;
+    ariaLabel: string;
+}) {
+    return (
+        <section
+            aria-label={ariaLabel}
+            className={cn(
+                'relative flex min-w-0 overflow-hidden rounded-2xl border p-3.5 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:p-4',
+                className,
+            )}
+        >
+            {children}
+        </section>
+    );
+}
+
+function BentoMetricCard({
+    label,
+    value,
+    icon: Icon,
+    className,
+    ariaLabel,
+    support,
+    children,
+}: {
+    label: string;
+    value: string;
+    icon: LucideIcon;
+    className?: string;
+    ariaLabel: string;
+    support?: string;
+    children?: ReactNode;
+}) {
+    return (
+        <BentoCard ariaLabel={ariaLabel} className={className}>
+            <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-between gap-3 text-white">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <p className="text-sm font-semibold text-white/80">
+                            {label}
+                        </p>
+                        <p className="mt-2 truncate text-2xl leading-none font-bold tracking-tight text-white tabular-nums sm:text-3xl">
+                            {value}
+                        </p>
+                    </div>
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15">
+                        <Icon className="size-5 sm:size-6" aria-hidden="true" />
+                    </span>
+                </div>
+                {support ? (
+                    <p className="text-xs leading-5 text-white/78 sm:text-sm">
+                        {support}
+                    </p>
+                ) : null}
+                {children}
+            </div>
+            <span
+                className="absolute -right-10 -bottom-12 size-32 rounded-full bg-white/10"
+                aria-hidden="true"
+            />
+        </BentoCard>
+    );
+}
+
+function OperationalBentoGrid({
+    summary,
+    pendingDeliveries,
+    disputes,
+}: {
+    summary: Summary;
+    pendingDeliveries: number;
+    disputes: number;
+}) {
+    const conversionProgress = Math.min(
+        100,
+        Math.max(0, summary.conversionRate),
+    );
+    const orderSupport =
+        summary.enquiries > 0
+            ? `${summary.conversionRate}% of enquiries`
+            : undefined;
+
+    return (
+        <div className="grid h-full min-w-0 auto-rows-[116px] grid-cols-2 gap-2.5 sm:auto-rows-[126px] xl:auto-rows-fr xl:grid-cols-6 xl:gap-3">
+            <BentoMetricCard
+                ariaLabel="Enquiries"
+                className="order-2 border-[#405CFF]/20 bg-[linear-gradient(135deg,#2646E8,#5D78FF)] xl:order-1 xl:col-span-2"
+                icon={FileText}
+                label="Enquiries"
+                value={compactNumber.format(summary.enquiries)}
+            />
+            <BentoMetricCard
+                ariaLabel="Orders"
+                className="order-1 col-span-2 border-[#0A1D56]/20 bg-[radial-gradient(ellipse_at_80%_8%,#486AF1_0%,#1237B9_46%,#071B52_100%)] xl:order-2 xl:col-span-4"
+                icon={Ship}
+                label="Orders"
+                support={orderSupport}
+                value={compactNumber.format(summary.orders)}
+            />
+            <BentoMetricCard
+                ariaLabel="Completed"
+                className="order-3 border-[#10A7A2]/20 bg-[linear-gradient(135deg,#087F8C,#20B8A8)] xl:order-4 xl:col-span-2"
+                icon={ClipboardCheck}
+                label="Completed"
+                value={compactNumber.format(summary.completed)}
+            />
+            <BentoMetricCard
+                ariaLabel="Conversion"
+                className="order-4 col-span-2 border-[#22BDE2]/20 bg-[linear-gradient(135deg,#1D4ED8,#25C3D8)] xl:order-3 xl:col-span-4"
+                icon={TrendingUp}
+                label="Conversion"
+                value={`${summary.conversionRate}%`}
+            >
+                <div className="h-2 overflow-hidden rounded-full bg-white/18">
+                    <div
+                        className="h-full rounded-full bg-white transition-[width] duration-500"
+                        style={{ width: `${conversionProgress}%` }}
+                    />
+                </div>
+            </BentoMetricCard>
+            <BentoMetricCard
+                ariaLabel="Received"
+                className="order-5 border-[#10B981]/20 bg-[linear-gradient(135deg,#087F5B,#10B981)] xl:col-span-3"
+                icon={CircleDollarSign}
+                label="Received"
+                value={money.format(summary.amountReceived)}
+            />
+            <BentoMetricCard
+                ariaLabel="Outstanding"
+                className="order-6 border-[#F59E0B]/20 bg-[linear-gradient(135deg,#B45309,#F59E0B)] xl:col-span-3"
+                icon={Banknote}
+                label="Outstanding"
+                value={money.format(summary.outstanding)}
+            />
+            <BentoMetricCard
+                ariaLabel="Pending deliveries"
+                className="order-7 border-[#3155E7]/20 bg-[linear-gradient(135deg,#1E3A8A,#3155E7)] xl:col-span-3"
+                icon={Clock3}
+                label="Pending"
+                value={compactNumber.format(pendingDeliveries)}
+            />
+            <BentoMetricCard
+                ariaLabel="Disputes"
+                className={cn(
+                    'order-8 xl:col-span-3',
+                    disputes > 0
+                        ? 'border-[#F97316]/20 bg-[linear-gradient(135deg,#C2410C,#FB923C)]'
+                        : 'border-[#06B6D4]/20 bg-[linear-gradient(135deg,#0E7490,#22D3EE)]',
+                )}
+                icon={AlertTriangle}
+                label="Disputes"
+                value={compactNumber.format(disputes)}
+            />
+        </div>
     );
 }
 
@@ -542,7 +659,13 @@ function PortStatusMiniCard({
     );
 }
 
-function CyLySalesCard({ products }: { products: CyLyProductSalesMetric[] }) {
+function CyLySalesCard({
+    products,
+    className,
+}: {
+    products: CyLyProductSalesMetric[];
+    className?: string;
+}) {
     const [selectedProductKey, setSelectedProductKey] = useState(
         products[0]?.key ?? '',
     );
@@ -568,8 +691,8 @@ function CyLySalesCard({ products }: { products: CyLyProductSalesMetric[] }) {
     const lastYearTotal = data.reduce((sum, month) => sum + month.lastYear, 0);
 
     return (
-        <Card className={chartCardClassName}>
-            <CardHeader>
+        <Card className={cn(chartCardClassName, 'flex flex-col', className)}>
+            <CardHeader className="shrink-0">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="min-w-0">
                         <CardTitle
@@ -624,13 +747,13 @@ function CyLySalesCard({ products }: { products: CyLyProductSalesMetric[] }) {
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="px-1 sm:px-2">
+            <CardContent className="min-h-0 flex-1 px-1 sm:px-2">
                 {data.length === 0 ? (
                     <p className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-muted-foreground">
                         No CY vs LY product sales yet.
                     </p>
                 ) : (
-                    <div className="grid gap-4">
+                    <div className="grid h-full min-h-0 gap-4">
                         <ProductComparisonLineChart
                             currentColor={selectedProductColor}
                             data={data}
@@ -656,24 +779,14 @@ function CyLySalesCard({ products }: { products: CyLyProductSalesMetric[] }) {
     );
 }
 
-function TopPortsRingCard({ data }: { data: CountMetric[] }) {
-    const [hoveredRing, setHoveredRing] = useState<number | null>(null);
+function TopPortsBarCard({ data }: { data: CountMetric[] }) {
     const ports = data.slice(0, 5);
     const total = ports.reduce((sum, item) => sum + item.value, 0);
     const max = Math.max(...ports.map((item) => item.value), 1);
-    const ringCount = Math.max(ports.length, 1);
-    const strokeWidth = ringCount <= 3 ? 18 : ringCount === 4 ? 15 : 12;
-    const ringGap = ringCount <= 3 ? 7 : 6;
-    const baseInnerRadius = ringCount <= 3 ? 50 : ringCount === 4 ? 46 : 42;
-    const ringData = ports.map((port, index) => ({
-        ...port,
-        color: portColor(port.label, index),
-        maxValue: max,
-    }));
 
     return (
-        <Card className={chartCardClassName}>
-            <CardHeader>
+        <Card className={`${chartCardClassName} min-h-[300px]`}>
+            <CardHeader className="pb-2">
                 <CardTitle
                     className={`flex items-center gap-2 ${analyticsCardTitleClassName}`}
                 >
@@ -688,72 +801,47 @@ function TopPortsRingCard({ data }: { data: CountMetric[] }) {
                         No port order data yet.
                     </p>
                 ) : (
-                    <div className="grid gap-5">
-                        <div className="flex justify-center">
-                            <RingChart
-                                baseInnerRadius={baseInnerRadius}
-                                data={ringData}
-                                hoveredIndex={hoveredRing}
-                                onHoverChange={setHoveredRing}
-                                ringGap={ringGap}
-                                size={252}
-                                strokeWidth={strokeWidth}
-                            >
-                                {ringData.map((port, index) => (
-                                    <Ring key={port.label} index={index} />
-                                ))}
-                                <RingCenter>
-                                    {({ item, total: chartTotal }) => (
-                                        <div className="flex flex-col items-center justify-center rounded-full text-center">
-                                            <p className="text-2xl leading-none font-bold text-[#172033] italic tabular-nums">
-                                                <NumberFlow
-                                                    value={
-                                                        item?.value ??
-                                                        chartTotal
-                                                    }
-                                                />
-                                            </p>
-                                            <p className="mt-1.5 max-w-20 truncate text-[0.56rem] leading-tight font-black tracking-[0.1em] text-slate-500 uppercase">
-                                                {item?.label ?? 'Port Orders'}
-                                            </p>
-                                        </div>
-                                    )}
-                                </RingCenter>
-                            </RingChart>
-                        </div>
+                    <div className="grid gap-3">
+                        {ports.map((port, index) => {
+                            const width = Math.max((port.value / max) * 100, 4);
 
-                        <div className="grid gap-2">
-                            {ports.map((port, index) => (
+                            return (
                                 <div
-                                    key={`${port.label}-legend`}
-                                    className="flex items-center justify-between gap-3 rounded-xl border border-[#E3EAF2] bg-white px-3 py-2 text-sm"
+                                    key={`${port.label}-bar`}
+                                    className="grid gap-1.5"
                                 >
-                                    <span className="flex min-w-0 items-center gap-2">
+                                    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 text-sm">
+                                        <span className="font-bold text-slate-400 tabular-nums">
+                                            {String(index + 1).padStart(2, '0')}
+                                        </span>
+                                        <span className="truncate font-semibold text-[#172033]">
+                                            {port.label}
+                                        </span>
+                                        <span className="font-semibold text-slate-500 tabular-nums">
+                                            <NumberFlow
+                                                value={port.value}
+                                                format={{
+                                                    notation: 'compact',
+                                                    maximumFractionDigits: 1,
+                                                }}
+                                            />
+                                        </span>
+                                    </div>
+                                    <div className="h-2 overflow-hidden rounded-full bg-[#EDF3FA]">
                                         <span
-                                            className="size-2.5 shrink-0 rounded-full"
+                                            className="block h-full rounded-full"
                                             style={{
                                                 backgroundColor: portColor(
                                                     port.label,
                                                     index,
                                                 ),
+                                                width: `${width}%`,
                                             }}
                                         />
-                                        <span className="truncate font-medium text-[#172033]">
-                                            {port.label}
-                                        </span>
-                                    </span>
-                                    <span className="shrink-0 font-semibold text-slate-500 italic tabular-nums">
-                                        <NumberFlow
-                                            value={port.value}
-                                            format={{
-                                                notation: 'compact',
-                                                maximumFractionDigits: 1,
-                                            }}
-                                        />
-                                    </span>
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
+                            );
+                        })}
                     </div>
                 )}
             </CardContent>
@@ -855,25 +943,25 @@ function ProductMixPieCard({
     const centerRow = pieData.find((item) => item.value > 0) ?? pieData[0];
 
     return (
-        <Card className={chartCardClassName}>
-            <CardHeader>
+        <Card className={`${chartCardClassName} min-h-[300px]`}>
+            <CardHeader className="pb-2">
                 <CardTitle className={analyticsCardTitleClassName}>
                     {title}
                 </CardTitle>
                 <CardDescription>{description}</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pb-4">
                 {pieData.length === 0 || total <= 0 ? (
                     <p className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-muted-foreground">
                         {emptyMessage}
                     </p>
                 ) : (
-                    <div className="grid gap-5">
-                        <div className="flex justify-center">
+                    <div className="grid items-center gap-4 md:grid-cols-[auto_minmax(0,1fr)]">
+                        <div className="flex justify-center md:justify-start">
                             <BklitPieChart
                                 data={pieData}
-                                size={252}
-                                innerRadius={68}
+                                size={180}
+                                innerRadius={52}
                                 padAngle={0.014}
                                 className="[--chart-1:#03045e] [--chart-2:#0077b6] [--chart-3:#00b4d8]"
                             >
@@ -894,8 +982,8 @@ function ProductMixPieCard({
                                                 undefined;
 
                                         return (
-                                            <div className="flex h-28 w-28 flex-col items-center justify-center rounded-full border border-slate-200 bg-white/95 text-center shadow-[0_12px_28px_rgba(15,23,42,0.1)]">
-                                                <p className="text-xl leading-none font-semibold text-slate-950 italic tabular-nums">
+                                            <div className="flex h-20 w-20 flex-col items-center justify-center rounded-full border border-slate-200 bg-white/95 text-center shadow-[0_10px_22px_rgba(15,23,42,0.08)]">
+                                                <p className="text-base leading-none font-semibold text-slate-950 tabular-nums">
                                                     {hasShareValue ? (
                                                         <NumberFlow
                                                             value={Number(
@@ -911,10 +999,7 @@ function ProductMixPieCard({
                                                         'N/A'
                                                     )}
                                                 </p>
-                                                <p className="mt-1 text-[0.62rem] font-black tracking-[0.14em] text-slate-500 uppercase">
-                                                    Product Share
-                                                </p>
-                                                <p className="mt-1 max-w-[5.8rem] truncate text-[0.68rem] font-bold text-slate-400">
+                                                <p className="mt-1 max-w-[4.8rem] truncate text-[0.6rem] leading-tight font-bold tracking-[0.08em] text-slate-500 uppercase">
                                                     {displayRow?.label ??
                                                         'Current'}
                                                 </p>
@@ -928,7 +1013,7 @@ function ProductMixPieCard({
                             {pieData.map((item) => (
                                 <div
                                     key={`${item.id}-legend`}
-                                    className="flex items-center justify-between gap-3 text-sm"
+                                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-[#E3EAF2] bg-white px-3 py-2 text-sm"
                                 >
                                     <span className="flex min-w-0 items-center gap-2">
                                         <span
@@ -941,7 +1026,7 @@ function ProductMixPieCard({
                                             {item.label}
                                         </span>
                                     </span>
-                                    <span className="shrink-0 text-muted-foreground">
+                                    <span className="shrink-0 text-right font-semibold text-slate-500 tabular-nums">
                                         {compactNumber.format(item.value)}
                                     </span>
                                 </div>
