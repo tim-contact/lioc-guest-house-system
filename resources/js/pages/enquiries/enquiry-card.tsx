@@ -433,7 +433,12 @@ function CustomerBlock({
                                 className="border-b-0 hover:bg-transparent"
                             >
                                 <TableCell className="p-2 text-xs text-slate-500">
-                                    {row.label}
+                                    <div className="flex flex-col gap-0.5">
+                                        <span>{row.label}</span>
+                                        <span className="text-[0.62rem] font-medium text-slate-400">
+                                            USD/MT
+                                        </span>
+                                    </div>
                                 </TableCell>
                                 {FUEL_GRADES.map((product) => {
                                     const field = priceField(
@@ -475,6 +480,9 @@ function CustomerBlock({
                                                         totalBasis,
                                                 )?.label
                                             }`}
+                                            <span className="text-[0.62rem] font-semibold text-slate-400">
+                                                USD
+                                            </span>
                                             <ChevronDown className="size-3" />
                                         </Button>
                                     </DropdownMenuTrigger>
@@ -517,7 +525,10 @@ function CustomerBlock({
                                                 : undefined
                                         }
                                     >
-                                        {formatMoney(total)}
+                                        <span>{formatMoney(total)}</span>
+                                        <span className="ml-1 text-[0.62rem] font-semibold text-slate-400">
+                                            USD
+                                        </span>
                                     </TableCell>
                                 );
                             })}
@@ -937,7 +948,14 @@ export function EnquiryCard({
                                             className="rounded-sm border-b-0 hover:bg-transparent"
                                         >
                                             <TableCell className="px-4 py-3 text-xs text-slate-500">
-                                                {row.label}
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span>{row.label}</span>
+                                                    {!row.options ? (
+                                                        <span className="text-[0.62rem] font-medium text-slate-400">
+                                                            MT
+                                                        </span>
+                                                    ) : null}
+                                                </div>
                                             </TableCell>
                                             {FUEL_GRADES.map((product) => {
                                                 const field = productField(

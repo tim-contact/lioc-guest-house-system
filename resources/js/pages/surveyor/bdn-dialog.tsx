@@ -96,6 +96,8 @@ const PRODUCT_UNITS: Record<string, string> = {
     metric_ton: 'MT',
 };
 
+const TRUCK_REFERENCE_OPTIONS = ['Road Tanker', 'Barge Truck'];
+
 type StepKey = (typeof STEPS)[number]['key'];
 
 export interface BdnRow {
@@ -144,6 +146,7 @@ function buildFormData(order: PendingRow): BdnFormData {
             order.delivery_mode === null || order.delivery_mode === 'barge'
                 ? text(bdn?.barge_id) || (order.barge_id ?? '')
                 : '',
+        truck_number: text(bdn?.truck_number),
         barge_alongside_at: text(bdn?.barge_alongside_at),
         chief_engineer_invited: text(bdn?.chief_engineer_invited),
         chief_engineer_witnessed: text(bdn?.chief_engineer_witnessed),
@@ -262,6 +265,7 @@ function TextInputField({
     type = 'text',
     step,
     unit,
+    list,
     required = false,
 }: {
     id: string;
@@ -271,6 +275,7 @@ function TextInputField({
     type?: React.HTMLInputTypeAttribute;
     step?: string;
     unit?: string;
+    list?: string;
     required?: boolean;
 }) {
     return (
@@ -285,6 +290,7 @@ function TextInputField({
                     value={value}
                     onChange={(event) => onChange(event.target.value)}
                     step={step}
+                    list={list}
                     aria-required={required}
                     data-bdn-enter-next="true"
                     className={cn(
@@ -696,6 +702,7 @@ export function BdnDialog({
     const isBargeDelivery =
         form.data.delivery_method === '' ||
         form.data.delivery_method === 'barge';
+    const isTruckDelivery = form.data.delivery_method === 'truck';
     const errorMessage = Object.values(form.errors)[0];
     const missingFields = requiredFields(order, form.data, isBargeDelivery);
     const activeStepIndex = STEPS.findIndex((step) => step.key === activeStep);
@@ -885,6 +892,33 @@ export function BdnDialog({
                                             onChange={set('barge_alongside_at')}
                                         />
                                     </FieldGrid>
+                                </BorderedSection>
+                            )}
+
+                            {isTruckDelivery && (
+                                <BorderedSection
+                                    title="Truck information"
+                                    description="Truck identity used in place of the barge name on truck deliveries."
+                                >
+                                    <FieldGrid>
+                                        <TextInputField
+                                            id="bdn-truck-number"
+                                            label="Truck Number / Reference"
+                                            value={form.data.truck_number}
+                                            onChange={set('truck_number')}
+                                            list="bdn-truck-reference-options"
+                                        />
+                                    </FieldGrid>
+                                    <datalist id="bdn-truck-reference-options">
+                                        {TRUCK_REFERENCE_OPTIONS.map(
+                                            (option) => (
+                                                <option
+                                                    key={option}
+                                                    value={option}
+                                                />
+                                            ),
+                                        )}
+                                    </datalist>
                                 </BorderedSection>
                             )}
                         </div>
@@ -1151,10 +1185,14 @@ export function BdnDialog({
                                         value={deliveryLocationLabel}
                                     />
                                     <ReviewItem
-                                        label="Barge"
+                                        label={
+                                            isTruckDelivery ? 'Truck' : 'Barge'
+                                        }
                                         value={
-                                            selectedBarge?.name ??
-                                            form.data.barge_id
+                                            isTruckDelivery
+                                                ? form.data.truck_number
+                                                : (selectedBarge?.name ??
+                                                  form.data.barge_id)
                                         }
                                     />
                                     <ReviewItem

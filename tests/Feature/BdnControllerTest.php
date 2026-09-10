@@ -248,6 +248,42 @@ test('update clears the BDN barge for pipeline delivery', function () {
     expect($order->bdn()->sole()->barge_id)->toBeNull();
 });
 
+test('update saves truck reference and clears barge for truck delivery', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $barge = Barge::factory()->create();
+    $order = Order::factory()->create([
+        'delivery_mode' => DeliveryMode::Truck,
+        'barge_id' => null,
+    ]);
+
+    $this->put(route('surveyor.bdn.update', $order), [
+        'delivery_method' => DeliveryMode::Truck->value,
+        'barge_id' => $barge->imo,
+        'truck_number' => 'Road tanker',
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($order->bdn()->sole())
+        ->barge_id->toBeNull()
+        ->truck_number->toBe('Road tanker');
+});
+
+test('update clears truck reference for non-truck delivery', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $order = Order::factory()->create([
+        'delivery_mode' => DeliveryMode::Pipeline,
+        'barge_id' => null,
+    ]);
+
+    $this->put(route('surveyor.bdn.update', $order), [
+        'delivery_method' => DeliveryMode::Pipeline->value,
+        'truck_number' => 'Bouzer',
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($order->bdn()->sole()->truck_number)->toBeNull();
+});
+
 test('the surveyor dashboard ships each pending order with its bdn and grades', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 

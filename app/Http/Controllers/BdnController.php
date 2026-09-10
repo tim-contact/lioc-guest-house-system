@@ -120,6 +120,10 @@ class BdnController extends Controller
             $validated['barge_id'] = null;
         }
 
+        if ($effectiveDeliveryMethod !== DeliveryMode::Truck) {
+            $validated['truck_number'] = null;
+        }
+
         $bdn = Bdn::updateOrCreate(
             ['order_id' => $order->id],
             [...$validated, 'bdn_number' => $order->bdn()->value('bdn_number') ?? "BDN-{$order->order_number}"],
@@ -165,6 +169,7 @@ class BdnController extends Controller
             'destination_port' => ['nullable', 'string', 'max:255'],
             'delivery_method' => ['nullable', Rule::enum(DeliveryMode::class)],
             'barge_id' => ['nullable', 'exists:barges,imo'],
+            'truck_number' => ['nullable', 'string', 'max:255'],
             'barge_alongside_at' => ['nullable', 'date'],
             'chief_engineer_invited' => ['nullable', 'boolean'],
             'chief_engineer_witnessed' => ['nullable', 'boolean'],

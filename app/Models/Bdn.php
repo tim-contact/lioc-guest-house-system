@@ -30,6 +30,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $destination_port
  * @property DeliveryMode|null $delivery_method
  * @property string|null $barge_id
+ * @property string|null $truck_number
  * @property Carbon|null $barge_alongside_at
  * @property Carbon|null $vlsfo_hose_connected_at
  * @property Carbon|null $vlsfo_pumping_started_at
@@ -84,7 +85,7 @@ use Illuminate\Support\Carbon;
 #[Fillable([
     'order_id', 'bdn_number', 'delivery_date', 'delivery_location_id', 'vessel_flag', 'grt',
     'pi_club', 'agent_id', 'owner_operator', 'last_port_of_call', 'destination_port',
-    'delivery_method', 'barge_id', 'barge_alongside_at',
+    'delivery_method', 'barge_id', 'truck_number', 'barge_alongside_at',
     'vlsfo_hose_connected_at', 'vlsfo_pumping_started_at', 'vlsfo_pumping_ended_at',
     'vlsfo_hose_disconnected_at', 'vlsfo_docs_completed_at', 'vlsfo_cast_off_at',
     'vlsfo_density_15', 'vlsfo_sulphur_pct', 'vlsfo_viscosity_50', 'vlsfo_flash_point',

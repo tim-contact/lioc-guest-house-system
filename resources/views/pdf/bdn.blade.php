@@ -383,8 +383,13 @@
             </tr>
             <tr>
                 <td><span class="field-label">Delivery Method</span><span class="field-value">{{ $deliveryMethodLabel }}</span></td>
-                <td><span class="field-label">Barge Name</span><span class="field-value">{{ $bdn?->barge?->name }}</span></td>
-                <td><span class="field-label">Barge IMO No / Flag</span><span class="field-value">{{ $bdn?->barge_id }}</span></td>
+                @if ($bdn?->delivery_method === \App\Enums\DeliveryMode::Truck)
+                    <td><span class="field-label">Truck Number / Reference</span><span class="field-value">{{ $bdn?->truck_number }}</span></td>
+                    <td><span class="field-label">Barge IMO No / Flag</span><span class="field-value"></span></td>
+                @else
+                    <td><span class="field-label">Barge Name</span><span class="field-value">{{ $bdn?->barge?->name }}</span></td>
+                    <td><span class="field-label">Barge IMO No / Flag</span><span class="field-value">{{ $bdn?->barge_id }}</span></td>
+                @endif
             </tr>
         </table>
 
