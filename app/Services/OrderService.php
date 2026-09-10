@@ -150,6 +150,7 @@ class OrderService
             'delivery_location' => $order->deliveryLocation?->name,
             'barging_cost' => $order->barging_cost,
             'agent_fees' => $order->agent_fees,
+            'product_type' => $order->product_type?->value,
             'compliance_checked' => $order->compliance_checked,
             'nomination_received' => $order->nomination_received,
             'vlsfo_qty' => $order->vlsfo_final_qty ?? $order->vlsfo_qty_range,
@@ -171,6 +172,7 @@ class OrderService
         foreach (FuelGrade::keys() as $grade) {
             $row["{$grade}_quantity_low"] = $order->{"{$grade}_quantity_low"};
             $row["{$grade}_quantity_high"] = $order->{"{$grade}_quantity_high"};
+            $row["{$grade}_bdn_qty"] = $order->{"{$grade}_bdn_qty"};
         }
 
         return $row;
