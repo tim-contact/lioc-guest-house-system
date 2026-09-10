@@ -21,6 +21,9 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string|null $vessel_name
  * @property string|null $imo
+ * @property string $sanctions_screening_status
+ * @property Carbon|null $sanctions_screened_at
+ * @property string|null $sanctions_screening_error
  * @property int|null $port_id
  * @property Carbon|null $laycan_from
  * @property Carbon|null $laycan_to
@@ -51,7 +54,7 @@ use Illuminate\Support\Carbon;
  * @property float|null $hsfo_lost_price
  */
 #[Fillable([
-    'vessel_name', 'imo', 'port_id', 'laycan_from', 'laycan_to', 'eta', 'status', 'agent_id', 'sampling', 'supply_location_id', 'quality_claim', 'instructions', 'barging_cost',
+    'vessel_name', 'imo', 'sanctions_screening_status', 'sanctions_screened_at', 'sanctions_screening_error', 'port_id', 'laycan_from', 'laycan_to', 'eta', 'status', 'agent_id', 'sampling', 'supply_location_id', 'quality_claim', 'instructions', 'barging_cost',
     'lost_to', 'lost_port',
     'vlsfo_quantity_low', 'vlsfo_quantity_high', 'vlsfo_product_type', 'vlsfo_delivery_mode', 'vlsfo_lost_price',
     'mgo_quantity_low', 'mgo_quantity_high', 'mgo_product_type', 'mgo_delivery_mode', 'mgo_lost_price',
@@ -82,6 +85,7 @@ class Enquiry extends Model
     {
         $casts = [
             'status' => EnquiryStatus::class,
+            'sanctions_screened_at' => 'datetime',
             'eta' => 'datetime',
             'laycan_from' => 'date',
             'laycan_to' => 'date',

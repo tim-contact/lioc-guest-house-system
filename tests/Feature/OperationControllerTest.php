@@ -28,6 +28,8 @@ test('index exposes barge, agency and PIC options alongside the edit fields', fu
         'agent_name' => 'Direct Agent',
         'delivery_mode' => DeliveryMode::Pipeline,
         'product_type' => ProductType::Bonded,
+        'compliance_checked' => true,
+        'nomination_received' => false,
         'status' => OrderStatus::Pending,
     ]);
 
@@ -42,6 +44,8 @@ test('index exposes barge, agency and PIC options alongside the edit fields', fu
             ->where('pendingOrders.0.agent_name', 'Direct Agent')
             ->where('pendingOrders.0.delivery_mode', DeliveryMode::Pipeline->value)
             ->where('pendingOrders.0.product_type', ProductType::Bonded->value)
+            ->where('pendingOrders.0.compliance_checked', true)
+            ->where('pendingOrders.0.nomination_received', false)
             ->has('pendingOrders.0.agent_pic_id')
             ->has('pendingOrders.0.delivery_location')
             ->has('pendingOrders.0.mgo_final_qty'));
@@ -73,6 +77,7 @@ test('index exposes current month completed orders with their port and final qua
         'status' => OrderStatus::Delivered,
         'invoice_date' => now()->startOfMonth(),
         'vlsfo_final_qty' => 812.5,
+        'vlsfo_bdn_qty' => 799.75,
     ]);
 
     $this->get(route('operations'))
@@ -80,7 +85,8 @@ test('index exposes current month completed orders with their port and final qua
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->has('completedOrders', 1)
             ->where('completedOrders.0.port', 'Galle')
-            ->where('completedOrders.0.vlsfo_final_qty', '812.500'));
+            ->where('completedOrders.0.vlsfo_final_qty', '812.500')
+            ->where('completedOrders.0.vlsfo_bdn_qty', '799.750'));
 });
 
 test('guests cannot update an operations order', function () {
@@ -114,6 +120,7 @@ test('update persists operations fields and leaves vessel and order identifiers 
         'agent_id' => $agent->id,
         'agent_pic_id' => $pic->id,
         'mobile_no' => '+94 77 123 4567',
+        'nomination_received' => true,
     ])->assertRedirect();
 
     $order->refresh();
@@ -125,6 +132,7 @@ test('update persists operations fields and leaves vessel and order identifiers 
     expect($order->agent_pic_id)->toBe($pic->id);
     expect($order->pic)->toBe('Jane Roe');
     expect($order->mobile_no)->toBe('+94 77 123 4567');
+    expect($order->nomination_received)->toBeTrue();
     expect((float) $order->vlsfo_final_qty)->toBe(812.5);
     expect((float) $order->mgo_final_qty)->toBe(140.25);
     expect($order->eta->format('Y-m-d H:i'))->toBe('2026-08-01 14:30');

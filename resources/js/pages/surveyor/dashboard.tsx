@@ -1,9 +1,22 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { CheckCircle2, Clock3, Ship, Waves } from 'lucide-react';
+import {
+    ArrowRight,
+    CalendarClock,
+    CircleCheck,
+    ClipboardList,
+    Clock3,
+    FilePenLine,
+    Fuel,
+    Inbox,
+    MapPin,
+    Ship,
+    Waves,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Fragment, useState } from 'react';
 import { SearchableCombobox } from '@/components/searchable-combobox';
 import { TableFrame } from '@/components/table-frame';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -113,6 +126,74 @@ function shortTime(value: string | null): string {
     });
 }
 
+function etaLabel(value: string | null): string {
+    if (!value) {
+        return 'ETA not set';
+    }
+
+    const eta = new Date(value);
+
+    if (Number.isNaN(eta.getTime())) {
+        return 'ETA not set';
+    }
+
+    const today = new Date();
+    const startOfToday = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+    );
+    const startOfEta = new Date(
+        eta.getFullYear(),
+        eta.getMonth(),
+        eta.getDate(),
+    );
+    const daysAway = Math.round(
+        (startOfEta.getTime() - startOfToday.getTime()) / 86_400_000,
+    );
+
+    if (daysAway < 0) {
+        return 'Overdue';
+    }
+
+    if (daysAway === 0) {
+        return 'Arriving today';
+    }
+
+    if (daysAway === 1) {
+        return 'Tomorrow';
+    }
+
+    return `In ${daysAway} days`;
+}
+
+function orderProducts(row: PendingRow | CompletedRow) {
+    return FUEL_GRADES.map((grade) => ({
+        key: grade.key,
+        label: grade.label,
+        quantity: row[`${grade.key}_qty`],
+    })).filter(({ quantity }) => {
+        if (!quantity) {
+            return false;
+        }
+
+        const numericQuantity = Number(quantity);
+
+        return !Number.isFinite(numericQuantity) || numericQuantity > 0;
+    });
+}
+
+function sortedByEta<T extends { eta: string | null }>(rows: T[]): T[] {
+    return [...rows].sort((first, second) => {
+        const firstTime = first.eta ? new Date(first.eta).getTime() : Infinity;
+        const secondTime = second.eta
+            ? new Date(second.eta).getTime()
+            : Infinity;
+
+        return firstTime - secondTime;
+    });
+}
+
 function BargeOverviewStrip({
     barge,
     selectedScope,
@@ -136,7 +217,7 @@ function BargeOverviewStrip({
         {
             label: 'Completed',
             value: completedCount,
-            icon: CheckCircle2,
+            icon: CircleCheck,
             tone: 'text-[#15803d]',
         },
     ];
@@ -199,6 +280,195 @@ function BargeOverviewStrip({
     );
 }
 
+function ProductQuantities({ row }: { row: PendingRow | CompletedRow }) {
+    const products = orderProducts(row);
+
+    return (
+        <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5">
+            <div className="flex items-start gap-2">
+                <Fuel
+                    className="mt-0.5 size-4 shrink-0 text-[#1d4ed8]"
+                    aria-hidden="true"
+                />
+                <div className="min-w-0 flex-1">
+                    {products.length > 0 ? (
+                        <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                            {products.map((product) => (
+                                <span
+                                    key={product.key}
+                                    className="text-sm whitespace-nowrap text-slate-700"
+                                >
+                                    <span className="font-semibold text-slate-950">
+                                        {product.label}
+                                    </span>{' '}
+                                    {product.quantity} MT
+                                </span>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-slate-500">
+                            Quantities not entered
+                        </p>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function RouteSummary({ row }: { row: PendingRow | CompletedRow }) {
+    return (
+        <div className="grid gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 min-[360px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] min-[360px]:items-center">
+            <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                    <MapPin className="size-3.5" aria-hidden="true" />
+                    Port
+                </div>
+                <p className="mt-0.5 text-sm font-semibold break-words text-slate-950">
+                    {row.port ?? 'Not assigned'}
+                </p>
+            </div>
+            <ArrowRight
+                className="hidden size-4 text-slate-400 min-[360px]:block"
+                aria-hidden="true"
+            />
+            <div className="min-w-0">
+                <div className="text-xs font-medium text-slate-500">
+                    Supply location
+                </div>
+                <p className="mt-0.5 text-sm font-semibold break-words text-slate-950">
+                    {row.location ?? 'Not assigned'}
+                </p>
+            </div>
+        </div>
+    );
+}
+
+function OrderMetaGrid({ row }: { row: PendingRow | CompletedRow }) {
+    const sampling =
+        'sampling' in row && row.sampling ? `Sampling · ${row.sampling}` : null;
+    const instructions =
+        'instructions' in row && row.instructions ? row.instructions : null;
+
+    return (
+        <div className="grid gap-2 min-[390px]:grid-cols-2">
+            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                    <CalendarClock className="size-3.5" aria-hidden="true" />
+                    ETA
+                </div>
+                <p className="mt-1 text-sm font-semibold text-slate-950">
+                    {shortDate(row.eta)} · {shortTime(row.eta)}
+                </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                    <ClipboardList className="size-3.5" aria-hidden="true" />
+                    Instruction
+                </div>
+                <p className="mt-1 text-sm font-semibold break-words text-slate-950">
+                    {sampling ?? 'No instruction'}
+                </p>
+                {instructions ? (
+                    <p className="mt-1 text-xs leading-5 break-words text-slate-600">
+                        {instructions}
+                    </p>
+                ) : null}
+            </div>
+        </div>
+    );
+}
+
+function PendingOrderCard({
+    row,
+    onCreateBdn,
+}: {
+    row: PendingRow;
+    onCreateBdn: () => void;
+}) {
+    const etaText = etaLabel(row.eta);
+    const isOverdue = etaText === 'Overdue';
+
+    return (
+        <article className="rounded-[14px] border border-slate-200 bg-white p-3.5 shadow-[0_4px_14px_rgba(15,23,42,0.05)]">
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <h3 className="text-base leading-6 font-bold break-words text-slate-950">
+                        {row.vessel_name ?? 'Untitled vessel'}
+                    </h3>
+                    <p
+                        className={cn(
+                            'mt-0.5 text-sm font-medium',
+                            isOverdue ? 'text-red-700' : 'text-slate-600',
+                        )}
+                    >
+                        {etaText}
+                    </p>
+                </div>
+                <Badge className="shrink-0 border-amber-200 bg-amber-50 text-xs font-semibold text-amber-800">
+                    Pending
+                </Badge>
+            </div>
+
+            <div className="mt-3 flex flex-col gap-2.5">
+                <RouteSummary row={row} />
+                <OrderMetaGrid row={row} />
+                <ProductQuantities row={row} />
+            </div>
+
+            <Button
+                type="button"
+                className="mt-3 h-11 w-full rounded-lg bg-[#1d4ed8] text-base font-semibold text-white hover:bg-[#1e40af]"
+                onClick={onCreateBdn}
+            >
+                <FilePenLine className="size-4" aria-hidden="true" />
+                Create BDN
+            </Button>
+        </article>
+    );
+}
+
+function CompletedOrderCard({ row }: { row: CompletedRow }) {
+    return (
+        <article className="rounded-[14px] border border-slate-200 bg-white p-3.5 shadow-[0_4px_14px_rgba(15,23,42,0.05)]">
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <h3 className="text-base leading-6 font-bold break-words text-slate-950">
+                        {row.vessel_name ?? 'Untitled vessel'}
+                    </h3>
+                    <p className="mt-0.5 text-sm font-medium text-slate-600">
+                        {etaLabel(row.eta)}
+                    </p>
+                </div>
+                <Badge className="shrink-0 border-emerald-200 bg-emerald-50 text-xs font-semibold text-emerald-800">
+                    Completed
+                </Badge>
+            </div>
+
+            <div className="mt-3 flex flex-col gap-2.5">
+                <RouteSummary row={row} />
+                <OrderMetaGrid row={row} />
+                <ProductQuantities row={row} />
+            </div>
+
+            <Button
+                type="button"
+                variant="outline"
+                className="mt-3 h-11 w-full rounded-lg border-slate-300 bg-white text-base font-semibold"
+                asChild
+            >
+                <a
+                    href={ebdn(row.id).url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    View BDN
+                </a>
+            </Button>
+        </article>
+    );
+}
+
 function OperationalInstruction({ row }: { row: PendingRow }) {
     const pairs: [string, string][] = [['Sampling', row.sampling ?? '—']];
 
@@ -257,6 +527,9 @@ export default function SurveyorDashboard({
         assignedBarge?.imo ?? '',
     );
     const [bdnOrderId, setBdnOrderId] = useState<number | null>(null);
+    const [mobileTab, setMobileTab] = useState<'pending' | 'completed'>(
+        pendingOrders.length > 0 ? 'pending' : 'completed',
+    );
     const selectedDeliveryScope =
         deliveryScopeOptions.find((scope) => scope.value === selectedBarge) ??
         null;
@@ -267,12 +540,14 @@ export default function SurveyorDashboard({
 
     // Derived, so the open dialog sees the BDN number its own first save assigned.
     const bdnOrder = pendingOrders.find((row) => row.id === bdnOrderId);
+    const mobilePendingOrders = sortedByEta(pendingOrders);
+    const mobileCompletedOrders = sortedByEta(completedOrders);
 
     return (
         <>
             <Head title="Surveyor" />
 
-            <div className="flex flex-col gap-6 p-4">
+            <div className="flex flex-col gap-3 p-3 md:gap-6 md:p-4">
                 <BargeOverviewStrip
                     barge={selectedBargeDetails}
                     selectedScope={selectedDeliveryScope}
@@ -287,7 +562,7 @@ export default function SurveyorDashboard({
                             </span>
                         </div>
                     ) : (
-                        <div className="max-w-xs">
+                        <div className="w-full sm:max-w-xs">
                             <SearchableCombobox
                                 items={[
                                     ...barges.map((barge) => ({
@@ -316,7 +591,132 @@ export default function SurveyorDashboard({
                     )}
                 </BargeOverviewStrip>
 
-                <section className="flex flex-col gap-4">
+                <section className="md:hidden">
+                    <div
+                        className="grid grid-cols-2 rounded-xl border border-slate-200 bg-white p-1 shadow-[0_4px_14px_rgba(15,23,42,0.04)]"
+                        role="tablist"
+                        aria-label="Surveyor orders"
+                    >
+                        {[
+                            {
+                                id: 'pending',
+                                label: `Pending · ${pendingOrders.length}`,
+                            },
+                            {
+                                id: 'completed',
+                                label: `Completed · ${completedOrders.length}`,
+                            },
+                        ].map((tab) => {
+                            const selected = mobileTab === tab.id;
+
+                            return (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={selected}
+                                    aria-controls={`mobile-${tab.id}-orders`}
+                                    id={`mobile-${tab.id}-tab`}
+                                    className={cn(
+                                        'flex h-11 items-center justify-center rounded-lg px-2 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[#1d4ed8] focus-visible:outline-none',
+                                        selected
+                                            ? 'bg-[#e7f0ff] text-[#1d4ed8]'
+                                            : 'text-slate-600',
+                                    )}
+                                    onClick={() =>
+                                        setMobileTab(
+                                            tab.id as 'pending' | 'completed',
+                                        )
+                                    }
+                                >
+                                    {tab.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <div
+                        id="mobile-pending-orders"
+                        role="tabpanel"
+                        aria-labelledby="mobile-pending-tab"
+                        hidden={mobileTab !== 'pending'}
+                        className="mt-3"
+                    >
+                        <div className="mb-2.5 flex items-center justify-between gap-3 px-0.5">
+                            <h2 className="text-base font-bold text-slate-950">
+                                Next 7 days
+                            </h2>
+                            <span className="text-xs font-medium text-slate-500">
+                                Sorted by ETA
+                            </span>
+                        </div>
+                        <div className="flex flex-col gap-2.5">
+                            {mobilePendingOrders.map((row) => (
+                                <PendingOrderCard
+                                    key={row.id}
+                                    row={row}
+                                    onCreateBdn={() => setBdnOrderId(row.id)}
+                                />
+                            ))}
+
+                            {mobilePendingOrders.length === 0 ? (
+                                <div className="rounded-[14px] border border-dashed border-slate-300 bg-white px-4 py-8 text-center">
+                                    <Inbox
+                                        className="mx-auto size-8 text-slate-400"
+                                        aria-hidden="true"
+                                    />
+                                    <h3 className="mt-3 text-base font-bold text-slate-950">
+                                        No pending orders
+                                    </h3>
+                                    <p className="mt-1 text-sm text-slate-500">
+                                        Orders for the next 7 days will appear
+                                        here.
+                                    </p>
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+
+                    <div
+                        id="mobile-completed-orders"
+                        role="tabpanel"
+                        aria-labelledby="mobile-completed-tab"
+                        hidden={mobileTab !== 'completed'}
+                        className="mt-3"
+                    >
+                        <div className="mb-2.5 flex items-center justify-between gap-3 px-0.5">
+                            <h2 className="text-base font-bold text-slate-950">
+                                Completed orders
+                            </h2>
+                            <span className="text-xs font-medium text-slate-500">
+                                Last 7 days
+                            </span>
+                        </div>
+                        <div className="flex flex-col gap-2.5">
+                            {mobileCompletedOrders.map((row) => (
+                                <CompletedOrderCard key={row.id} row={row} />
+                            ))}
+
+                            {mobileCompletedOrders.length === 0 ? (
+                                <div className="rounded-[14px] border border-dashed border-slate-300 bg-white px-4 py-8 text-center">
+                                    <Inbox
+                                        className="mx-auto size-8 text-slate-400"
+                                        aria-hidden="true"
+                                    />
+                                    <h3 className="mt-3 text-base font-bold text-slate-950">
+                                        No completed orders yet
+                                    </h3>
+                                    <p className="mt-1 text-sm text-slate-500">
+                                        Completed orders from the last 7 days
+                                        will appear here.
+                                    </p>
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+                </section>
+
+                <section className="hidden flex-col gap-4 md:flex">
                     <h2 className="text-xl font-semibold tracking-tight">
                         Pending Orders (next 7 days)
                     </h2>
@@ -386,7 +786,7 @@ export default function SurveyorDashboard({
                     </TableFrame>
                 </section>
 
-                <section className="flex flex-col gap-4">
+                <section className="hidden flex-col gap-4 md:flex">
                     <h2 className="text-xl font-semibold tracking-tight">
                         Completed Orders (last 7 days)
                     </h2>

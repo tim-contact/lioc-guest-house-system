@@ -150,6 +150,8 @@ class OrderService
             'delivery_location' => $order->deliveryLocation?->name,
             'barging_cost' => $order->barging_cost,
             'agent_fees' => $order->agent_fees,
+            'compliance_checked' => $order->compliance_checked,
+            'nomination_received' => $order->nomination_received,
             'vlsfo_qty' => $order->vlsfo_final_qty ?? $order->vlsfo_qty_range,
             'mgo_qty' => $order->mgo_final_qty ?? $order->mgo_qty_range,
             'hsfo_qty' => $order->hsfo_final_qty ?? $order->hsfo_qty_range,

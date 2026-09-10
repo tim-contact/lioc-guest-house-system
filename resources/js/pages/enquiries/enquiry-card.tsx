@@ -105,6 +105,9 @@ export interface EnquiryRow {
     quality_claim: string | null; // 14_days | 30_days
     instructions: string | null;
     barging_cost: string | null;
+    sanctions_screening_status?: string | null;
+    sanctions_screened_at?: string | null;
+    sanctions_screening_error?: string | null;
     customers: EnquiryCustomerRow[];
     // Product details, flattened per product (vlsfo/mgo/hsfo).
     vlsfo_quantity_low: string | null;
@@ -151,6 +154,10 @@ const NEUTRAL_ENQUIRY_STATUS_STYLE = {
     card: 'shadow-none',
     badge: 'border-slate-700 bg-slate-700 text-white shadow-none',
 };
+
+function isSanctioned(enquiry: EnquiryRow): boolean {
+    return enquiry.sanctions_screening_status === 'possible_match';
+}
 
 const PRICE_ROWS = [
     { key: 'initial_offer', label: 'Initial Offer' },
@@ -782,12 +789,22 @@ export function EnquiryCard({
                             </span>
                         </CardTitle>
                     </div>
-                    <Badge
-                        variant="outline"
-                        className={`h-6 rounded-md px-2.5 font-semibold capitalize ${statusStyle.badge}`}
-                    >
-                        {enquiry.status}
-                    </Badge>
+                    <div className="flex shrink-0 items-center gap-2">
+                        {isSanctioned(enquiry) ? (
+                            <Badge
+                                variant="outline"
+                                className="h-6 animate-[sanctioned-soft-blink_1.5s_linear_infinite] rounded-md border-red-600 bg-red-600 px-2.5 text-[0.68rem] font-bold tracking-normal text-white uppercase shadow-none"
+                            >
+                                Sanctioned
+                            </Badge>
+                        ) : null}
+                        <Badge
+                            variant="outline"
+                            className={`h-6 rounded-md px-2.5 font-semibold capitalize ${statusStyle.badge}`}
+                        >
+                            {enquiry.status}
+                        </Badge>
+                    </div>
                 </div>
             </CardHeader>
 

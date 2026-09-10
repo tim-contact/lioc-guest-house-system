@@ -69,6 +69,7 @@ class OrderController extends Controller
             'mobile_no' => ['nullable', 'string', 'max:255'],
             'delivery_mode' => ['nullable', Rule::enum(DeliveryMode::class)],
             'delivery_location_id' => ['nullable', $this->supplyLocationRule($request->input('port_id', $order->port_id))],
+            'compliance_checked' => ['boolean'],
             'laycan_from' => ['nullable', 'date'],
             'laycan_to' => ['nullable', 'date', 'after_or_equal:laycan_from'],
         ];
@@ -155,6 +156,8 @@ class OrderController extends Controller
             'barging_cost' => ['nullable', 'numeric', 'min:0'],
             'agent_fees' => ['nullable', 'numeric', 'min:0'],
             'product_type' => ['nullable', Rule::enum(ProductType::class)],
+            'compliance_checked' => ['boolean'],
+            'nomination_received' => ['boolean'],
             'credit_terms' => ['nullable', Rule::enum(CreditTerms::class)],
             'status' => ['required', Rule::enum(OrderStatus::class)],
             'invoice_date' => ['nullable', 'date'],

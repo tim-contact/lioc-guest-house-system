@@ -16,7 +16,7 @@ import {
     toDateTimeInput,
 } from '@/lib/utils';
 import { router } from '@inertiajs/react';
-import { Search, X } from 'lucide-react';
+import { Check, ClipboardCheck, ClipboardX, Search, X } from 'lucide-react';
 import { useState } from 'react';
 import type {
     AgentOption,
@@ -43,6 +43,8 @@ interface Order {
     barging_cost: string | null;
     agent_fees: string | null;
     product_type: string | null;
+    compliance_checked: boolean;
+    nomination_received: boolean;
     barge_id: string | null;
     agent_id: number | null;
     agent_name: string | null;
@@ -144,6 +146,14 @@ export default function OrdersTable({
         {
             header: 'Product Type',
             value: (o) => optionLabel(productTypeOptions, o.product_type),
+        },
+        {
+            header: 'Compliance Checked',
+            value: (o) => (o.compliance_checked ? 'Yes' : 'No'),
+        },
+        {
+            header: 'Nomination Received',
+            value: (o) => (o.nomination_received ? 'Yes' : 'No'),
         },
         { header: 'Barge ID', value: (o) => o.barge_id ?? '' },
         { header: 'Agent ID', value: (o) => o.agent_id ?? '' },
@@ -280,7 +290,7 @@ export default function OrdersTable({
             {
                 header: 'Vessel Name',
                 sortKey: 'vessel_name',
-                cell: (o) => o.vessel_name ?? '—',
+                cell: (o) => <VesselNameCell order={o} />,
             },
             {
                 header: 'Vessel ID',
@@ -366,10 +376,10 @@ export default function OrdersTable({
                     cell: (o: Order) => formatMoney(o[`${product.key}_rate`]),
                 },
                 {
-                    header: `${product.label} Final Qty`,
+                    header: `${product.label} Qty`,
                     sortKey: `${product.key}_final_qty` as const,
                     align: 'right' as const,
-                    cell: (o: Order) => o[`${product.key}_final_qty`] ?? '—',
+                    cell: (o: Order) => productQuantityFor(o, product.key),
                 },
                 {
                     header: `${product.label} BDN Qty`,
@@ -521,6 +531,18 @@ export default function OrdersTable({
                 options: productTypeOptions,
                 section: 'Delivery',
             },
+            {
+                name: 'compliance_checked',
+                label: 'Compliance Checked',
+                type: 'checkbox',
+                section: 'Delivery',
+            },
+            {
+                name: 'nomination_received',
+                label: 'Nomination Received',
+                type: 'checkbox',
+                section: 'Delivery',
+            },
             ...FUEL_GRADES.flatMap((product) => [
                 {
                     name: `${product.key}_quantity_low`,
@@ -623,6 +645,8 @@ export default function OrdersTable({
             barging_cost: str(order?.barging_cost ?? '0'),
             agent_fees: str(order?.agent_fees ?? '0'),
             product_type: str(order?.product_type),
+            compliance_checked: order?.compliance_checked === true,
+            nomination_received: order?.nomination_received === true,
             ...Object.fromEntries(
                 FUEL_GRADES.flatMap((product) => [
                     [
@@ -659,6 +683,97 @@ export default function OrdersTable({
     };
 
     return <ResourceCrudPage rows={rows} config={config} pagination={orders} />;
+}
+
+function VesselNameCell({ order }: { order: Order }) {
+    return (
+        <div className="flex min-w-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1">
+                <BooleanStatusIcon
+                    checked={order.compliance_checked}
+                    kind="compliance"
+                />
+                <BooleanStatusIcon
+                    checked={order.nomination_received}
+                    kind="nomination"
+                />
+            </div>
+            <span className="min-w-0 truncate">{order.vessel_name ?? '—'}</span>
+        </div>
+    );
+}
+
+function BooleanStatusIcon({
+    checked,
+    kind,
+}: {
+    checked: boolean;
+    kind: 'compliance' | 'nomination';
+}) {
+    const Icon =
+        kind === 'nomination'
+            ? checked
+                ? ClipboardCheck
+                : ClipboardX
+            : checked
+              ? Check
+              : X;
+    const label =
+        kind === 'nomination'
+            ? checked
+                ? 'Nomination received'
+                : 'Nomination not received'
+            : checked
+              ? 'Compliance checked'
+              : 'Compliance not checked';
+
+    return (
+        <span
+            className={
+                checked
+                    ? 'inline-grid size-4 place-items-center rounded-[4px] bg-emerald-600 text-white'
+                    : 'inline-grid size-4 place-items-center rounded-[4px] bg-red-600 text-white'
+            }
+            title={label}
+            aria-label={label}
+        >
+            <Icon className="size-2.5" aria-hidden="true" />
+        </span>
+    );
+}
+
+function productQuantityFor(order: Order, productKey: string): string {
+    const quantity = productQuantityValueFor(
+        order,
+        productKey,
+        order.status === 'delivered' ? 'bdn' : 'final',
+    );
+
+    return quantity ?? '—';
+}
+
+function productQuantityValueFor(
+    order: Order,
+    productKey: string,
+    source: 'bdn' | 'final',
+): string | null {
+    if (order.status === 'delivered') {
+        source = 'bdn';
+    }
+
+    if (productKey === 'vlsfo') {
+        return source === 'bdn' ? order.vlsfo_bdn_qty : order.vlsfo_final_qty;
+    }
+
+    if (productKey === 'mgo') {
+        return source === 'bdn' ? order.mgo_bdn_qty : order.mgo_final_qty;
+    }
+
+    if (productKey === 'hsfo') {
+        return source === 'bdn' ? order.hsfo_bdn_qty : order.hsfo_final_qty;
+    }
+
+    return null;
 }
 
 function visitOrdersTable(vessel: string, perPage: number) {

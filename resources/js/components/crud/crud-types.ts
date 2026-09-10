@@ -3,7 +3,7 @@ import type { ExportColumn } from '@/lib/export-xlsx';
 import type { EnumOption } from '@/types';
 import type { RouteDefinition } from '@/wayfinder';
 
-export type CrudFormValue = string | string[];
+export type CrudFormValue = boolean | string | string[];
 export type CrudFormData = Record<string, CrudFormValue>;
 
 export type CrudFieldType =
@@ -15,6 +15,7 @@ export type CrudFieldType =
     | 'datetime-local'
     | 'select'
     | 'multiselect'
+    | 'checkbox'
     | 'password'
     | 'textarea';
 

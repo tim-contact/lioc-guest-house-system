@@ -44,6 +44,8 @@ test('index renders pending and current month completed orders grouped by port',
 
     createOrder([
         'vessel_name' => 'MV Pending',
+        'compliance_checked' => true,
+        'nomination_received' => false,
         'status' => OrderStatus::Pending,
     ]);
 
@@ -72,6 +74,8 @@ test('index renders pending and current month completed orders grouped by port',
             ->component('orders/dashboard')
             ->has('pendingOrders', 1)
             ->where('pendingOrders.0.vessel_name', 'MV Pending')
+            ->where('pendingOrders.0.compliance_checked', true)
+            ->where('pendingOrders.0.nomination_received', false)
             ->has('completedOrders', 1)
             ->where('completedOrders.0.vessel_name', 'MV Delivered Recently')
             ->where('completedOrders.0.port', 'Colombo')
@@ -205,6 +209,7 @@ test('update persists editable fields and leaves order number and date untouched
         'agent_pic_id' => $agentPic->id,
         'mobile_no' => '+94771234567',
         'delivery_mode' => DeliveryMode::Truck->value,
+        'compliance_checked' => true,
         'laycan_from' => '2026-02-01',
         'laycan_to' => '2026-02-05',
     ])->assertRedirect();
@@ -216,6 +221,7 @@ test('update persists editable fields and leaves order number and date untouched
     expect($order->customer_id)->toBe($customer->sap_id);
     expect($order->port_id)->toBe($port->id);
     expect($order->delivery_mode)->toBe(DeliveryMode::Truck);
+    expect($order->compliance_checked)->toBeTrue();
     expect($order->status)->toBe(OrderStatus::Pending);
     expect((float) $order->vlsfo_quantity_low)->toBe(600.0);
     expect((float) $order->vlsfo_quantity_high)->toBe(750.0);
@@ -364,7 +370,12 @@ test('guests are redirected from the orders table page', function () {
 test('table renders every order with all attributes', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
-    createOrder(['vessel_name' => 'MV Alpha', 'order_number' => 'ORD-ALPHA']);
+    createOrder([
+        'vessel_name' => 'MV Alpha',
+        'order_number' => 'ORD-ALPHA',
+        'compliance_checked' => true,
+        'nomination_received' => true,
+    ]);
     createOrder(['vessel_name' => 'MV Beta', 'order_number' => 'ORD-BETA']);
 
     $this->get(route('orders.table'))
@@ -374,6 +385,8 @@ test('table renders every order with all attributes', function () {
             ->has('orders.data', 2)
             ->where('orders.data.0.order_number', 'ORD-ALPHA')
             ->where('orders.data.0.status', OrderStatus::Pending->value)
+            ->where('orders.data.0.compliance_checked', true)
+            ->where('orders.data.0.nomination_received', true)
             ->where('orders.data.1.order_number', 'ORD-BETA')
             ->where('orders.per_page', 25)
             ->where('orders.total', 2)
@@ -482,6 +495,8 @@ test('table update saves every section of the order, unlike the narrower dashboa
         'delivery_location_id' => $location->id,
         'barging_cost' => 1250,
         'product_type' => 'bonded',
+        'compliance_checked' => true,
+        'nomination_received' => true,
         'vlsfo_quantity_low' => 100,
         'vlsfo_quantity_high' => 200,
         'vlsfo_rate' => 500,
@@ -515,6 +530,8 @@ test('table update saves every section of the order, unlike the narrower dashboa
     expect($fresh->delivery_mode)->toBe(DeliveryMode::Pipeline);
     expect($fresh->delivery_location_id)->toBe($location->id);
     expect((float) $fresh->barging_cost)->toBe(1250.0);
+    expect($fresh->compliance_checked)->toBeTrue();
+    expect($fresh->nomination_received)->toBeTrue();
     expect($fresh->vessel_name)->toBe('MV Renamed');
     expect($fresh->vlsfo_qty_range)->toBe('100 - 200');
     expect((float) $fresh->amount_received)->toBe(45000.0);

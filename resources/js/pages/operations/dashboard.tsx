@@ -25,6 +25,11 @@ export interface OpsEditRow extends OrderRow {
     delivery_location: string | null;
     product_type: string | null;
     barge_id: string | null;
+    vlsfo_bdn_qty: string | null;
+    mgo_bdn_qty: string | null;
+    hsfo_bdn_qty: string | null;
+    compliance_checked: boolean;
+    nomination_received: boolean;
     agent_id: number | null;
     agent_pic_id: number | null;
     mobile_no: string | null;
@@ -106,7 +111,8 @@ export default function OperationsDashboard({
                         pendingOrders={filteredPendingOrders}
                         completedOrders={filteredCompletedOrders}
                         pendingActions={rowActions}
-                        completedActions={rowActions}
+                        completedActions={[]}
+                        statusMarkers={['nomination']}
                     />
                 </div>
             </main>

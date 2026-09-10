@@ -29,11 +29,23 @@ function FieldControl({
     onChange,
 }: {
     field: CrudField;
-    value: string | string[];
+    value: boolean | string | string[];
     formData: CrudFormData;
     disabled: boolean;
-    onChange: (value: string | string[]) => void;
+    onChange: (value: boolean | string | string[]) => void;
 }) {
+    if (field.type === 'checkbox') {
+        return (
+            <div className="flex h-8 items-center rounded-lg border border-input px-2.5">
+                <Checkbox
+                    checked={value === true || value === '1'}
+                    disabled={disabled}
+                    onCheckedChange={(checked) => onChange(checked === true)}
+                />
+            </div>
+        );
+    }
+
     if (field.type === 'select') {
         const options =
             typeof field.options === 'function'
@@ -43,7 +55,7 @@ function FieldControl({
         return (
             <select
                 id={field.name}
-                value={Array.isArray(value) ? value[0] : value}
+                value={Array.isArray(value) ? value[0] : String(value)}
                 disabled={disabled}
                 onChange={(e) => onChange(e.target.value)}
                 className={cn(controlClass, 'cursor-pointer')}
@@ -63,7 +75,11 @@ function FieldControl({
             typeof field.options === 'function'
                 ? field.options(formData)
                 : field.options;
-        const selected = Array.isArray(value) ? value : value ? [value] : [];
+        const selected = Array.isArray(value)
+            ? value
+            : typeof value === 'string' && value
+              ? [value]
+              : [];
         const toggleValue = (optionValue: string, checked: boolean): void => {
             onChange(
                 checked
@@ -105,7 +121,7 @@ function FieldControl({
         return (
             <Textarea
                 id={field.name}
-                value={Array.isArray(value) ? value.join(', ') : value}
+                value={Array.isArray(value) ? value.join(', ') : String(value)}
                 onChange={(e) => onChange(e.target.value)}
             />
         );
@@ -115,7 +131,7 @@ function FieldControl({
         return (
             <MoneyInput
                 id={field.name}
-                value={Array.isArray(value) ? value[0] : value}
+                value={Array.isArray(value) ? value[0] : String(value)}
                 onChange={onChange}
             />
         );
@@ -125,7 +141,7 @@ function FieldControl({
         return (
             <DateTimePicker
                 id={field.name}
-                value={Array.isArray(value) ? value[0] : value}
+                value={Array.isArray(value) ? value[0] : String(value)}
                 onChange={onChange}
             />
         );
@@ -136,14 +152,21 @@ function FieldControl({
             id={field.name}
             type={field.type ?? 'text'}
             step={field.step}
-            value={Array.isArray(value) ? value.join(', ') : value}
+            value={Array.isArray(value) ? value.join(', ') : String(value)}
             onChange={(e) => onChange(e.target.value)}
         />
     );
 }
 
 /** Resolves a select field's stored value to its option label for display. */
-function fieldDisplayValue(field: CrudField, value: string | string[]): string {
+function fieldDisplayValue(
+    field: CrudField,
+    value: boolean | string | string[],
+): string {
+    if (field.type === 'checkbox') {
+        return value === true || value === '1' ? 'Yes' : 'No';
+    }
+
     if (field.type === 'select' || field.type === 'multiselect') {
         const options =
             typeof field.options === 'function'
@@ -161,7 +184,7 @@ function fieldDisplayValue(field: CrudField, value: string | string[]): string {
             .join(', ');
     }
 
-    return Array.isArray(value) ? value.join(', ') : value;
+    return Array.isArray(value) ? value.join(', ') : String(value);
 }
 
 /** Consecutive fields sharing a `section` are grouped under one heading. */

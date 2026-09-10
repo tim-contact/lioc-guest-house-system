@@ -9,6 +9,7 @@ use App\Enums\ProductType;
 use App\Enums\QualityClaim;
 use App\Enums\Sampling;
 use App\Enums\UserType;
+use App\Jobs\CheckEnquirySanctions;
 use App\Models\Agent;
 use App\Models\Customer;
 use App\Models\Enquiry;
@@ -16,6 +17,7 @@ use App\Models\Order;
 use App\Models\Port;
 use App\Models\SupplyLocation;
 use App\Models\User;
+use Illuminate\Support\Facades\Bus;
 use Inertia\Testing\AssertableInertia;
 
 test('guests are redirected from the enquiries page', function () {
@@ -92,6 +94,7 @@ test('index excludes won and lost enquiries', function () {
 
 test('store creates an enquiry', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    Bus::fake();
 
     $port = Port::factory()->create();
 
@@ -105,7 +108,10 @@ test('store creates an enquiry', function () {
 
     expect(Enquiry::sole())
         ->vessel_name->toBe('MT Test Vessel')
-        ->imo->toBe('1234567');
+        ->imo->toBe('1234567')
+        ->sanctions_screening_status->toBe('pending');
+
+    Bus::assertDispatched(CheckEnquirySanctions::class, fn (CheckEnquirySanctions $job): bool => $job->enquiryId === Enquiry::sole()->id);
 });
 
 test('store requires a vessel name', function () {
@@ -487,9 +493,11 @@ test('edit paginates enquiries', function () {
 
 test('editStore creates an enquiry with full details', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    Bus::fake();
 
     $this->post(route('enquiries.edit.store'), [
         'vessel_name' => 'MT New',
+        'imo' => '7654321',
         'status' => 'open',
         'sampling' => 'barge_manifold',
         'vlsfo_quantity_low' => 100,
@@ -502,6 +510,8 @@ test('editStore creates an enquiry with full details', function () {
         ->status->toBe(EnquiryStatus::Open)
         ->vlsfo_product_type->toBe(ProductType::Bonded)
         ->vlsfo_delivery_mode->toBe(DeliveryMode::Barge);
+
+    Bus::assertDispatched(CheckEnquirySanctions::class, fn (CheckEnquirySanctions $job): bool => $job->enquiryId === Enquiry::sole()->id);
 });
 
 test('editStore requires vessel name, status and sampling', function () {

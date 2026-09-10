@@ -21,6 +21,9 @@ class OperationController extends Controller
             'product_type' => $order->product_type?->value,
             'delivery_mode' => $order->delivery_mode?->value,
             'barge_id' => $order->barge_id,
+            'vlsfo_bdn_qty' => $order->vlsfo_bdn_qty,
+            'mgo_bdn_qty' => $order->mgo_bdn_qty,
+            'hsfo_bdn_qty' => $order->hsfo_bdn_qty,
         ];
 
         $pendingOrders = OrderService::pending()->map($mapOrder);
@@ -49,6 +52,7 @@ class OperationController extends Controller
             'agent_id' => ['nullable', 'exists:agents,id'],
             'agent_pic_id' => ['nullable', $this->agentPicRule($request)],
             'mobile_no' => ['nullable', 'string', 'max:255'],
+            'nomination_received' => ['boolean'],
         ]);
 
         if ($order->delivery_mode !== null && $order->delivery_mode !== DeliveryMode::Barge) {

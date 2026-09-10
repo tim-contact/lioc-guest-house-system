@@ -6,6 +6,7 @@ import { DatePicker } from '@/components/date-picker';
 import { LabeledField, LabeledSelect } from '@/components/edit-panel/fields';
 import { SearchableCombobox } from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -35,7 +36,10 @@ interface OpsFormData {
     agent_id: string;
     agent_pic_id: string;
     mobile_no: string;
+    nomination_received: boolean;
 }
+
+type OpsQuantityField = Extract<keyof OpsFormData, `${string}_final_qty`>;
 
 function CompactSection({
     children,
@@ -180,6 +184,7 @@ export function OrderEditDialog({
         agent_id: order.agent_id ? String(order.agent_id) : '',
         agent_pic_id: order.agent_pic_id ? String(order.agent_pic_id) : '',
         mobile_no: order.mobile_no ?? '',
+        nomination_received: order.nomination_received === true,
     });
     const isBargeDelivery =
         order.delivery_mode === null || order.delivery_mode === 'barge';
@@ -260,6 +265,18 @@ export function OrderEditDialog({
                             )}
                             placeholder="Select location"
                         />
+                        <label className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50/70 px-3 py-2 text-sm font-semibold text-blue-800">
+                            <Checkbox
+                                checked={form.data.nomination_received}
+                                onCheckedChange={(checked) =>
+                                    form.setData(
+                                        'nomination_received',
+                                        checked === true,
+                                    )
+                                }
+                            />
+                            Nomination received
+                        </label>
 
                         {isBargeDelivery && (
                             <div className="grid gap-1">
@@ -296,7 +313,7 @@ export function OrderEditDialog({
                             ),
                         ).map((grade) => {
                             const field =
-                                `${grade.key}_final_qty` as keyof OpsFormData;
+                                `${grade.key}_final_qty` as OpsQuantityField;
                             const orderedQuantity = orderedQuantityFor(
                                 order,
                                 grade.key,

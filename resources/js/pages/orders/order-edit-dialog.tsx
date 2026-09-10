@@ -7,6 +7,7 @@ import { DateRangePicker } from '@/components/date-range-picker';
 import { LabeledSelect } from '@/components/edit-panel/fields';
 import { SearchableCombobox } from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -65,7 +66,13 @@ interface OrderFormData {
     delivery_location_id: string;
     laycan_from: string;
     laycan_to: string;
+    compliance_checked: boolean;
 }
+
+type QuantityFieldKey = Extract<
+    keyof OrderFormData,
+    `${string}_quantity_low` | `${string}_quantity_high` | `${string}_final_qty`
+>;
 
 type SectionKey = 'customer' | 'products' | 'agent' | 'delivery';
 
@@ -256,6 +263,7 @@ export function OrderEditDialog({
             : '',
         laycan_from: order.laycan_from ? order.laycan_from.slice(0, 10) : '',
         laycan_to: order.laycan_to ? order.laycan_to.slice(0, 10) : '',
+        compliance_checked: order.compliance_checked === true,
     });
 
     const laycanRange = toDateRange(form.data.laycan_from, form.data.laycan_to);
@@ -448,6 +456,18 @@ export function OrderEditDialog({
                                         emptyText="No customers available."
                                     />
                                 </div>
+                                <label className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50/70 px-3 py-2 text-sm font-semibold text-blue-800">
+                                    <Checkbox
+                                        checked={form.data.compliance_checked}
+                                        onCheckedChange={(checked) =>
+                                            form.setData(
+                                                'compliance_checked',
+                                                checked === true,
+                                            )
+                                        }
+                                    />
+                                    Compliance checked
+                                </label>
                             </SingleFieldGrid>
                         </PanelSection>
 
@@ -462,11 +482,11 @@ export function OrderEditDialog({
                             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                                 {FUEL_GRADES.map((product) => {
                                     const lowField =
-                                        `${product.key}_quantity_low` as keyof OrderFormData;
+                                        `${product.key}_quantity_low` as QuantityFieldKey;
                                     const highField =
-                                        `${product.key}_quantity_high` as keyof OrderFormData;
+                                        `${product.key}_quantity_high` as QuantityFieldKey;
                                     const finalField =
-                                        `${product.key}_final_qty` as keyof OrderFormData;
+                                        `${product.key}_final_qty` as QuantityFieldKey;
                                     const productState =
                                         productStates[product.key];
                                     const StatusIcon = productState.complete

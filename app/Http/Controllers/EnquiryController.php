@@ -11,6 +11,7 @@ use App\Enums\OrderStatus;
 use App\Enums\ProductType;
 use App\Enums\QualityClaim;
 use App\Enums\Sampling;
+use App\Jobs\CheckEnquirySanctions;
 use App\Models\Agent;
 use App\Models\Customer;
 use App\Models\Enquiry;
@@ -47,6 +48,9 @@ class EnquiryController extends Controller
                 'created_at' => $enquiry->created_at,
                 'vessel_name' => $enquiry->vessel_name,
                 'imo' => $enquiry->imo,
+                'sanctions_screening_status' => $enquiry->sanctions_screening_status,
+                'sanctions_screened_at' => $enquiry->sanctions_screened_at,
+                'sanctions_screening_error' => $enquiry->sanctions_screening_error,
                 'port_id' => $enquiry->port_id,
                 'port' => $enquiry->port?->name,
                 'laycan_from' => $enquiry->laycan_from,
@@ -114,7 +118,9 @@ class EnquiryController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        Enquiry::create($request->validate($this->baseRules($request)));
+        $enquiry = Enquiry::create($request->validate($this->baseRules($request)));
+
+        CheckEnquirySanctions::dispatch($enquiry->id)->afterCommit();
 
         return $this->toast('Enquiry created.');
     }
@@ -159,7 +165,9 @@ class EnquiryController extends Controller
         $validated = $request->validate($this->editRules($request));
         $validated['barging_cost'] ??= 0;
 
-        Enquiry::create($validated);
+        $enquiry = Enquiry::create($validated);
+
+        CheckEnquirySanctions::dispatch($enquiry->id)->afterCommit();
 
         return $this->toast('Enquiry created.');
     }

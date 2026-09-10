@@ -1,4 +1,11 @@
-import { ChevronDown, Pencil } from 'lucide-react';
+import {
+    Check,
+    ChevronDown,
+    ClipboardCheck,
+    ClipboardX,
+    Pencil,
+    X,
+} from 'lucide-react';
 import { useState } from 'react';
 import { SortableHead } from '@/components/sortable-head';
 import { TableFrame } from '@/components/table-frame';
@@ -36,6 +43,9 @@ export interface OrderRow {
     vlsfo_final_qty: string | null;
     mgo_final_qty: string | null;
     hsfo_final_qty: string | null;
+    vlsfo_bdn_qty?: string | null;
+    mgo_bdn_qty?: string | null;
+    hsfo_bdn_qty?: string | null;
     vlsfo_quantity_low: string | null;
     mgo_quantity_low: string | null;
     hsfo_quantity_low: string | null;
@@ -43,6 +53,8 @@ export interface OrderRow {
     mgo_quantity_high: string | null;
     hsfo_quantity_high: string | null;
     product_type?: string | null;
+    compliance_checked?: boolean;
+    nomination_received?: boolean;
     eta: string | null;
     laycan_from: string | null;
     status: string;
@@ -85,12 +97,15 @@ export interface RowAction<T> {
     onClick: (row: T) => void;
 }
 
+export type OrderStatusMarker = 'compliance' | 'nomination';
+
 interface OrderDashboardProps<T extends OrderRow> {
     ports?: string[];
     pendingOrders: T[];
     completedOrders: T[];
     pendingActions: RowAction<T>[];
     completedActions: RowAction<T>[];
+    statusMarkers?: OrderStatusMarker[];
 }
 
 export default function OrderDashboard<T extends OrderRow>({
@@ -99,6 +114,7 @@ export default function OrderDashboard<T extends OrderRow>({
     completedOrders,
     pendingActions,
     completedActions,
+    statusMarkers = ['compliance', 'nomination'],
 }: OrderDashboardProps<T>) {
     const visiblePorts = ports.length > 0 ? ports : [...PORTS];
     const [selectedPort, setSelectedPort] = useState(visiblePorts[0]);
@@ -115,6 +131,8 @@ export default function OrderDashboard<T extends OrderRow>({
                 onPortChange={setSelectedPort}
                 rows={pendingOrders}
                 actions={pendingActions}
+                quantitySource="ordered"
+                statusMarkers={statusMarkers}
             />
             <Section
                 title="Completed Orders (current month)"
@@ -123,6 +141,8 @@ export default function OrderDashboard<T extends OrderRow>({
                 onPortChange={setSelectedPort}
                 rows={completedOrders}
                 actions={completedActions}
+                quantitySource="bdn"
+                statusMarkers={statusMarkers}
             />
         </div>
     );
@@ -135,6 +155,8 @@ function Section<T extends OrderRow>({
     onPortChange,
     rows,
     actions,
+    quantitySource,
+    statusMarkers,
 }: {
     title: string;
     ports: string[];
@@ -142,6 +164,8 @@ function Section<T extends OrderRow>({
     onPortChange: (port: string) => void;
     rows: T[];
     actions: RowAction<T>[];
+    quantitySource: 'ordered' | 'bdn';
+    statusMarkers: OrderStatusMarker[];
 }) {
     const rowsByPort = ports.map((port) => ({
         port,
@@ -184,7 +208,12 @@ function Section<T extends OrderRow>({
                     </TabsList>
                     {rowsByPort.map(({ port, rows: portRows }) => (
                         <TabsContent key={port} value={port}>
-                            <PortTable rows={portRows} actions={actions} />
+                            <PortTable
+                                rows={portRows}
+                                actions={actions}
+                                quantitySource={quantitySource}
+                                statusMarkers={statusMarkers}
+                            />
                         </TabsContent>
                     ))}
                 </Tabs>
@@ -196,11 +225,16 @@ function Section<T extends OrderRow>({
 function PortTable<T extends OrderRow>({
     rows,
     actions,
+    quantitySource,
+    statusMarkers,
 }: {
     rows: T[];
     actions: RowAction<T>[];
+    quantitySource: 'ordered' | 'bdn';
+    statusMarkers: OrderStatusMarker[];
 }) {
     const { sortKey, sortDir, handleSort, sorted } = useSortable(rows, 'eta');
+    const hasActions = actions.length > 0;
 
     return (
         <TableFrame className="rounded-[14px] border-[#E3EAF2]">
@@ -218,9 +252,11 @@ function PortTable<T extends OrderRow>({
                                 className="h-11 px-3 font-bold text-[#172033]"
                             />
                         ))}
-                        <TableHead className="h-11 px-3 text-right font-bold text-[#172033]">
-                            Actions
-                        </TableHead>
+                        {hasActions && (
+                            <TableHead className="h-11 px-3 text-right font-bold text-[#172033]">
+                                Actions
+                            </TableHead>
+                        )}
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -230,7 +266,10 @@ function PortTable<T extends OrderRow>({
                             className="min-h-[50px] border-[#E7EDF4] bg-white hover:bg-[#F8FAFD]"
                         >
                             <TableCell className="px-3 py-3 font-medium text-[#0F172A]">
-                                {row.vessel_name ?? '-'}
+                                <VesselNameCell
+                                    row={row}
+                                    statusMarkers={statusMarkers}
+                                />
                             </TableCell>
                             <TableCell className="px-3 py-3 text-[#334155]">
                                 {row.customer_name ?? '-'}
@@ -244,11 +283,11 @@ function PortTable<T extends OrderRow>({
                                     className="px-3 py-3 font-medium text-[#334155] tabular-nums"
                                 >
                                     <ProductQuantityCell
-                                        quantity={
-                                            (row as OrderRow)[
-                                                `${grade.key}_qty`
-                                            ] ?? null
-                                        }
+                                        quantity={quantityValueFor(
+                                            row,
+                                            grade.key,
+                                            quantitySource,
+                                        )}
                                         productType={row.product_type ?? null}
                                     />
                                 </TableCell>
@@ -256,37 +295,42 @@ function PortTable<T extends OrderRow>({
                             <TableCell className="px-3 py-3 text-[#334155] tabular-nums">
                                 {shortDate(row.eta ?? row.laycan_from)}
                             </TableCell>
-                            <TableCell className="px-3 py-3 text-right">
-                                <div className="flex justify-end gap-2">
-                                    {actions.map((action, index) => (
-                                        <Button
-                                            key={index}
-                                            variant={action.variant}
-                                            size="sm"
-                                            className={
-                                                action.className?.(row) ??
-                                                'h-8 rounded-lg border border-[#4F75F5] bg-white px-3 text-sm font-semibold text-[#2455E6] shadow-none transition-[background-color,color,box-shadow] duration-200 hover:bg-[#2455E6] hover:text-white hover:shadow-[0_6px_14px_rgba(36,85,230,0.20)] focus-visible:ring-[#3155E7]/40'
-                                            }
-                                            onClick={() => action.onClick(row)}
-                                        >
-                                            <Pencil
-                                                className="size-3.5"
-                                                aria-hidden="true"
-                                            />
-                                            {typeof action.label === 'function'
-                                                ? action.label(row)
-                                                : action.label}
-                                        </Button>
-                                    ))}
-                                </div>
-                            </TableCell>
+                            {hasActions && (
+                                <TableCell className="px-3 py-3 text-right">
+                                    <div className="flex justify-end gap-2">
+                                        {actions.map((action, index) => (
+                                            <Button
+                                                key={index}
+                                                variant={action.variant}
+                                                size="sm"
+                                                className={
+                                                    action.className?.(row) ??
+                                                    'h-8 rounded-lg border border-[#4F75F5] bg-white px-3 text-sm font-semibold text-[#2455E6] shadow-none transition-[background-color,color,box-shadow] duration-200 hover:bg-[#2455E6] hover:text-white hover:shadow-[0_6px_14px_rgba(36,85,230,0.20)] focus-visible:ring-[#3155E7]/40'
+                                                }
+                                                onClick={() =>
+                                                    action.onClick(row)
+                                                }
+                                            >
+                                                <Pencil
+                                                    className="size-3.5"
+                                                    aria-hidden="true"
+                                                />
+                                                {typeof action.label ===
+                                                'function'
+                                                    ? action.label(row)
+                                                    : action.label}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </TableCell>
+                            )}
                         </TableRow>
                     ))}
 
                     {rows.length === 0 && (
                         <TableRow>
                             <TableCell
-                                colSpan={COLUMNS.length + 1}
+                                colSpan={COLUMNS.length + (hasActions ? 1 : 0)}
                                 className="px-3 py-8 text-center text-muted-foreground"
                             >
                                 No orders.
@@ -297,6 +341,98 @@ function PortTable<T extends OrderRow>({
             </Table>
         </TableFrame>
     );
+}
+
+function VesselNameCell({
+    row,
+    statusMarkers,
+}: {
+    row: OrderRow;
+    statusMarkers: OrderStatusMarker[];
+}) {
+    return (
+        <div className="flex min-w-0 items-center gap-2">
+            {statusMarkers.length > 0 && (
+                <div className="flex shrink-0 items-center gap-1">
+                    {statusMarkers.includes('compliance') && (
+                        <BooleanStatusIcon
+                            checked={row.compliance_checked === true}
+                            kind="compliance"
+                        />
+                    )}
+                    {statusMarkers.includes('nomination') && (
+                        <BooleanStatusIcon
+                            checked={row.nomination_received === true}
+                            kind="nomination"
+                        />
+                    )}
+                </div>
+            )}
+            <span className="min-w-0 truncate">{row.vessel_name ?? '-'}</span>
+        </div>
+    );
+}
+
+function BooleanStatusIcon({
+    checked,
+    kind,
+}: {
+    checked: boolean;
+    kind: 'compliance' | 'nomination';
+}) {
+    const Icon =
+        kind === 'nomination'
+            ? checked
+                ? ClipboardCheck
+                : ClipboardX
+            : checked
+              ? Check
+              : X;
+    const label =
+        kind === 'nomination'
+            ? checked
+                ? 'Nomination received'
+                : 'Nomination not received'
+            : checked
+              ? 'Compliance checked'
+              : 'Compliance not checked';
+
+    return (
+        <span
+            className={
+                checked
+                    ? 'inline-grid size-4 place-items-center rounded-[4px] bg-emerald-600 text-white'
+                    : 'inline-grid size-4 place-items-center rounded-[4px] bg-red-600 text-white'
+            }
+            title={label}
+            aria-label={label}
+        >
+            <Icon className="size-2.5" aria-hidden="true" />
+        </span>
+    );
+}
+
+function quantityKeyFor(
+    productKey: string,
+    quantitySource: 'ordered' | 'bdn',
+): keyof OrderRow {
+    return (
+        quantitySource === 'bdn' ? `${productKey}_bdn_qty` : `${productKey}_qty`
+    ) as keyof OrderRow;
+}
+
+function quantityValueFor(
+    row: OrderRow,
+    productKey: string,
+    quantitySource: 'ordered' | 'bdn',
+): string | null {
+    const value = row[quantityKeyFor(productKey, quantitySource)];
+
+    if (value === null || value === undefined) {
+        return null;
+    }
+
+    return String(value);
 }
 
 function ProductQuantityCell({

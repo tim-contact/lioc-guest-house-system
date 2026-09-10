@@ -28,6 +28,8 @@ export interface OrderEditRow extends OrderRow {
     mobile_no: string | null;
     delivery_mode: string | null;
     laycan_to: string | null;
+    compliance_checked: boolean;
+    nomination_received: boolean;
     disputes: DisputeRow[];
 }
 
@@ -125,6 +127,7 @@ export default function OrdersDashboard({
                 completedOrders={completedOrders}
                 pendingActions={pendingActions}
                 completedActions={completedActions}
+                statusMarkers={['compliance']}
             />
 
             {editing && (
