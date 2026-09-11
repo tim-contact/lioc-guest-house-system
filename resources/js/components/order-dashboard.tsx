@@ -1,11 +1,4 @@
-import {
-    Check,
-    ChevronDown,
-    ClipboardCheck,
-    ClipboardX,
-    Pencil,
-    X,
-} from 'lucide-react';
+import { ChevronDown, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { SortableHead } from '@/components/sortable-head';
 import { TableFrame } from '@/components/table-frame';
@@ -380,14 +373,6 @@ function BooleanStatusIcon({
     checked: boolean;
     kind: 'compliance' | 'nomination';
 }) {
-    const Icon =
-        kind === 'nomination'
-            ? checked
-                ? ClipboardCheck
-                : ClipboardX
-            : checked
-              ? Check
-              : X;
     const label =
         kind === 'nomination'
             ? checked
@@ -396,18 +381,23 @@ function BooleanStatusIcon({
             : checked
               ? 'Compliance checked'
               : 'Compliance not checked';
+    const icon =
+        kind === 'nomination'
+            ? checked
+                ? '/images/icons/nomination_received_true.png'
+                : '/images/icons/nomination_received_false.png'
+            : checked
+              ? '/images/icons/compliance_check_true.png'
+              : '/images/icons/compliance_check_false.png';
 
     return (
         <span
-            className={
-                checked
-                    ? 'inline-grid size-4 place-items-center rounded-[4px] bg-emerald-600 text-white'
-                    : 'inline-grid size-4 place-items-center rounded-[4px] bg-red-600 text-white'
-            }
+            className="inline-grid size-5 place-items-center"
             title={label}
             aria-label={label}
+            role="img"
         >
-            <Icon className="size-2.5" aria-hidden="true" />
+            <img src={icon} alt="" className="size-5 object-contain" />
         </span>
     );
 }

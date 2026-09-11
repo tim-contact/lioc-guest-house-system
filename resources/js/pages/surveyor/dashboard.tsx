@@ -93,6 +93,8 @@ interface SurveyorDashboardProps {
     samplingLocationOptions: EnumOption[];
     samplingMethodOptions: EnumOption[];
     assignedBarge?: BargeOption | null;
+    assignedDeliveryModes?: string[];
+    selectedScope?: string | null;
 }
 
 const PENDING_COLUMNS = [
@@ -506,6 +508,8 @@ export default function SurveyorDashboard({
     samplingLocationOptions,
     samplingMethodOptions,
     assignedBarge,
+    assignedDeliveryModes = [],
+    selectedScope,
 }: SurveyorDashboardProps) {
     const { auth } = usePage().props;
     const userType = auth.user?.type ?? '';
@@ -523,16 +527,34 @@ export default function SurveyorDashboard({
         },
     ];
 
+    const assignedDeliveryScopeValues = new Set(
+        assignedDeliveryModes.map((mode) => `delivery:${mode}`),
+    );
+    const availableDeliveryScopeOptions = isSurveyor
+        ? deliveryScopeOptions.filter((scope) =>
+              assignedDeliveryScopeValues.has(scope.value),
+          )
+        : deliveryScopeOptions;
+    const scopeOptions = [
+        ...barges.map((barge) => ({
+            value: barge.imo,
+            label: barge.name,
+            sublabel: barge.imo,
+        })),
+        ...availableDeliveryScopeOptions,
+    ];
+    const canSelectScope = scopeOptions.length > 1;
     const [selectedBarge, setSelectedBarge] = useState(
-        assignedBarge?.imo ?? '',
+        selectedScope ?? assignedBarge?.imo ?? scopeOptions[0]?.value ?? '',
     );
     const [bdnOrderId, setBdnOrderId] = useState<number | null>(null);
     const [mobileTab, setMobileTab] = useState<'pending' | 'completed'>(
         pendingOrders.length > 0 ? 'pending' : 'completed',
     );
     const selectedDeliveryScope =
-        deliveryScopeOptions.find((scope) => scope.value === selectedBarge) ??
-        null;
+        availableDeliveryScopeOptions.find(
+            (scope) => scope.value === selectedBarge,
+        ) ?? null;
     const selectedBargeDetails =
         assignedBarge ??
         barges.find((barge) => barge.imo === selectedBarge) ??
@@ -554,24 +576,19 @@ export default function SurveyorDashboard({
                     pendingCount={pendingOrders.length}
                     completedCount={completedOrders.length}
                 >
-                    {isSurveyor && assignedBarge ? (
+                    {isSurveyor && !canSelectScope ? (
                         <div className="text-sm text-[#657185]">
                             Assigned to{' '}
                             <span className="font-semibold text-[#102a4c]">
-                                {assignedBarge.name}
+                                {selectedBargeDetails?.name ??
+                                    selectedDeliveryScope?.label ??
+                                    'No assigned scope'}
                             </span>
                         </div>
                     ) : (
                         <div className="w-full sm:max-w-xs">
                             <SearchableCombobox
-                                items={[
-                                    ...barges.map((barge) => ({
-                                        value: barge.imo,
-                                        label: barge.name,
-                                        sublabel: barge.imo,
-                                    })),
-                                    ...deliveryScopeOptions,
-                                ]}
+                                items={scopeOptions}
                                 value={selectedBarge}
                                 onChange={(value) => {
                                     setSelectedBarge(value);

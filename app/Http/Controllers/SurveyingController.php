@@ -39,21 +39,51 @@ class SurveyingController extends Controller
                     'samplingLocationOptions' => $this->enumOptions(Sampling::cases()),
                     'samplingMethodOptions' => $this->enumOptions(SamplingMethod::cases()),
                     'assignedBarge' => null,
+                    'assignedDeliveryModes' => [],
+                    'selectedScope' => null,
                 ]);
             }
 
             $assignedBargeIds = $assignment['barge_ids'];
             $assignedDeliveryModes = $assignment['delivery_modes'];
-            $requestedBarge = $request->query('barge');
-            $barge = is_string($requestedBarge) && in_array($requestedBarge, $assignedBargeIds, true)
-                ? $requestedBarge
+            $filterBargeIds = $assignedBargeIds;
+            $filterDeliveryModes = $assignedDeliveryModes;
+            $selectedScope = null;
+            $requestedScope = $request->query('barge');
+            $requestedDeliveryMode = is_string($requestedScope) && str_starts_with($requestedScope, 'delivery:')
+                ? DeliveryMode::tryFrom(substr($requestedScope, 9))
                 : null;
+            $barge = is_string($requestedScope)
+                && $requestedDeliveryMode === null
+                && in_array($requestedScope, $assignedBargeIds, true)
+                    ? $requestedScope
+                    : null;
+
+            if ($barge !== null) {
+                $selectedScope = $barge;
+            } elseif ($requestedDeliveryMode !== null && in_array($requestedDeliveryMode->value, $assignedDeliveryModes, true)) {
+                $selectedScope = 'delivery:'.$requestedDeliveryMode->value;
+                $filterBargeIds = [];
+                $filterDeliveryModes = [$requestedDeliveryMode->value];
+            }
+
             $assignedBarges = Barge::whereIn('imo', $assignedBargeIds)
                 ->orderBy('name')
                 ->get(['imo', 'name']);
-            $barge = $barge === null && count($assignedBargeIds) === 1
+
+            $scopeCount = count($assignedBargeIds) + count($assignedDeliveryModes);
+            $barge = $selectedScope === null && $scopeCount === 1 && count($assignedBargeIds) === 1
                 ? $assignedBargeIds[0]
                 : $barge;
+
+            if ($selectedScope === null && $scopeCount === 1 && count($assignedDeliveryModes) === 1) {
+                $selectedScope = 'delivery:'.$assignedDeliveryModes[0];
+                $filterBargeIds = [];
+                $filterDeliveryModes = [$assignedDeliveryModes[0]];
+            } elseif ($barge !== null) {
+                $selectedScope = $barge;
+            }
+
             $assignedBarge = $barge
                 ? $assignedBarges->firstWhere('imo', $barge)
                 : null;
@@ -68,14 +98,17 @@ class SurveyingController extends Controller
                 : null;
             $assignedBarge = null;
             $assignedBargeIds = [];
+            $filterBargeIds = [];
             $assignedDeliveryModes = $selectedDeliveryMode !== null && $selectedDeliveryMode !== DeliveryMode::Barge
                 ? [$selectedDeliveryMode->value]
                 : [];
+            $filterDeliveryModes = $assignedDeliveryModes;
             $assignedBarges = collect();
+            $selectedScope = is_string($selectedScope) ? $selectedScope : null;
         }
 
-        $pendingOrders = fn (): array => ($barge || $assignedBargeIds !== [] || $assignedDeliveryModes !== [])
-            ? $this->filterByAssignment(OrderService::pending(dueWithinDays: 7), $barge, $assignedBargeIds, $assignedDeliveryModes)
+        $pendingOrders = fn (): array => ($barge || $filterBargeIds !== [] || $filterDeliveryModes !== [])
+            ? $this->filterByAssignment(OrderService::pending(dueWithinDays: 7), $barge, $filterBargeIds, $filterDeliveryModes)
                 ->load(['bdn', 'enquiry'])
                 ->map(fn (Order $order): array => [
                     'id' => $order->id,
@@ -107,8 +140,8 @@ class SurveyingController extends Controller
                 ->all()
             : [];
 
-        $completedOrders = fn (): array => ($barge || $assignedBargeIds !== [] || $assignedDeliveryModes !== [])
-            ? $this->filterByAssignment(OrderService::completedWithin(7), $barge, $assignedBargeIds, $assignedDeliveryModes)
+        $completedOrders = fn (): array => ($barge || $filterBargeIds !== [] || $filterDeliveryModes !== [])
+            ? $this->filterByAssignment(OrderService::completedWithin(7), $barge, $filterBargeIds, $filterDeliveryModes)
                 ->map(fn (Order $order): array => [
                     'id' => $order->id,
                     'vessel_name' => $order->vessel_name,
@@ -138,6 +171,8 @@ class SurveyingController extends Controller
             'samplingLocationOptions' => $this->enumOptions(Sampling::cases()),
             'samplingMethodOptions' => $this->enumOptions(SamplingMethod::cases()),
             'assignedBarge' => $assignedBarge,
+            'assignedDeliveryModes' => $user->type->value === 'surveyor' ? $assignedDeliveryModes : [],
+            'selectedScope' => $selectedScope,
         ]);
     }
 

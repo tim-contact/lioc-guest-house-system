@@ -1,5 +1,6 @@
 import { useForm } from '@inertiajs/react';
-import type { FormEvent } from 'react';
+import { ChevronDown, Plus, X } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
 import { DateTimePicker } from '@/components/date-time-picker';
 import { ReadOnlyValue } from '@/components/edit-panel/fields';
 import { SummaryBand } from '@/components/edit-panel/summary-band';
@@ -21,6 +22,118 @@ import type { CrudConfig, CrudField, CrudFormData } from './crud-types';
 const controlClass =
     'h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80';
 
+function StringListControl({
+    field,
+    value,
+    disabled,
+    onChange,
+}: {
+    field: CrudField;
+    value: boolean | string | string[];
+    disabled: boolean;
+    onChange: (value: string[]) => void;
+}) {
+    const [open, setOpen] = useState(true);
+    const values = Array.isArray(value)
+        ? value
+        : typeof value === 'string' && value.length > 0
+          ? [value]
+          : [''];
+    const filledCount = values.filter((item) => item.trim().length > 0).length;
+
+    const updateValue = (index: number, nextValue: string): void => {
+        onChange(
+            values.map((currentValue, currentIndex) =>
+                currentIndex === index ? nextValue : currentValue,
+            ),
+        );
+    };
+
+    const addValue = (): void => {
+        onChange([...values, '']);
+        setOpen(true);
+    };
+
+    const removeValue = (index: number): void => {
+        const nextValues = values.filter(
+            (_, currentIndex) => currentIndex !== index,
+        );
+
+        onChange(nextValues.length > 0 ? nextValues : ['']);
+    };
+
+    return (
+        <div className="rounded-xl border border-[#D8E2EE] bg-[#F8FAFC]">
+            <button
+                type="button"
+                className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left"
+                onClick={() => setOpen((current) => !current)}
+                aria-expanded={open}
+                aria-controls={`${field.name}-list`}
+            >
+                <span className="text-xs font-semibold tracking-wide text-[#64748B] uppercase">
+                    {filledCount > 0
+                        ? `${filledCount} saved ${filledCount === 1 ? 'entry' : 'entries'}`
+                        : 'No entries yet'}
+                </span>
+                <ChevronDown
+                    className={cn(
+                        'size-4 text-[#64748B] transition-transform',
+                        open && 'rotate-180',
+                    )}
+                    aria-hidden="true"
+                />
+            </button>
+
+            {open && (
+                <div
+                    id={`${field.name}-list`}
+                    className="grid gap-2 border-t border-[#D8E2EE] p-3"
+                >
+                    {values.map((item, index) => (
+                        <div
+                            key={`${field.name}-${index}`}
+                            className="flex min-w-0 items-center gap-2"
+                        >
+                            <Input
+                                type={field.itemType ?? 'text'}
+                                value={item}
+                                placeholder={field.placeholder}
+                                disabled={disabled}
+                                onChange={(event) =>
+                                    updateValue(index, event.target.value)
+                                }
+                            />
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon-xs"
+                                disabled={disabled || values.length === 1}
+                                onClick={() => removeValue(index)}
+                                aria-label={`Remove ${field.label} entry ${index + 1}`}
+                            >
+                                <X className="size-3" aria-hidden="true" />
+                            </Button>
+                        </div>
+                    ))}
+
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-fit"
+                        disabled={disabled}
+                        onClick={addValue}
+                    >
+                        <Plus className="size-3.5" aria-hidden="true" />
+                        {field.addLabel ?? `Add ${field.label}`}
+                    </Button>
+                </div>
+            )}
+        </div>
+    );
+}
+
 function FieldControl({
     field,
     value,
@@ -34,6 +147,17 @@ function FieldControl({
     disabled: boolean;
     onChange: (value: boolean | string | string[]) => void;
 }) {
+    if (field.type === 'string-list') {
+        return (
+            <StringListControl
+                field={field}
+                value={value}
+                disabled={disabled}
+                onChange={onChange}
+            />
+        );
+    }
+
     if (field.type === 'checkbox') {
         return (
             <div className="flex h-8 items-center rounded-lg border border-input px-2.5">

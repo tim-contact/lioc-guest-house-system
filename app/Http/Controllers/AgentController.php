@@ -8,6 +8,7 @@ use App\Models\ContactInformation;
 use App\Models\Order;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -29,7 +30,7 @@ class AgentController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $validated = $request->validate($this->rules());
+        $validated = $this->validatedData($request);
         $agent = Agent::create($validated);
 
         ContactInformation::syncFor($agent, [
@@ -42,7 +43,7 @@ class AgentController extends Controller
 
     public function update(Request $request, Agent $agent): RedirectResponse
     {
-        $validated = $request->validate($this->rules());
+        $validated = $this->validatedData($request);
 
         $agent->update($validated);
         ContactInformation::syncFor($agent, [
@@ -70,7 +71,9 @@ class AgentController extends Controller
         return [
             'name' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string', 'max:255'],
-            'contact' => ['required', 'string', 'max:255'],
+            'contact' => ['nullable', 'required_without:contact_numbers', 'string', 'max:255'],
+            'contact_numbers' => ['nullable', 'array'],
+            'contact_numbers.*' => ['nullable', 'string', 'max:255'],
             'mail_id' => ['nullable', 'string', 'max:1000', function (string $attribute, mixed $value, \Closure $fail): void {
                 foreach (ContactInformation::splitValues($value) as $email) {
                     if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
@@ -78,6 +81,51 @@ class AgentController extends Controller
                     }
                 }
             }],
+            'email_addresses' => ['nullable', 'array'],
+            'email_addresses.*' => ['nullable', 'email', 'max:255'],
         ];
+    }
+
+    /**
+     * @return array{name: string, address: string, contact: string, mail_id: string|null}
+     *
+     * @throws ValidationException
+     */
+    private function validatedData(Request $request): array
+    {
+        $validated = $request->validate($this->rules());
+        $phones = $this->contactValues($validated['contact_numbers'] ?? $validated['contact'] ?? null);
+
+        if ($phones === []) {
+            throw ValidationException::withMessages([
+                'contact_numbers' => 'At least one contact number is required.',
+            ]);
+        }
+
+        $emails = $this->contactValues($validated['email_addresses'] ?? $validated['mail_id'] ?? null);
+
+        return [
+            'name' => $validated['name'],
+            'address' => $validated['address'],
+            'contact' => implode(', ', $phones),
+            'mail_id' => $emails === [] ? null : implode(', ', $emails),
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function contactValues(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return ContactInformation::splitValues($value);
+        }
+
+        return collect($value)
+            ->map(fn (mixed $item): string => trim((string) $item))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 }

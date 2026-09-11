@@ -39,6 +39,24 @@ function isPresent(value: string | null): value is string {
     return typeof value === 'string' && value.length > 0;
 }
 
+function contactValues(agent: Agent | null): string[] {
+    const values =
+        agent && agent.contact_numbers.length > 0
+            ? agent.contact_numbers
+            : [agent?.contact ?? ''].filter(isPresent);
+
+    return values.length > 0 ? values : [''];
+}
+
+function emailValues(agent: Agent | null): string[] {
+    const values =
+        agent && agent.email_addresses.length > 0
+            ? agent.email_addresses
+            : [agent?.mail_id ?? null].filter(isPresent);
+
+    return values.length > 0 ? values : [''];
+}
+
 function phoneEntries(agent: Agent): ContactEntry[] {
     const values =
         agent.contact_numbers.length > 0
@@ -184,14 +202,30 @@ const config: CrudConfig<Agent> = {
     fields: [
         { name: 'name', label: 'Name' },
         { name: 'address', label: 'Address' },
-        { name: 'contact', label: 'Contact Numbers' },
-        { name: 'mail_id', label: 'Mail IDs' },
+        {
+            name: 'contact_numbers',
+            label: 'Contact Numbers',
+            type: 'string-list',
+            itemType: 'tel',
+            placeholder: 'Enter contact number',
+            addLabel: 'Add contact number',
+            section: 'Contact details',
+        },
+        {
+            name: 'email_addresses',
+            label: 'Email IDs',
+            type: 'string-list',
+            itemType: 'email',
+            placeholder: 'Enter email address',
+            addLabel: 'Add email ID',
+            section: 'Contact details',
+        },
     ],
     toFormData: (agent) => ({
         name: agent?.name ?? '',
         address: agent?.address ?? '',
-        contact: agent?.contact ?? '',
-        mail_id: agent?.mail_id ?? '',
+        contact_numbers: contactValues(agent),
+        email_addresses: emailValues(agent),
     }),
     routes: {
         store: () => store(),

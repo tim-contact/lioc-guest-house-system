@@ -17,7 +17,8 @@ export type CrudFieldType =
     | 'multiselect'
     | 'checkbox'
     | 'password'
-    | 'textarea';
+    | 'textarea'
+    | 'string-list';
 
 export interface CrudField {
     name: string;
@@ -29,6 +30,9 @@ export interface CrudField {
     disabledWhen?: (data: CrudFormData) => boolean;
     resetOnChange?: string[];
     section?: string;
+    placeholder?: string;
+    addLabel?: string;
+    itemType?: 'text' | 'email' | 'tel';
 }
 
 export interface CrudColumn<T> {

@@ -31,6 +31,15 @@ function mobileNumbers(pic: AgentPic): string {
         : pic.mobile;
 }
 
+function mobileValues(pic: AgentPic | null): string[] {
+    const values =
+        pic && pic.contact_numbers.length > 0
+            ? pic.contact_numbers
+            : [pic?.mobile ?? ''].filter((value) => value.length > 0);
+
+    return values.length > 0 ? values : [''];
+}
+
 export default function AgentPicsIndex({ pics, agents }: AgentPicsIndexProps) {
     const config: CrudConfig<AgentPic> = {
         title: 'Agents',
@@ -67,12 +76,19 @@ export default function AgentPicsIndex({ pics, agents }: AgentPicsIndexProps) {
                 })),
             },
             { name: 'name', label: 'PIC' },
-            { name: 'mobile', label: 'Mobile Numbers' },
+            {
+                name: 'contact_numbers',
+                label: 'Mobile Numbers',
+                type: 'string-list',
+                itemType: 'tel',
+                placeholder: 'Enter mobile number',
+                addLabel: 'Add mobile number',
+            },
         ],
         toFormData: (pic) => ({
             agent_id: pic ? String(pic.agent_id) : '',
             name: pic?.name ?? '',
-            mobile: pic?.mobile ?? '',
+            contact_numbers: mobileValues(pic),
         }),
         routes: {
             store: () => store(),

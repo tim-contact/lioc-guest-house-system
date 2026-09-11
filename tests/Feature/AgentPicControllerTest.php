@@ -71,6 +71,51 @@ test('store records multiple PIC mobile numbers separately', function () {
     ]);
 });
 
+test('store accepts separate PIC mobile fields', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $agent = Agent::factory()->create();
+
+    $this->post(route('agent-pics.store'), [
+        'agent_id' => $agent->id,
+        'name' => 'Separate Phone PIC',
+        'contact_numbers' => ['0710000001', '0710000002', ''],
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    $pic = AgentPic::sole();
+
+    expect($pic)
+        ->mobile->toBe('0710000001, 0710000002')
+        ->and($pic->contactNumbers()->pluck('value')->all())->toBe([
+            '0710000001',
+            '0710000002',
+        ]);
+});
+
+test('update accepts separate PIC mobile fields', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $pic = AgentPic::factory()->create(['mobile' => '0710000001']);
+    $pic->contactInformation()->create([
+        'kind' => 'phone',
+        'value' => '0710000001',
+        'is_primary' => true,
+    ]);
+
+    $this->put(route('agent-pics.update', $pic), [
+        'agent_id' => $pic->agent_id,
+        'name' => 'Updated Separate PIC',
+        'contact_numbers' => ['0720000001', '0720000002'],
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($pic->refresh())
+        ->mobile->toBe('0720000001, 0720000002')
+        ->and($pic->contactNumbers()->pluck('value')->all())->toBe([
+            '0720000001',
+            '0720000002',
+        ]);
+});
+
 test('store requires an existing agency, a name and a mobile', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 

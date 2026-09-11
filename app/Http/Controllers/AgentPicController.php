@@ -8,6 +8,7 @@ use App\Models\ContactInformation;
 use App\Models\Order;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -34,7 +35,7 @@ class AgentPicController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $validated = $request->validate($this->rules());
+        $validated = $this->validatedData($request);
         $agentPic = AgentPic::create($validated);
 
         ContactInformation::syncFor($agentPic, [
@@ -46,7 +47,7 @@ class AgentPicController extends Controller
 
     public function update(Request $request, AgentPic $agentPic): RedirectResponse
     {
-        $validated = $request->validate($this->rules());
+        $validated = $this->validatedData($request);
 
         $agentPic->update($validated);
         ContactInformation::syncFor($agentPic, [
@@ -71,7 +72,49 @@ class AgentPicController extends Controller
         return [
             'agent_id' => ['required', 'exists:agents,id'],
             'name' => ['required', 'string', 'max:255'],
-            'mobile' => ['required', 'string', 'max:255'],
+            'mobile' => ['nullable', 'required_without:contact_numbers', 'string', 'max:255'],
+            'contact_numbers' => ['nullable', 'array'],
+            'contact_numbers.*' => ['nullable', 'string', 'max:255'],
         ];
+    }
+
+    /**
+     * @return array{agent_id: mixed, name: string, mobile: string}
+     *
+     * @throws ValidationException
+     */
+    private function validatedData(Request $request): array
+    {
+        $validated = $request->validate($this->rules());
+        $phones = $this->contactValues($validated['contact_numbers'] ?? $validated['mobile'] ?? null);
+
+        if ($phones === []) {
+            throw ValidationException::withMessages([
+                'mobile' => 'At least one mobile number is required.',
+            ]);
+        }
+
+        return [
+            'agent_id' => $validated['agent_id'],
+            'name' => $validated['name'],
+            'mobile' => implode(', ', $phones),
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function contactValues(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return ContactInformation::splitValues($value);
+        }
+
+        return collect($value)
+            ->map(fn (mixed $item): string => trim((string) $item))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 }

@@ -67,6 +67,57 @@ test('store records multiple agent contact values separately', function () {
     ]);
 });
 
+test('store accepts separate agent contact fields', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $this->post(route('agents.store'), [
+        'name' => 'Separate Contact Agency',
+        'address' => '3 Jetty Road',
+        'contact_numbers' => ['0700000001', '0700000002', ''],
+        'email_addresses' => ['ops@example.test', 'finance@example.test', ''],
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    $agent = Agent::sole();
+
+    expect($agent)
+        ->contact->toBe('0700000001, 0700000002')
+        ->mail_id->toBe('ops@example.test, finance@example.test')
+        ->and($agent->contactNumbers()->pluck('value')->all())->toBe([
+            '0700000001',
+            '0700000002',
+        ])->and($agent->emailAddresses()->pluck('value')->all())->toBe([
+            'ops@example.test',
+            'finance@example.test',
+        ]);
+});
+
+test('update accepts separate agent contact fields', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $agent = Agent::factory()->create(['contact' => '0700000001', 'mail_id' => 'old@example.test']);
+    $agent->contactInformation()->createMany([
+        ['kind' => 'phone', 'value' => '0700000001', 'is_primary' => true],
+        ['kind' => 'email', 'value' => 'old@example.test', 'is_primary' => true],
+    ]);
+
+    $this->put(route('agents.update', $agent), [
+        'name' => 'Updated Separate Agency',
+        'address' => '4 Harbour Road',
+        'contact_numbers' => ['0710000001', '0710000002'],
+        'email_addresses' => ['new@example.test'],
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($agent->refresh())
+        ->contact->toBe('0710000001, 0710000002')
+        ->mail_id->toBe('new@example.test')
+        ->and($agent->contactNumbers()->pluck('value')->all())->toBe([
+            '0710000001',
+            '0710000002',
+        ])->and($agent->emailAddresses()->pluck('value')->all())->toBe([
+            'new@example.test',
+        ]);
+});
+
 test('store requires the core fields', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 

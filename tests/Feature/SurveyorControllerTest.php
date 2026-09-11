@@ -189,6 +189,78 @@ test('super admin can filter the surveyor dashboard by pipeline deliveries', fun
             ->where('pendingOrders.0.delivery_mode', DeliveryMode::Pipeline->value));
 });
 
+test('surveyor can select among assigned delivery method scopes', function () {
+    $user = User::factory()->create(['type' => UserType::Surveyor]);
+    $this->actingAs($user);
+
+    $barge = Barge::factory()->create();
+    $surveyor = Surveyor::factory()->create(['user_id' => $user->id, 'barge_id' => null]);
+    $surveyor->barges()->sync([$barge->imo]);
+    $surveyor->deliveryModeAssignments()->createMany([
+        ['delivery_mode' => DeliveryMode::Truck],
+        ['delivery_mode' => DeliveryMode::Pipeline],
+    ]);
+
+    createSurveyorOrder([
+        'vessel_name' => 'MV Assigned Barge',
+        'barge_id' => $barge->imo,
+        'delivery_mode' => DeliveryMode::Barge,
+    ]);
+    createSurveyorOrder([
+        'vessel_name' => 'MV Truck',
+        'delivery_mode' => DeliveryMode::Truck,
+        'barge_id' => null,
+    ]);
+    createSurveyorOrder([
+        'vessel_name' => 'MV Pipeline',
+        'delivery_mode' => DeliveryMode::Pipeline,
+        'barge_id' => null,
+    ]);
+
+    $this->get(route('surveyor', ['barge' => 'delivery:truck']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('surveyor/dashboard')
+            ->has('barges', 1)
+            ->where('assignedDeliveryModes', [
+                DeliveryMode::Truck->value,
+                DeliveryMode::Pipeline->value,
+            ])
+            ->where('selectedScope', 'delivery:truck')
+            ->has('pendingOrders', 1)
+            ->where('pendingOrders.0.vessel_name', 'MV Truck')
+            ->where('pendingOrders.0.delivery_mode', DeliveryMode::Truck->value));
+});
+
+test('surveyor can select among multiple assigned barges', function () {
+    $user = User::factory()->create(['type' => UserType::Surveyor]);
+    $this->actingAs($user);
+
+    $bargeA = Barge::factory()->create(['name' => 'Alpha Barge']);
+    $bargeB = Barge::factory()->create(['name' => 'Beta Barge']);
+    $surveyor = Surveyor::factory()->create(['user_id' => $user->id, 'barge_id' => null]);
+    $surveyor->barges()->sync([$bargeA->imo, $bargeB->imo]);
+
+    createSurveyorOrder([
+        'vessel_name' => 'MV Alpha',
+        'barge_id' => $bargeA->imo,
+    ]);
+    createSurveyorOrder([
+        'vessel_name' => 'MV Beta',
+        'barge_id' => $bargeB->imo,
+    ]);
+
+    $this->get(route('surveyor', ['barge' => $bargeB->imo]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('surveyor/dashboard')
+            ->has('barges', 2)
+            ->where('selectedScope', $bargeB->imo)
+            ->where('assignedBarge.imo', $bargeB->imo)
+            ->has('pendingOrders', 1)
+            ->where('pendingOrders.0.vessel_name', 'MV Beta'));
+});
+
 test('guests cannot update a surveyor order', function () {
     $order = createSurveyorOrder();
 
