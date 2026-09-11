@@ -23,5 +23,4 @@ Route::middleware(['auth', 'verified', 'role:super_admin,master,sales,operations
         ->middleware('throttle:6,1')
         ->name('user-password.update');
 
-    Route::inertia('settings/appearance', 'settings/appearance')->name('appearance.edit');
 });
