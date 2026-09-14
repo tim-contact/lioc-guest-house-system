@@ -27,6 +27,13 @@ use Illuminate\Support\Carbon;
  * @property string|null $vessel_name
  * @property int|null $port_id
  * @property Carbon|null $eta
+ * @property Carbon|null $etb
+ * @property Carbon|null $etd
+ * @property Carbon|null $ata
+ * @property Carbon|null $atb
+ * @property Carbon|null $atd
+ * @property Carbon|null $bunker_started_at
+ * @property Carbon|null $bunker_completed_at
  * @property Carbon|null $laycan_from
  * @property Carbon|null $laycan_to
  * @property DeliveryMode|null $delivery_mode
@@ -71,7 +78,8 @@ use Illuminate\Support\Carbon;
  */
 #[Fillable([
     'enquiry_id', 'order_number', 'order_date', 'customer_id', 'vessel_id', 'vessel_name',
-    'port_id', 'eta', 'laycan_from', 'laycan_to', 'delivery_mode', 'delivery_location_id',
+    'port_id', 'eta', 'etb', 'etd', 'ata', 'atb', 'atd', 'bunker_started_at', 'bunker_completed_at',
+    'laycan_from', 'laycan_to', 'delivery_mode', 'delivery_location_id',
     'barging_cost', 'agent_fees', 'product_type', 'compliance_checked', 'nomination_received', 'barge_id', 'agent_id', 'agent_name', 'agent_pic_id', 'pic', 'mobile_no',
     'vlsfo_quantity_low', 'vlsfo_quantity_high', 'vlsfo_qty_range', 'vlsfo_rate', 'vlsfo_final_qty', 'vlsfo_bdn_qty',
     'mgo_quantity_low', 'mgo_quantity_high', 'mgo_qty_range', 'mgo_rate', 'mgo_final_qty', 'mgo_bdn_qty',
@@ -115,6 +123,13 @@ class Order extends Model
             'nomination_received' => 'boolean',
             'delivery_mode' => DeliveryMode::class,
             'eta' => 'datetime:Y-m-d\TH:i:s',
+            'etb' => 'datetime:Y-m-d\TH:i:s',
+            'etd' => 'datetime:Y-m-d\TH:i:s',
+            'ata' => 'datetime:Y-m-d\TH:i:s',
+            'atb' => 'datetime:Y-m-d\TH:i:s',
+            'atd' => 'datetime:Y-m-d\TH:i:s',
+            'bunker_started_at' => 'datetime:Y-m-d\TH:i:s',
+            'bunker_completed_at' => 'datetime:Y-m-d\TH:i:s',
             'order_date' => 'date',
             'laycan_from' => 'date',
             'laycan_to' => 'date',

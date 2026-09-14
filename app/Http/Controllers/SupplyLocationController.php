@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\SupplyLocationType;
 use App\Models\Bdn;
 use App\Models\Enquiry;
 use App\Models\Order;
@@ -54,6 +55,7 @@ class SupplyLocationController extends Controller
                     ->where('port_id', $port->id)
                     ->ignore($supplyLocation),
             ],
+            'location_type' => ['required', Rule::enum(SupplyLocationType::class)],
         ];
     }
 

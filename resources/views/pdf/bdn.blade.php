@@ -256,6 +256,7 @@
             margin-bottom: 8px;
         }
 
+        .seals th,
         .seals td {
             border: 1px solid #d1d5db;
             padding: 3px 5px;
@@ -263,19 +264,62 @@
             text-align: left;
         }
 
-        .seal-line {
-            display: table;
-            width: 100%;
+        .seals th {
+            font-size: 7px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            background: #f3f4f6;
         }
 
-        .seal-line > span {
-            display: table-cell;
+        .seals th:first-child,
+        .seals td:first-child {
+            width: 25%;
         }
 
-        .seals .rotated-label {
-            width: 36px;
-            padding: 3px 2px;
+        .seals th:not(:first-child),
+        .seals td:not(:first-child) {
+            width: 25%;
             text-align: center;
+        }
+
+        .sample-heading {
+            text-align: left;
+        }
+
+        .product-seal-heading {
+            display: block;
+            font-size: 8px;
+            color: #111827;
+        }
+
+        .product-seal-subheading {
+            display: block;
+            margin-top: 1px;
+            font-size: 6px;
+            font-weight: 400;
+            letter-spacing: 0;
+            text-transform: none;
+            color: #6b7280;
+        }
+
+        .seal-type-label {
+            font-weight: 700;
+        }
+
+        .seal-entry {
+            line-height: 1.25;
+            white-space: nowrap;
+        }
+
+        .seal-entry strong {
+            font-weight: 700;
+        }
+
+        .seal-entry .counter-label {
+            margin-left: 8px;
+            font-size: 6px;
+            color: #6b7280;
         }
 
         .rotate-wrapper {
@@ -307,15 +351,6 @@
             font-size: 7px;
             line-height: 1.25;
             letter-spacing: 0.03em;
-        }
-
-        .seals .seal-value {
-            text-align: right;
-        }
-
-        .seals .counter-value {
-            width: 40%;
-            text-align: right;
         }
 
         .signatures {
@@ -360,6 +395,29 @@
     <div class="ebdn">
         @include('pdf.partials.header')
 
+        @php
+            $effectiveDeliveryMethod = $bdn?->delivery_method ?? $order->delivery_mode;
+            $effectiveDeliveryMethodLabel = $deliveryMethodLabel
+                ?? ($effectiveDeliveryMethod !== null ? \Illuminate\Support\Str::headline($effectiveDeliveryMethod->name) : null);
+            $isBargeDelivery = $effectiveDeliveryMethod === null || $effectiveDeliveryMethod === \App\Enums\DeliveryMode::Barge;
+            $isTruckDelivery = $effectiveDeliveryMethod === \App\Enums\DeliveryMode::Truck;
+            $carrierLabel = match ($effectiveDeliveryMethod) {
+                \App\Enums\DeliveryMode::Truck => 'Truck Number / Reference',
+                \App\Enums\DeliveryMode::Pipeline => 'Pipeline Reference',
+                default => 'Barge Name',
+            };
+            $carrierValue = match ($effectiveDeliveryMethod) {
+                \App\Enums\DeliveryMode::Truck => $bdn?->truck_number,
+                \App\Enums\DeliveryMode::Pipeline => 'Pipeline',
+                default => $bdn?->barge?->name,
+            };
+            $sampleCarrierLabel = match ($effectiveDeliveryMethod) {
+                \App\Enums\DeliveryMode::Truck => 'Samples Seal number Truck',
+                \App\Enums\DeliveryMode::Pipeline => 'Samples Seal number Pipeline',
+                default => 'Samples Seal number Barge',
+            };
+        @endphp
+
         <table class="grid">
             <tr>
                 <td><span class="field-label">Delivery Date</span><span class="field-value">{{ $bdn?->delivery_date?->format('d M Y') }}</span></td>
@@ -382,13 +440,14 @@
                 <td><span class="field-label">Destination Port</span><span class="field-value">{{ $bdn?->destination_port }}</span></td>
             </tr>
             <tr>
-                <td><span class="field-label">Delivery Method</span><span class="field-value">{{ $deliveryMethodLabel }}</span></td>
-                @if ($bdn?->delivery_method === \App\Enums\DeliveryMode::Truck)
-                    <td><span class="field-label">Truck Number / Reference</span><span class="field-value">{{ $bdn?->truck_number }}</span></td>
-                    <td><span class="field-label">Barge IMO No / Flag</span><span class="field-value"></span></td>
-                @else
-                    <td><span class="field-label">Barge Name</span><span class="field-value">{{ $bdn?->barge?->name }}</span></td>
+                <td><span class="field-label">Delivery Method</span><span class="field-value">{{ $effectiveDeliveryMethodLabel }}</span></td>
+                <td><span class="field-label">{{ $carrierLabel }}</span><span class="field-value">{{ $carrierValue }}</span></td>
+                @if ($isBargeDelivery)
                     <td><span class="field-label">Barge IMO No / Flag</span><span class="field-value">{{ $bdn?->barge_id }}</span></td>
+                @elseif ($isTruckDelivery)
+                    <td><span class="field-label">Transport Type</span><span class="field-value">Truck</span></td>
+                @else
+                    <td><span class="field-label">Transport Type</span><span class="field-value">Pipeline</span></td>
                 @endif
             </tr>
         </table>
@@ -399,6 +458,13 @@
                 \App\Enums\FuelGrade::Hsfo,
                 \App\Enums\FuelGrade::Mgo,
             ];
+            $orderedGradeValues = collect($gradeColumns)
+                ->filter(fn (\App\Enums\FuelGrade $grade): bool => (float) ($order->{"{$grade->value}_final_qty"} ?? 0) > 0)
+                ->map(fn (\App\Enums\FuelGrade $grade): string => $grade->value)
+                ->all();
+            $hasOrderedGradeScope = count($orderedGradeValues) > 0;
+            $shouldShowGrade = fn (\App\Enums\FuelGrade $grade): bool => ! $hasOrderedGradeScope
+                || in_array($grade->value, $orderedGradeValues, true);
             $timesheetRows = [
                 ['hose_connected_at', 'Hose Connected'],
                 ['pumping_started_at', 'Commenced Pumping'],
@@ -422,15 +488,15 @@
                 <tr>
                     <td>Density @ 15&deg;C</td>
                     @foreach ($gradeColumns as $grade)
-                        <td>{{ $bdn?->{"{$grade->value}_density_15"} }}</td>
+                        <td>{{ $shouldShowGrade($grade) ? $bdn?->{"{$grade->value}_density_15"} : '' }}</td>
                     @endforeach
                 </tr>
                 <tr>
                     <td>Sulphur % (w/w) / Flash Point</td>
                     @foreach ($gradeColumns as $grade)
                         @php
-                            $sulphur = $bdn?->{"{$grade->value}_sulphur_pct"};
-                            $flash = $bdn?->{"{$grade->value}_flash_point"};
+                            $sulphur = $shouldShowGrade($grade) ? $bdn?->{"{$grade->value}_sulphur_pct"} : null;
+                            $flash = $shouldShowGrade($grade) ? $bdn?->{"{$grade->value}_flash_point"} : null;
                         @endphp
                         <td>
                             @if ($sulphur !== null && $flash !== null)
@@ -444,19 +510,19 @@
                 <tr>
                     <td>Viscosity @ 50&deg;C</td>
                     @foreach ($gradeColumns as $grade)
-                        <td>{{ $bdn?->{"{$grade->value}_viscosity_50"} }}</td>
+                        <td>{{ $shouldShowGrade($grade) ? $bdn?->{"{$grade->value}_viscosity_50"} : '' }}</td>
                     @endforeach
                 </tr>
                 <tr>
                     <td>Metric Tons</td>
                     @foreach ($gradeColumns as $grade)
-                        <td>{{ $bdn?->{"{$grade->value}_metric_ton"} }}</td>
+                        <td>{{ $shouldShowGrade($grade) ? $bdn?->{"{$grade->value}_metric_ton"} : '' }}</td>
                     @endforeach
                 </tr>
                 <tr>
                     <td>Kilo Litres</td>
                     @foreach ($gradeColumns as $grade)
-                        <td>{{ $bdn?->{"{$grade->value}_kilo_liter"} }}</td>
+                        <td>{{ $shouldShowGrade($grade) ? $bdn?->{"{$grade->value}_kilo_liter"} : '' }}</td>
                     @endforeach
                 </tr>
             </tbody>
@@ -468,7 +534,7 @@
                     <tr>
                         <td>{{ $label }}</td>
                         @foreach ($gradeColumns as $grade)
-                            @php $at = $bdn?->{"{$grade->value}_{$field}"}; @endphp
+                            @php $at = $shouldShowGrade($grade) ? $bdn?->{"{$grade->value}_{$field}"} : null; @endphp
                             <td>{{ $at ? $at->format('d.m.Y \a\t H:i').' hrs' : '' }}</td>
                         @endforeach
                     </tr>
@@ -501,38 +567,59 @@
             $sealTypes = [
                 ['marpol', 'Samples Seal number of MARPOL'],
                 ['vessel', 'Samples Seal number of Vessel'],
-                ['barge', 'Samples Seal number Barge'],
+                ['barge', $sampleCarrierLabel],
                 ['retention', 'Samples Seal number Retention'],
+            ];
+            $productNames = [
+                'vlsfo' => ['VLSFO', 'Low Sulphur fuel oil'],
+                'hsfo' => ['HSFO', 'Fuel oil'],
+                'mgo' => ['MGO', 'Marine gas oil'],
             ];
         @endphp
 
         <table class="seals">
+            <thead>
+                <tr>
+                    <th class="sample-heading">Sample Seal Numbers</th>
+                    @foreach ($gradeColumns as $grade)
+                        <th>
+                            <span class="product-seal-heading">{{ $productNames[$grade->value][0] }}</span>
+                            <span class="product-seal-subheading">{{ $productNames[$grade->value][1] }}</span>
+                        </th>
+                    @endforeach
+                </tr>
+            </thead>
             <tbody>
                 <tr>
-                    <td colspan="4" class="sampling-method-row">
+                    <td colspan="{{ count($gradeColumns) + 1 }}" class="sampling-method-row">
                         <span>Samples Method:</span>{{--
                         --}}@foreach ($samplingMethodOptions as [$case, $label])<span class="sampling-method-option">{{ $label }}<span class="checkbox {{ $bdn?->sampling_method === $case ? 'checked' : '' }}"></span></span>@endforeach
                     </td>
                 </tr>
-                @foreach ($sealTypes as $i => [$prefix, $label])
+                @foreach ($sealTypes as [$prefix, $label])
                     <tr>
-                        @if ($i === 0)
-                            <td class="rotated-label" rowspan="{{ count($sealTypes) }}">
-                                <div class="rotate-wrapper"><div class="rotated-text">Samples were taken, sealed, distributed as follows</div></div>
+                        <td class="seal-type-label">{{ $label }}</td>
+                        @foreach ($gradeColumns as $grade)
+                            @php
+                                $productSeal = $shouldShowGrade($grade)
+                                    ? data_get($bdn?->product_sample_seals, "{$grade->value}.{$prefix}", [])
+                                    : [];
+                                $sealNumber = $shouldShowGrade($grade)
+                                    ? ($productSeal['seal_number'] ?? $bdn?->{"{$prefix}_seal_number"})
+                                    : null;
+                                $counterSealNumber = $shouldShowGrade($grade)
+                                    ? ($productSeal['counter_seal_number'] ?? $bdn?->{"{$prefix}_counter_seal_number"})
+                                    : null;
+                            @endphp
+                            <td>
+                                <div class="seal-entry">
+                                    @if ($shouldShowGrade($grade))
+                                        <strong>Seal</strong> {{ $sealNumber ?: '-' }}
+                                        <span class="counter-label">Counter</span> {{ $counterSealNumber ?: '-' }}
+                                    @endif
+                                </div>
                             </td>
-                        @endif
-                        <td>
-                            <div class="seal-line">
-                                <span>{{ $label }} :</span>
-                                <span class="seal-value">{{ $bdn?->{"{$prefix}_seal_number"} }}</span>
-                            </div>
-                        </td>
-                        @if ($i === 0)
-                            <td class="rotated-label" rowspan="{{ count($sealTypes) }}">
-                                <div class="rotate-wrapper"><div class="rotated-text">Counter Seal No (if any)</div></div>
-                            </td>
-                        @endif
-                        <td class="counter-value">{{ $bdn?->{"{$prefix}_counter_seal_number"} }}</td>
+                        @endforeach
                     </tr>
                 @endforeach
             </tbody>

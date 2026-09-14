@@ -44,6 +44,13 @@ class OperationController extends Controller
     {
         $validated = $request->validate([
             'eta' => ['nullable', 'date'],
+            'etb' => ['nullable', 'date', 'after_or_equal:eta'],
+            'etd' => ['nullable', 'date', 'after_or_equal:etb'],
+            'ata' => ['nullable', 'date'],
+            'atb' => ['nullable', 'date', 'after_or_equal:ata'],
+            'atd' => ['nullable', 'date', 'after_or_equal:atb'],
+            'bunker_started_at' => ['nullable', 'date'],
+            'bunker_completed_at' => ['nullable', 'date', 'after_or_equal:bunker_started_at'],
             'delivery_location_id' => ['nullable', $this->supplyLocationRule($order->port_id)],
             'barge_id' => ['nullable', 'exists:barges,imo'],
             'vlsfo_final_qty' => ['nullable', 'numeric', 'min:0'],

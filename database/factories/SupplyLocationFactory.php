@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\SupplyLocationType;
 use App\Models\Port;
 use App\Models\SupplyLocation;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -27,6 +28,7 @@ class SupplyLocationFactory extends Factory
                 'LIOC JETTY',
                 'ROUND ISLAND',
             ]),
+            'location_type' => SupplyLocationType::Berth,
         ];
     }
 }

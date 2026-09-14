@@ -354,6 +354,48 @@ test('every sample type on the model has validated seal columns', function () {
     expect($order->bdn()->sole()->only(array_keys($seals)))->toBe($seals);
 });
 
+test('update saves product specific sample seal numbers', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $order = Order::factory()->create([
+        'vlsfo_final_qty' => 500,
+        'mgo_final_qty' => 100,
+        'hsfo_final_qty' => 0,
+    ]);
+
+    $this->put(route('surveyor.bdn.update', $order), [
+        'product_sample_seals' => [
+            'vlsfo' => [
+                'marpol' => [
+                    'seal_number' => 'VLSFO-MARPOL-1',
+                    'counter_seal_number' => 'VLSFO-MARPOL-C1',
+                ],
+            ],
+            'mgo' => [
+                'marpol' => [
+                    'seal_number' => 'MGO-MARPOL-1',
+                    'counter_seal_number' => 'MGO-MARPOL-C1',
+                ],
+            ],
+            'hsfo' => [
+                'marpol' => [
+                    'seal_number' => 'IGNORED-HSFO',
+                    'counter_seal_number' => 'IGNORED-HSFO-C1',
+                ],
+            ],
+        ],
+    ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    expect($order->bdn()->sole()->product_sample_seals)
+        ->toHaveKey('vlsfo')
+        ->toHaveKey('mgo')
+        ->not->toHaveKey('hsfo')
+        ->and($order->bdn()->sole()->product_sample_seals['vlsfo']['marpol']['seal_number'])->toBe('VLSFO-MARPOL-1')
+        ->and($order->bdn()->sole()->product_sample_seals['mgo']['marpol']['counter_seal_number'])->toBe('MGO-MARPOL-C1');
+});
+
 test('guests are redirected from the ebdn download', function () {
     $order = Order::factory()->create();
 
@@ -386,11 +428,26 @@ test('ebdn renders the order and bdn data onto the pdf', function () {
         'bdn_number' => 'BDN-EBDN-TEST',
         'agent_id' => $agent->id,
         'barge_id' => $barge->imo,
+        'delivery_method' => DeliveryMode::Barge,
         'owner_operator' => 'Test Owner Co',
         'pi_club' => 'Test PI Club',
         'vlsfo_density_15' => 0.9410,
         'vlsfo_hose_connected_at' => '2026-08-04 19:30:00',
         'mgo_metric_ton' => null,
+        'product_sample_seals' => [
+            'vlsfo' => [
+                'marpol' => [
+                    'seal_number' => 'VLSFO-MARPOL-1',
+                    'counter_seal_number' => 'VLSFO-MARPOL-C1',
+                ],
+            ],
+            'mgo' => [
+                'marpol' => [
+                    'seal_number' => 'MGO-MARPOL-1',
+                    'counter_seal_number' => 'MGO-MARPOL-C1',
+                ],
+            ],
+        ],
     ]);
 
     $this->get(route('bdns.ebdn', $order))->assertOk();
@@ -410,6 +467,11 @@ test('ebdn renders the order and bdn data onto the pdf', function () {
             'Test PI Club',
             '0.9410',
             '04.08.2026 at 19:30 hrs',
+            'Low Sulphur fuel oil',
+            'Fuel oil',
+            'Marine gas oil',
+            'VLSFO-MARPOL-1',
+            'MGO-MARPOL-1',
         ] as $needle) {
             expect($html)->toContain($needle);
         }

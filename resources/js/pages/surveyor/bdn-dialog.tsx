@@ -98,17 +98,39 @@ const PRODUCT_UNITS: Record<string, string> = {
 
 const TRUCK_REFERENCE_OPTIONS = ['Road Tanker', 'Barge Truck'];
 
+const PRODUCT_FULL_NAMES: Record<string, string> = {
+    vlsfo: 'Low Sulphur fuel oil',
+    hsfo: 'Fuel oil',
+    mgo: 'Marine gas oil',
+};
+
 type StepKey = (typeof STEPS)[number]['key'];
+
+type ProductSampleSeal = {
+    seal_number: string;
+    counter_seal_number: string;
+};
+
+type ProductSampleSeals = Record<string, Record<string, ProductSampleSeal>>;
 
 export interface BdnRow {
     bdn_number: string | null;
-    [field: string]: string | number | boolean | null;
+    product_sample_seals?: ProductSampleSeals | null;
+    [field: string]:
+        | string
+        | number
+        | boolean
+        | ProductSampleSeals
+        | null
+        | undefined;
 }
 
-type BdnFormData = Record<string, string>;
+type BdnFormData = Record<string, any>;
 
 /** Booleans become '1'/'0' so Laravel's boolean rule accepts them; '' means unset. */
-function text(value: BdnRow[string] | undefined): string {
+function text(
+    value: string | number | boolean | ProductSampleSeals | null | undefined,
+): string {
     if (value === null || value === undefined) {
         return '';
     }
@@ -118,6 +140,60 @@ function text(value: BdnRow[string] | undefined): string {
     }
 
     return String(value);
+}
+
+function emptyProductSampleSeals(order: PendingRow): ProductSampleSeals {
+    return order.grades.reduce<ProductSampleSeals>((products, grade) => {
+        products[grade.value] = SEALS.reduce<Record<string, ProductSampleSeal>>(
+            (samples, seal) => {
+                samples[seal.prefix] = {
+                    seal_number: '',
+                    counter_seal_number: '',
+                };
+
+                return samples;
+            },
+            {},
+        );
+
+        return products;
+    }, {});
+}
+
+function buildProductSampleSeals(order: PendingRow): ProductSampleSeals {
+    const bdn = order.bdn;
+    const existing =
+        bdn?.product_sample_seals && typeof bdn.product_sample_seals === 'object'
+            ? bdn.product_sample_seals
+            : {};
+
+    const hasExistingProductSeals = Object.keys(existing).length > 0;
+
+    return order.grades.reduce<ProductSampleSeals>((products, grade) => {
+        products[grade.value] = SEALS.reduce<Record<string, ProductSampleSeal>>(
+            (samples, seal) => {
+                const productSeal = existing[grade.value]?.[seal.prefix];
+
+                samples[seal.prefix] = {
+                    seal_number:
+                        productSeal?.seal_number ??
+                        (hasExistingProductSeals
+                            ? ''
+                            : text(bdn?.[`${seal.prefix}_seal_number`])),
+                    counter_seal_number:
+                        productSeal?.counter_seal_number ??
+                        (hasExistingProductSeals
+                            ? ''
+                            : text(bdn?.[`${seal.prefix}_counter_seal_number`])),
+                };
+
+                return samples;
+            },
+            {},
+        );
+
+        return products;
+    }, {});
 }
 
 function buildFormData(order: PendingRow): BdnFormData {
@@ -153,6 +229,7 @@ function buildFormData(order: PendingRow): BdnFormData {
         retained_samples_handed_over: text(bdn?.retained_samples_handed_over),
         sampling_location: text(bdn?.sampling_location),
         sampling_method: text(bdn?.sampling_method),
+        product_sample_seals: buildProductSampleSeals(order),
     };
 
     for (const { value: grade } of order.grades) {
@@ -657,6 +734,29 @@ export function BdnDialog({
     const set = (field: string) => (value: string) =>
         form.setData(field, value);
 
+    function setProductSampleSeal(
+        grade: string,
+        sample: string,
+        field: keyof ProductSampleSeal,
+        value: string,
+    ) {
+        const current =
+            form.data.product_sample_seals ?? emptyProductSampleSeals(order);
+
+        form.setData('product_sample_seals', {
+            ...current,
+            [grade]: {
+                ...(current[grade] ?? {}),
+                [sample]: {
+                    seal_number: current[grade]?.[sample]?.seal_number ?? '',
+                    counter_seal_number:
+                        current[grade]?.[sample]?.counter_seal_number ?? '',
+                    [field]: value,
+                },
+            },
+        });
+    }
+
     function setQualityField(grade: string, field: string, value: string) {
         const nextData = {
             ...form.data,
@@ -1094,47 +1194,82 @@ export function BdnDialog({
                             </BorderedSection>
 
                             <BorderedSection
-                                title="Barge and counter-seal numbers"
-                                description="Seal numbers for each retained sample."
+                                title="Product seal numbers"
+                                description="Record retained sample and counter-seal numbers separately for each delivered product."
                             >
-                                <div className="grid gap-3">
-                                    {SEALS.map((seal) => (
+                                <div className="grid gap-4 xl:grid-cols-3">
+                                    {order.grades.map((grade) => (
                                         <div
-                                            key={seal.prefix}
-                                            className="grid gap-3 rounded-xl border border-[#E3EAF2] bg-[#F8FAFD] p-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1fr)] lg:items-end"
+                                            key={`${grade.value}-sample-seals`}
+                                            className="rounded-2xl border border-[#E3EAF2] bg-[#F8FAFD] p-3"
                                         >
-                                            <div>
-                                                <p className="text-sm font-semibold text-[#172033]">
-                                                    {seal.name}
+                                            <div className="mb-3 border-b border-[#E3EAF2] pb-2">
+                                                <p className="text-sm font-bold text-[#172033]">
+                                                    {grade.label}
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    {seal.label}
+                                                    {PRODUCT_FULL_NAMES[
+                                                        grade.value
+                                                    ] ?? 'Product'}
                                                 </p>
                                             </div>
-                                            <TextInputField
-                                                id={`${seal.prefix}-seal-number`}
-                                                label="Barge Seal Number"
-                                                value={
-                                                    form.data[
-                                                        `${seal.prefix}_seal_number`
-                                                    ]
-                                                }
-                                                onChange={set(
-                                                    `${seal.prefix}_seal_number`,
-                                                )}
-                                            />
-                                            <TextInputField
-                                                id={`${seal.prefix}-counter-seal-number`}
-                                                label="Counter Seal Number"
-                                                value={
-                                                    form.data[
-                                                        `${seal.prefix}_counter_seal_number`
-                                                    ]
-                                                }
-                                                onChange={set(
-                                                    `${seal.prefix}_counter_seal_number`,
-                                                )}
-                                            />
+                                            <div className="grid gap-3">
+                                                {SEALS.map((seal) => {
+                                                    const sample =
+                                                        form.data.product_sample_seals?.[
+                                                            grade.value
+                                                        ]?.[seal.prefix] ?? {
+                                                            seal_number: '',
+                                                            counter_seal_number: '',
+                                                        };
+
+                                                    return (
+                                                        <div
+                                                            key={`${grade.value}-${seal.prefix}`}
+                                                            className="grid gap-3 rounded-xl border border-[#E3EAF2] bg-white p-3"
+                                                        >
+                                                            <div>
+                                                                <p className="text-sm font-semibold text-[#172033]">
+                                                                    {seal.name}
+                                                                </p>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {seal.label}
+                                                                </p>
+                                                            </div>
+                                                            <div className="grid gap-3 sm:grid-cols-2">
+                                                                <TextInputField
+                                                                    id={`${grade.value}-${seal.prefix}-seal-number`}
+                                                                    label="Sample Seal Number"
+                                                                    value={sample.seal_number}
+                                                                    onChange={(value) =>
+                                                                        setProductSampleSeal(
+                                                                            grade.value,
+                                                                            seal.prefix,
+                                                                            'seal_number',
+                                                                            value,
+                                                                        )
+                                                                    }
+                                                                />
+                                                                <TextInputField
+                                                                    id={`${grade.value}-${seal.prefix}-counter-seal-number`}
+                                                                    label="Counter Seal Number"
+                                                                    value={
+                                                                        sample.counter_seal_number
+                                                                    }
+                                                                    onChange={(value) =>
+                                                                        setProductSampleSeal(
+                                                                            grade.value,
+                                                                            seal.prefix,
+                                                                            'counter_seal_number',
+                                                                            value,
+                                                                        )
+                                                                    }
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>

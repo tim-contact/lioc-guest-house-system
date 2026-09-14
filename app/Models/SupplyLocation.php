@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\SupplyLocationType;
 use Database\Factories\SupplyLocationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,12 +14,28 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $id
  * @property int $port_id
  * @property string $name
+ * @property SupplyLocationType $location_type
  */
-#[Fillable(['port_id', 'name'])]
+#[Fillable(['port_id', 'name', 'location_type'])]
 class SupplyLocation extends Model
 {
     /** @use HasFactory<SupplyLocationFactory> */
     use HasFactory;
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'location_type' => SupplyLocationType::class,
+        ];
+    }
+
+    public function isNonBerthOperation(): bool
+    {
+        return $this->location_type->isNonBerthOperation();
+    }
 
     /** @return BelongsTo<Port, $this> */
     public function port(): BelongsTo

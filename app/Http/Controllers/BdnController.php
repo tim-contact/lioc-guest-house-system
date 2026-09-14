@@ -105,6 +105,13 @@ class BdnController extends Controller
         );
 
         $validated = $request->validate($this->rules($order));
+
+        if (array_key_exists('product_sample_seals', $validated)) {
+            $validated['product_sample_seals'] = $this->normaliseProductSampleSeals(
+                $validated['product_sample_seals'] ?? [],
+                $order,
+            );
+        }
         $effectiveDeliveryMethod = $validated['delivery_method'] ?? $order->delivery_mode;
         $effectiveDeliveryMethod = is_string($effectiveDeliveryMethod)
             ? DeliveryMode::tryFrom($effectiveDeliveryMethod)
@@ -176,6 +183,11 @@ class BdnController extends Controller
             'retained_samples_handed_over' => ['nullable', 'boolean'],
             'sampling_location' => ['nullable', Rule::enum(Sampling::class)],
             'sampling_method' => ['nullable', Rule::enum(SamplingMethod::class)],
+            'product_sample_seals' => ['nullable', 'array'],
+            'product_sample_seals.*' => ['nullable', 'array'],
+            'product_sample_seals.*.*' => ['nullable', 'array'],
+            'product_sample_seals.*.*.seal_number' => ['nullable', 'string', 'max:255'],
+            'product_sample_seals.*.*.counter_seal_number' => ['nullable', 'string', 'max:255'],
         ];
 
         foreach (FuelGrade::keys() as $grade) {
@@ -194,5 +206,41 @@ class BdnController extends Controller
         }
 
         return $rules;
+    }
+
+    /**
+     * Keep only ordered products and known sample types in the nested seal map.
+     *
+     * @param  array<string, mixed>  $productSampleSeals
+     * @return array<string, array<string, array{seal_number: string|null, counter_seal_number: string|null}>>
+     */
+    private function normaliseProductSampleSeals(array $productSampleSeals, Order $order): array
+    {
+        $orderedGrades = collect(FuelGrade::keys())
+            ->filter(fn (string $grade): bool => (float) ($order->{"{$grade}_final_qty"} ?? 0) > 0)
+            ->values();
+
+        if ($orderedGrades->isEmpty()) {
+            $orderedGrades = collect(FuelGrade::keys());
+        }
+
+        return $orderedGrades
+            ->mapWithKeys(function (string $grade) use ($productSampleSeals): array {
+                $samples = collect(Bdn::SAMPLE_TYPES)
+                    ->mapWithKeys(function (string $sample) use ($productSampleSeals, $grade): array {
+                        $values = $productSampleSeals[$grade][$sample] ?? [];
+
+                        return [
+                            $sample => [
+                                'seal_number' => blank($values['seal_number'] ?? null) ? null : trim((string) $values['seal_number']),
+                                'counter_seal_number' => blank($values['counter_seal_number'] ?? null) ? null : trim((string) $values['counter_seal_number']),
+                            ],
+                        ];
+                    })
+                    ->all();
+
+                return [$grade => $samples];
+            })
+            ->all();
     }
 }

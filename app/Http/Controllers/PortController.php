@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\SupplyLocationType;
 use App\Models\Enquiry;
 use App\Models\Order;
 use App\Models\Port;
@@ -18,6 +19,7 @@ class PortController extends Controller
             'ports' => Port::with(['supplyLocations' => fn ($query) => $query->orderBy('name')])
                 ->orderBy('name')
                 ->get(['id', 'name']),
+            'locationTypeOptions' => $this->enumOptions(SupplyLocationType::cases()),
         ]);
     }
 

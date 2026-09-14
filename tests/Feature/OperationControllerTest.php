@@ -112,6 +112,13 @@ test('update persists operations fields and leaves vessel and order identifiers 
 
     $this->patch(route('operations.update', $order), [
         'eta' => '2026-08-01T14:30',
+        'etb' => '2026-08-01T16:00',
+        'etd' => '2026-08-02T06:30',
+        'ata' => '2026-08-01T14:45',
+        'atb' => '2026-08-01T16:20',
+        'atd' => '2026-08-02T07:10',
+        'bunker_started_at' => '2026-08-01T17:00',
+        'bunker_completed_at' => '2026-08-01T22:45',
         'delivery_location_id' => $location->id,
         'barge_id' => $barge->imo,
         'vlsfo_final_qty' => 812.5,
@@ -136,6 +143,13 @@ test('update persists operations fields and leaves vessel and order identifiers 
     expect((float) $order->vlsfo_final_qty)->toBe(812.5);
     expect((float) $order->mgo_final_qty)->toBe(140.25);
     expect($order->eta->format('Y-m-d H:i'))->toBe('2026-08-01 14:30');
+    expect($order->etb->format('Y-m-d H:i'))->toBe('2026-08-01 16:00');
+    expect($order->etd->format('Y-m-d H:i'))->toBe('2026-08-02 06:30');
+    expect($order->ata->format('Y-m-d H:i'))->toBe('2026-08-01 14:45');
+    expect($order->atb->format('Y-m-d H:i'))->toBe('2026-08-01 16:20');
+    expect($order->atd->format('Y-m-d H:i'))->toBe('2026-08-02 07:10');
+    expect($order->bunker_started_at->format('Y-m-d H:i'))->toBe('2026-08-01 17:00');
+    expect($order->bunker_completed_at->format('Y-m-d H:i'))->toBe('2026-08-01 22:45');
 
     expect($order->order_number)->toBe('ORD-KEEP');
     expect($order->vessel_name)->toBe('MV Fixed');

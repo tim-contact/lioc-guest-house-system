@@ -8,6 +8,7 @@ use App\Enums\OrderStatus;
 use App\Models\Agent;
 use App\Models\AgentPic;
 use App\Models\Order;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
@@ -165,8 +166,16 @@ class OrderService
             'pic' => $order->pic,
             'mobile_no' => $order->mobile_no,
             'eta' => $order->eta,
+            'etb' => $order->etb,
+            'etd' => $order->etd,
+            'ata' => $order->ata,
+            'atb' => $order->atb,
+            'atd' => $order->atd,
+            'bunker_started_at' => $order->bunker_started_at,
+            'bunker_completed_at' => $order->bunker_completed_at,
             'laycan_from' => $order->laycan_from,
             'status' => $order->status->value,
+            ...self::timingMetrics($order),
         ];
 
         foreach (FuelGrade::keys() as $grade) {
@@ -176,6 +185,32 @@ class OrderService
         }
 
         return $row;
+    }
+
+    /**
+     * Duration calculations in minutes, ready for UI formatting.
+     *
+     * @return array<string, int|null>
+     */
+    public static function timingMetrics(Order $order): array
+    {
+        return [
+            'estimated_port_stay_minutes' => self::minutesBetween($order->eta, $order->etd),
+            'actual_port_stay_minutes' => self::minutesBetween($order->ata, $order->atd),
+            'estimated_berth_stay_minutes' => self::minutesBetween($order->etb, $order->etd),
+            'actual_berth_stay_minutes' => self::minutesBetween($order->atb, $order->atd),
+            'arrival_to_berth_wait_minutes' => self::minutesBetween($order->ata, $order->atb),
+            'bunkering_duration_minutes' => self::minutesBetween($order->bunker_started_at, $order->bunker_completed_at),
+        ];
+    }
+
+    private static function minutesBetween(?CarbonInterface $start, ?CarbonInterface $end): ?int
+    {
+        if ($start === null || $end === null) {
+            return null;
+        }
+
+        return (int) $start->diffInMinutes($end, false);
     }
 
     /**

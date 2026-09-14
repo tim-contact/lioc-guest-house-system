@@ -152,6 +152,31 @@ test('order rows show the final quantity once set, falling back to the range', f
             ->where('pendingOrders.0.mgo_qty', '100 - 150'));
 });
 
+test('order rows expose operational timing calculations', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    createOrder([
+        'eta' => '2026-08-01 10:00:00',
+        'etb' => '2026-08-01 12:00:00',
+        'etd' => '2026-08-02 06:00:00',
+        'ata' => '2026-08-01 10:30:00',
+        'atb' => '2026-08-01 12:15:00',
+        'atd' => '2026-08-02 07:00:00',
+        'bunker_started_at' => '2026-08-01 13:00:00',
+        'bunker_completed_at' => '2026-08-01 18:30:00',
+    ]);
+
+    $this->get(route('orders'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('pendingOrders.0.estimated_port_stay_minutes', 1200)
+            ->where('pendingOrders.0.actual_port_stay_minutes', 1230)
+            ->where('pendingOrders.0.estimated_berth_stay_minutes', 1080)
+            ->where('pendingOrders.0.actual_berth_stay_minutes', 1125)
+            ->where('pendingOrders.0.arrival_to_berth_wait_minutes', 105)
+            ->where('pendingOrders.0.bunkering_duration_minutes', 330));
+});
+
 test('index provides customer, port, agency and PIC options and edit fields', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 

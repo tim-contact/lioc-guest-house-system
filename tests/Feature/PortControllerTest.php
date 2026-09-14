@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\SupplyLocationType;
 use App\Enums\UserType;
 use App\Models\Enquiry;
 use App\Models\Order;
@@ -17,7 +18,10 @@ test('index lists ports ordered by name', function () {
 
     Port::factory()->create(['name' => 'Zeta Port']);
     $alpha = Port::factory()->create(['name' => 'Alpha Port']);
-    SupplyLocation::factory(['port_id' => $alpha->id])->create(['name' => 'ANCHORAGE']);
+    SupplyLocation::factory(['port_id' => $alpha->id])->create([
+        'name' => 'ANCHORAGE',
+        'location_type' => SupplyLocationType::Anchorage,
+    ]);
 
     $this->get(route('ports.index'))
         ->assertOk()
@@ -26,6 +30,8 @@ test('index lists ports ordered by name', function () {
             ->has('ports', 2)
             ->where('ports.0.name', 'Alpha Port')
             ->where('ports.0.supply_locations.0.name', 'ANCHORAGE')
+            ->where('ports.0.supply_locations.0.location_type', SupplyLocationType::Anchorage->value)
+            ->where('locationTypeOptions.0.value', SupplyLocationType::Berth->value)
             ->where('ports.1.name', 'Zeta Port'));
 });
 
@@ -83,12 +89,16 @@ test('store creates a supply location for a port', function () {
 
     $port = Port::factory()->create();
 
-    $this->post(route('ports.supply-locations.store', $port), ['name' => 'BQ BERTH'])
+    $this->post(route('ports.supply-locations.store', $port), [
+        'name' => 'BQ BERTH',
+        'location_type' => SupplyLocationType::Berth->value,
+    ])
         ->assertRedirect()
         ->assertSessionHasNoErrors();
 
     expect($port->supplyLocations()->sole())
-        ->name->toBe('BQ BERTH');
+        ->name->toBe('BQ BERTH')
+        ->location_type->toBe(SupplyLocationType::Berth);
 });
 
 test('supply location names are unique per port', function () {
@@ -97,7 +107,10 @@ test('supply location names are unique per port', function () {
     $port = Port::factory()->create();
     SupplyLocation::factory(['port_id' => $port->id])->create(['name' => 'OPL']);
 
-    $this->post(route('ports.supply-locations.store', $port), ['name' => 'OPL'])
+    $this->post(route('ports.supply-locations.store', $port), [
+        'name' => 'OPL',
+        'location_type' => SupplyLocationType::Opl->value,
+    ])
         ->assertSessionHasErrors('name');
 });
 
@@ -105,13 +118,21 @@ test('update saves a supply location', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $port = Port::factory()->create();
-    $location = SupplyLocation::factory(['port_id' => $port->id])->create(['name' => 'Old Berth']);
+    $location = SupplyLocation::factory(['port_id' => $port->id])->create([
+        'name' => 'Old Berth',
+        'location_type' => SupplyLocationType::Berth,
+    ]);
 
-    $this->patch(route('ports.supply-locations.update', [$port, $location]), ['name' => 'New Berth'])
+    $this->patch(route('ports.supply-locations.update', [$port, $location]), [
+        'name' => 'New Anchorage',
+        'location_type' => SupplyLocationType::Anchorage->value,
+    ])
         ->assertRedirect()
         ->assertSessionHasNoErrors();
 
-    expect($location->refresh()->name)->toBe('New Berth');
+    expect($location->refresh())
+        ->name->toBe('New Anchorage')
+        ->location_type->toBe(SupplyLocationType::Anchorage);
 });
 
 test('destroy deletes an unused supply location', function () {

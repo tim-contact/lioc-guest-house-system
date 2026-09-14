@@ -73,6 +73,7 @@ use Illuminate\Support\Carbon;
  * @property bool|null $retained_samples_handed_over
  * @property Sampling|null $sampling_location
  * @property SamplingMethod|null $sampling_method
+ * @property array<string, mixed>|null $product_sample_seals
  * @property string|null $marpol_seal_number
  * @property string|null $marpol_counter_seal_number
  * @property string|null $vessel_seal_number
@@ -99,7 +100,7 @@ use Illuminate\Support\Carbon;
     'hsfo_density_15', 'hsfo_sulphur_pct', 'hsfo_viscosity_50', 'hsfo_flash_point',
     'hsfo_kilo_liter', 'hsfo_metric_ton',
     'chief_engineer_invited', 'chief_engineer_witnessed', 'retained_samples_handed_over',
-    'sampling_location', 'sampling_method',
+    'sampling_location', 'sampling_method', 'product_sample_seals',
     'marpol_seal_number', 'marpol_counter_seal_number',
     'vessel_seal_number', 'vessel_counter_seal_number',
     'barge_seal_number', 'barge_counter_seal_number',
@@ -158,6 +159,7 @@ class Bdn extends Model
             'retained_samples_handed_over' => 'boolean',
             'sampling_location' => Sampling::class,
             'sampling_method' => SamplingMethod::class,
+            'product_sample_seals' => 'array',
         ];
 
         foreach (FuelGrade::keys() as $grade) {

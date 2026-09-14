@@ -39,7 +39,7 @@ abstract class Controller
     /**
      * Real supply locations, scoped by port for dependent dropdowns.
      *
-     * @return array<int, array{value: string, label: string, port_id: int}>
+     * @return array<int, array{value: string, label: string, port_id: int, location_type: string}>
      */
     protected function supplyLocationOptions(): array
     {
@@ -47,11 +47,12 @@ abstract class Controller
             ->join('ports', 'ports.id', '=', 'supply_locations.port_id')
             ->orderBy('ports.name')
             ->orderBy('supply_locations.name')
-            ->get(['supply_locations.id', 'supply_locations.name', 'supply_locations.port_id'])
+            ->get(['supply_locations.id', 'supply_locations.name', 'supply_locations.port_id', 'supply_locations.location_type'])
             ->map(fn (SupplyLocation $location): array => [
                 'value' => (string) $location->id,
                 'label' => $location->name,
                 'port_id' => $location->port_id,
+                'location_type' => $location->location_type->value,
             ])
             ->all();
     }

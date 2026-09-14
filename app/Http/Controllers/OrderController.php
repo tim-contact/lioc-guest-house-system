@@ -70,6 +70,14 @@ class OrderController extends Controller
             'delivery_mode' => ['nullable', Rule::enum(DeliveryMode::class)],
             'delivery_location_id' => ['nullable', $this->supplyLocationRule($request->input('port_id', $order->port_id))],
             'compliance_checked' => ['boolean'],
+            'eta' => ['nullable', 'date'],
+            'etb' => ['nullable', 'date', 'after_or_equal:eta'],
+            'etd' => ['nullable', 'date', 'after_or_equal:etb'],
+            'ata' => ['nullable', 'date'],
+            'atb' => ['nullable', 'date', 'after_or_equal:ata'],
+            'atd' => ['nullable', 'date', 'after_or_equal:atb'],
+            'bunker_started_at' => ['nullable', 'date'],
+            'bunker_completed_at' => ['nullable', 'date', 'after_or_equal:bunker_started_at'],
             'laycan_from' => ['nullable', 'date'],
             'laycan_to' => ['nullable', 'date', 'after_or_equal:laycan_from'],
         ];
@@ -116,6 +124,7 @@ class OrderController extends Controller
                 ->withQueryString()
                 ->through(fn (Order $order): array => [
                     ...$order->toArray(),
+                    ...OrderService::timingMetrics($order),
                     'delivery_location' => $order->deliveryLocation?->name,
                 ]),
             'filters' => [
@@ -145,6 +154,13 @@ class OrderController extends Controller
             'vessel_name' => ['nullable', 'string', 'max:255'],
             'port_id' => ['nullable', 'exists:ports,id'],
             'eta' => ['nullable', 'date'],
+            'etb' => ['nullable', 'date', 'after_or_equal:eta'],
+            'etd' => ['nullable', 'date', 'after_or_equal:etb'],
+            'ata' => ['nullable', 'date'],
+            'atb' => ['nullable', 'date', 'after_or_equal:ata'],
+            'atd' => ['nullable', 'date', 'after_or_equal:atb'],
+            'bunker_started_at' => ['nullable', 'date'],
+            'bunker_completed_at' => ['nullable', 'date', 'after_or_equal:bunker_started_at'],
             'laycan_from' => ['nullable', 'date'],
             'laycan_to' => ['nullable', 'date', 'after_or_equal:laycan_from'],
             'agent_id' => ['nullable', 'exists:agents,id'],

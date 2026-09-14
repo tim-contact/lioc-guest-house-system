@@ -34,11 +34,13 @@ import {
     store as storeSupplyLocation,
     update as updateSupplyLocation,
 } from '@/routes/ports/supply-locations';
+import type { EnumOption } from '@/types';
 
 interface SupplyLocation {
     id: number;
     port_id: number;
     name: string;
+    location_type: string;
 }
 
 interface Port {
@@ -49,6 +51,7 @@ interface Port {
 
 interface PortsIndexProps {
     ports: Port[];
+    locationTypeOptions: EnumOption[];
 }
 
 const portColumns: ExportColumn<Port>[] = [
@@ -56,11 +59,19 @@ const portColumns: ExportColumn<Port>[] = [
     {
         header: 'Supply Locations',
         value: (port) =>
-            port.supply_locations.map((location) => location.name).join(', '),
+            port.supply_locations
+                .map(
+                    (location) =>
+                        `${location.name} (${location.location_type})`,
+                )
+                .join(', '),
     },
 ];
 
-export default function PortsIndex({ ports }: PortsIndexProps) {
+export default function PortsIndex({
+    ports,
+    locationTypeOptions,
+}: PortsIndexProps) {
     const [openPortIds, setOpenPortIds] = useState<number[]>(
         ports.slice(0, 1).map((port) => port.id),
     );
@@ -155,6 +166,7 @@ export default function PortsIndex({ ports }: PortsIndexProps) {
                         <PortAccordionItem
                             key={port.id}
                             port={port}
+                            locationTypeOptions={locationTypeOptions}
                             isOpen={openPortIds.includes(port.id)}
                             onOpenChange={(isOpen) =>
                                 togglePort(port.id, isOpen)
@@ -175,10 +187,12 @@ export default function PortsIndex({ ports }: PortsIndexProps) {
 
 function PortAccordionItem({
     port,
+    locationTypeOptions,
     isOpen,
     onOpenChange,
 }: {
     port: Port;
+    locationTypeOptions: EnumOption[];
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
 }) {
@@ -307,7 +321,10 @@ function PortAccordionItem({
                         </form>
                     )}
 
-                    <SupplyLocationsPanel port={port} />
+                    <SupplyLocationsPanel
+                        port={port}
+                        locationTypeOptions={locationTypeOptions}
+                    />
                 </div>
             </CollapsibleContent>
 
@@ -346,8 +363,14 @@ function PortAccordionItem({
     );
 }
 
-function SupplyLocationsPanel({ port }: { port: Port }) {
-    const createForm = useForm({ name: '' });
+function SupplyLocationsPanel({
+    port,
+    locationTypeOptions,
+}: {
+    port: Port;
+    locationTypeOptions: EnumOption[];
+}) {
+    const createForm = useForm({ name: '', location_type: 'berth' });
 
     const submitCreate = (event: FormEvent) => {
         event.preventDefault();
@@ -380,6 +403,7 @@ function SupplyLocationsPanel({ port }: { port: Port }) {
                             key={location.id}
                             port={port}
                             location={location}
+                            locationTypeOptions={locationTypeOptions}
                         />
                     ))
                 )}
@@ -387,7 +411,7 @@ function SupplyLocationsPanel({ port }: { port: Port }) {
 
             <form
                 onSubmit={submitCreate}
-                className="flex flex-col gap-2 sm:flex-row sm:items-start"
+                className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_12rem_auto] sm:items-start"
             >
                 <div className="min-w-0 flex-1">
                     <Input
@@ -404,6 +428,30 @@ function SupplyLocationsPanel({ port }: { port: Port }) {
                         </p>
                     )}
                 </div>
+                <div className="min-w-0">
+                    <select
+                        value={createForm.data.location_type}
+                        onChange={(event) =>
+                            createForm.setData(
+                                'location_type',
+                                event.target.value,
+                            )
+                        }
+                        aria-label="Supply location type"
+                        className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                    >
+                        {locationTypeOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                                {option.label}
+                            </option>
+                        ))}
+                    </select>
+                    {createForm.errors.location_type && (
+                        <p className="mt-1 text-xs text-destructive">
+                            {createForm.errors.location_type}
+                        </p>
+                    )}
+                </div>
                 <Button type="submit" disabled={createForm.processing}>
                     <Plus />
                     Add location
@@ -416,13 +464,22 @@ function SupplyLocationsPanel({ port }: { port: Port }) {
 function SupplyLocationRow({
     port,
     location,
+    locationTypeOptions,
 }: {
     port: Port;
     location: SupplyLocation;
+    locationTypeOptions: EnumOption[];
 }) {
     const [isEditing, setIsEditing] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
-    const editForm = useForm({ name: location.name });
+    const editForm = useForm({
+        name: location.name,
+        location_type: location.location_type,
+    });
+    const locationTypeLabel =
+        locationTypeOptions.find(
+            (option) => option.value === location.location_type,
+        )?.label ?? location.location_type;
 
     const submitEdit = (event: FormEvent) => {
         event.preventDefault();
@@ -441,6 +498,7 @@ function SupplyLocationRow({
 
     const cancelEdit = () => {
         editForm.setData('name', location.name);
+        editForm.setData('location_type', location.location_type);
         editForm.clearErrors();
         setIsEditing(false);
     };
@@ -450,7 +508,7 @@ function SupplyLocationRow({
             {isEditing ? (
                 <form
                     onSubmit={submitEdit}
-                    className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-start"
+                    className="grid gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_12rem_auto] sm:items-start"
                 >
                     <div className="min-w-0 flex-1">
                         <Input
@@ -464,6 +522,30 @@ function SupplyLocationRow({
                         {editForm.errors.name && (
                             <p className="mt-1 text-xs text-destructive">
                                 {editForm.errors.name}
+                            </p>
+                        )}
+                    </div>
+                    <div className="min-w-0">
+                        <select
+                            value={editForm.data.location_type}
+                            onChange={(event) =>
+                                editForm.setData(
+                                    'location_type',
+                                    event.target.value,
+                                )
+                            }
+                            aria-label="Supply location type"
+                            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                        >
+                            {locationTypeOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+                        {editForm.errors.location_type && (
+                            <p className="mt-1 text-xs text-destructive">
+                                {editForm.errors.location_type}
                             </p>
                         )}
                     </div>
@@ -489,9 +571,14 @@ function SupplyLocationRow({
                 </form>
             ) : (
                 <div className="flex items-center justify-between gap-3 px-3 py-2">
-                    <span className="min-w-0 truncate text-sm">
-                        {location.name}
-                    </span>
+                    <div className="flex min-w-0 items-center gap-2">
+                        <span className="min-w-0 truncate text-sm">
+                            {location.name}
+                        </span>
+                        <Badge variant="outline" className="shrink-0 text-xs">
+                            {locationTypeLabel}
+                        </Badge>
+                    </div>
                     <div className="flex shrink-0 items-center gap-1">
                         <Button
                             type="button"
