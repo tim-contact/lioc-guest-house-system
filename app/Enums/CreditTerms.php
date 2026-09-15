@@ -4,6 +4,7 @@ namespace App\Enums;
 
 enum CreditTerms: string
 {
+    case Days7 = '7_days';
     case Days14 = '14_days';
     case Days30 = '30_days';
     case Days45 = '45_days';
@@ -14,6 +15,7 @@ enum CreditTerms: string
     public function label(): string
     {
         return match ($this) {
+            self::Days7 => '7 Days',
             self::Days14 => '14 Days',
             self::Days30 => '30 Days',
             self::Days45 => '45 Days',
@@ -29,6 +31,7 @@ enum CreditTerms: string
     public function days(): int
     {
         return match ($this) {
+            self::Days7 => 7,
             self::Days14 => 14,
             self::Days30 => 30,
             self::Days45 => 45,
