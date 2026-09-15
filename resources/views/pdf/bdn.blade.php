@@ -287,20 +287,14 @@
             text-align: left;
         }
 
-        .product-seal-heading {
+        .product-seal-name {
             display: block;
-            font-size: 8px;
-            color: #111827;
-        }
-
-        .product-seal-subheading {
-            display: block;
-            margin-top: 1px;
-            font-size: 6px;
+            font-size: 5.8px;
             font-weight: 400;
             letter-spacing: 0;
+            line-height: 1.1;
             text-transform: none;
-            color: #6b7280;
+            color: #111827;
         }
 
         .seal-type-label {
@@ -571,9 +565,9 @@
                 ['retention', 'Samples Seal number Retention'],
             ];
             $productNames = [
-                'vlsfo' => ['VLSFO', 'Low Sulphur fuel oil'],
-                'hsfo' => ['HSFO', 'Fuel oil'],
-                'mgo' => ['MGO', 'Marine gas oil'],
+                'vlsfo' => 'Low Sulphur fuel oil',
+                'hsfo' => 'Fuel oil',
+                'mgo' => 'Marine gas oil',
             ];
         @endphp
 
@@ -583,8 +577,7 @@
                     <th class="sample-heading">Sample Seal Numbers</th>
                     @foreach ($gradeColumns as $grade)
                         <th>
-                            <span class="product-seal-heading">{{ $productNames[$grade->value][0] }}</span>
-                            <span class="product-seal-subheading">{{ $productNames[$grade->value][1] }}</span>
+                            <span class="product-seal-name">{{ $productNames[$grade->value] }}</span>
                         </th>
                     @endforeach
                 </tr>
