@@ -41,7 +41,6 @@ $surveyorGetRoutes = [
 
 $financeGetRoutes = [
     'finance',
-    'invoices.index',
     'payments.index',
 ];
 
@@ -187,6 +186,7 @@ test('finance is redirected to their landing page when accessing non-finance pro
     'sales-dashboard' => 'sales-dashboard',
     'operations' => 'operations',
     'surveyor' => 'surveyor',
+    'invoices.index' => 'invoices.index',
 ]);
 
 // ============================================================

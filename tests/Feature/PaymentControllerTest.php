@@ -33,7 +33,56 @@ test('index lists payments with their order and customer', function () {
             ->where('payments.data.0.type', 'credit_note')
             ->where('payments.per_page', 25)
             ->where('payments.total', 1)
+            ->where('canManagePayments', false)
+            ->where('filters.search', '')
             ->has('paymentTypeOptions'));
+});
+
+test('finance users can view past payments without edit access', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Finance]));
+
+    $customer = Customer::factory()->create(['name' => 'Read Only Customer']);
+    $order = Order::factory()->create(['customer_id' => $customer->sap_id, 'order_number' => 'ORD-FIN-VIEW']);
+    Payment::factory()->create([
+        'order_number' => $order->order_number,
+        'amount' => 250,
+    ]);
+
+    $this->get(route('payments.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('payments/index')
+            ->has('payments.data', 1)
+            ->where('payments.data.0.order_number', 'ORD-FIN-VIEW')
+            ->where('canManagePayments', false));
+});
+
+test('index searches payments by order customer and vessel', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Finance]));
+
+    $matchedCustomer = Customer::factory()->create(['name' => 'Searchable Marine']);
+    $matchedOrder = Order::factory()->create([
+        'customer_id' => $matchedCustomer->sap_id,
+        'order_number' => 'ORD-PAY-SEARCH',
+        'vessel_name' => 'MT Search Star',
+    ]);
+    Payment::factory()->create(['order_number' => $matchedOrder->order_number]);
+
+    $otherCustomer = Customer::factory()->create(['name' => 'Other Marine']);
+    $otherOrder = Order::factory()->create([
+        'customer_id' => $otherCustomer->sap_id,
+        'order_number' => 'ORD-PAY-OTHER',
+        'vessel_name' => 'MT Other Star',
+    ]);
+    Payment::factory()->create(['order_number' => $otherOrder->order_number]);
+
+    $this->get(route('payments.index', ['search' => 'searchable']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('payments/index')
+            ->has('payments.data', 1)
+            ->where('payments.data.0.order_number', 'ORD-PAY-SEARCH')
+            ->where('filters.search', 'searchable'));
 });
 
 test('index paginates payments', function () {
@@ -75,56 +124,17 @@ test('guests cannot update a payment', function () {
     $this->put(route('payments.update', $payment))->assertRedirect(route('login'));
 });
 
-test('update recomputes the order amount received and payment receipt date', function () {
-    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
-
-    $order = Order::factory()->create(['invoice_value' => 1000]);
-    $payment = Payment::factory()->create([
-        'order_number' => $order->order_number,
-        'amount' => 400,
-        'date' => '2026-07-10',
-    ]);
-    Payment::factory()->create([
-        'order_number' => $order->order_number,
-        'amount' => 100,
-        'date' => '2026-07-05',
-    ]);
-
-    $this->put(route('payments.update', $payment), [
-        'amount' => 700,
-        'date' => '2026-07-20',
-        'type' => PaymentType::WriteOffApproved->value,
-    ])->assertRedirect()->assertSessionHasNoErrors();
-
-    $order->refresh();
-
-    expect($payment->fresh()->type)->toBe(PaymentType::WriteOffApproved);
-    expect((float) $order->amount_received)->toBe(800.0);
-    expect($order->payment_receipt_date->toDateString())->toBe('2026-07-20');
-});
-
-test('update rejects a negative amount, a missing date and an unknown type', function () {
-    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+test('authenticated users cannot update a past payment', function (UserType $type) {
+    $this->actingAs(User::factory()->create(['type' => $type]));
 
     $payment = Payment::factory()->create();
 
     $this->put(route('payments.update', $payment), [
-        'amount' => -5,
+        'amount' => 700,
         'date' => '2026-07-20',
         'type' => PaymentType::Regular->value,
-    ])->assertSessionHasErrors('amount');
-
-    $this->put(route('payments.update', $payment), [
-        'amount' => 100,
-        'type' => PaymentType::Regular->value,
-    ])->assertSessionHasErrors('date');
-
-    $this->put(route('payments.update', $payment), [
-        'amount' => 100,
-        'date' => '2026-07-20',
-        'type' => 'not-a-type',
-    ])->assertSessionHasErrors('type');
-});
+    ])->assertForbidden();
+})->with([UserType::SuperAdmin, UserType::Master, UserType::Finance]);
 
 test('guests cannot delete a payment', function () {
     $payment = Payment::factory()->create();
@@ -132,46 +142,10 @@ test('guests cannot delete a payment', function () {
     $this->delete(route('payments.destroy', $payment))->assertRedirect(route('login'));
 });
 
-test('destroy removes the payment and recomputes the order totals', function () {
-    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+test('authenticated users cannot delete a past payment', function (UserType $type) {
+    $this->actingAs(User::factory()->create(['type' => $type]));
 
-    $order = Order::factory()->create(['invoice_value' => 1000]);
-    $kept = Payment::factory()->create([
-        'order_number' => $order->order_number,
-        'amount' => 300,
-        'date' => '2026-07-05',
-    ]);
-    $removed = Payment::factory()->create([
-        'order_number' => $order->order_number,
-        'amount' => 400,
-        'date' => '2026-07-10',
-    ]);
+    $payment = Payment::factory()->create();
 
-    $this->delete(route('payments.destroy', $removed))->assertRedirect();
-
-    expect(Payment::find($removed->id))->toBeNull();
-    expect(Payment::find($kept->id))->not->toBeNull();
-
-    $order->refresh();
-
-    expect((float) $order->amount_received)->toBe(300.0);
-    expect($order->payment_receipt_date->toDateString())->toBe('2026-07-05');
-});
-
-test('destroy nulls the payment receipt date when the last payment is removed', function () {
-    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
-
-    $order = Order::factory()->create(['invoice_value' => 1000]);
-    $payment = Payment::factory()->create([
-        'order_number' => $order->order_number,
-        'amount' => 400,
-        'date' => '2026-07-10',
-    ]);
-
-    $this->delete(route('payments.destroy', $payment))->assertRedirect();
-
-    $order->refresh();
-
-    expect((float) $order->amount_received)->toBe(0.0);
-    expect($order->payment_receipt_date)->toBeNull();
-});
+    $this->delete(route('payments.destroy', $payment))->assertForbidden();
+})->with([UserType::SuperAdmin, UserType::Master, UserType::Finance]);

@@ -111,8 +111,11 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::patch('finance/{order}/agent-fees', [FinanceController::class, 'updateAgentFees'])->name('finance.agent-fees.update');
         Route::post('finance/{order}/payments', [FinanceController::class, 'storePayment'])->name('finance.payments.store');
         Route::patch('finance/{order}/close', [FinanceController::class, 'close'])->name('finance.close');
-        Route::resource('invoices', InvoiceController::class)->only(['index', 'update'])->parameters(['invoices' => 'order']);
         Route::resource('payments', PaymentController::class)->only(['index', 'update', 'destroy']);
+    });
+
+    Route::middleware('role:super_admin,master')->group(function () {
+        Route::resource('invoices', InvoiceController::class)->only(['index', 'update'])->parameters(['invoices' => 'order']);
     });
 });
 

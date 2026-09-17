@@ -191,9 +191,20 @@ export const navGroups: NavGroup[] = [
     },
     {
         title: 'Finance',
-        href: finance(),
-        icon: Banknote,
-        description: 'Monitor finance activity',
+        items: [
+            {
+                title: 'Finance Dashboard',
+                href: finance(),
+                icon: Banknote,
+                description: 'Monitor finance activity',
+            },
+            {
+                title: 'Past Payments',
+                href: paymentsIndex(),
+                icon: CreditCard,
+                description: 'View recorded payments',
+            },
+        ],
     },
 ];
 

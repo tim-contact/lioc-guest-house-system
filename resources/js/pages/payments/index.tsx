@@ -1,9 +1,12 @@
+import { router } from '@inertiajs/react';
+import { Search } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import type { CrudConfig } from '@/components/crud/crud-types';
 import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
 import type { PaginationMeta } from '@/components/pagination-controls';
+import { Input } from '@/components/ui/input';
 import type { ExportColumn } from '@/lib/export-xlsx';
 import { formatMoney, optionLabel, shortDate } from '@/lib/utils';
-import { destroy, update } from '@/routes/payments';
 import type { EnumOption } from '@/types';
 
 interface Payment {
@@ -21,13 +24,48 @@ interface PaymentsIndexProps {
         data: Payment[];
     };
     paymentTypeOptions: EnumOption[];
+    canManagePayments: boolean;
+    filters: {
+        search: string;
+    };
 }
 
 export default function PaymentsIndex({
     payments,
     paymentTypeOptions,
+    filters,
 }: PaymentsIndexProps) {
     const rows = payments.data;
+    const [search, setSearch] = useState(filters.search);
+    const didMount = useRef(false);
+
+    useEffect(() => {
+        if (!didMount.current) {
+            didMount.current = true;
+            return;
+        }
+
+        const timeout = window.setTimeout(() => {
+            const query = search.trim();
+            const params: Record<string, string | number> = {};
+
+            if (query) {
+                params.search = query;
+            }
+
+            if (payments.per_page !== 25) {
+                params.per_page = payments.per_page;
+            }
+
+            router.get('/payments', params, {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            });
+        }, 300);
+
+        return () => window.clearTimeout(timeout);
+    }, [payments.per_page, search]);
 
     const exportColumns: ExportColumn<Payment>[] = [
         {
@@ -45,17 +83,36 @@ export default function PaymentsIndex({
     ];
 
     const config: CrudConfig<Payment> = {
-        title: 'Payments',
+        title: 'Past Payments',
         entityLabel: 'Payment',
-        filename: 'payments',
+        filename: 'past-payments',
         emptyText: 'No payments yet.',
         pk: (payment) => payment.id,
         defaultSortKey: 'date',
         canCreate: false,
+        canEdit: false,
+        canDelete: false,
         exportColumns,
-        editTitle: (payment) => payment.order_number ?? 'Payment',
-        deleteLabel: (payment) =>
-            `the ${formatMoney(payment.amount)} payment on ${payment.order_number}`,
+        toolbar: (
+            <div className="flex flex-col gap-2">
+                <div className="relative w-full max-w-md">
+                    <Search
+                        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#94A3B8]"
+                        aria-hidden="true"
+                    />
+                    <Input
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder="Search order, customer or vessel"
+                        className="h-10 rounded-xl border-[#CBD5E1] bg-white pl-9 text-sm"
+                        aria-label="Search past payments"
+                    />
+                </div>
+                <span className="text-xs font-medium text-[#64748B]">
+                    {payments.total} payment{payments.total === 1 ? '' : 's'}
+                </span>
+            </div>
+        ),
         columns: [
             {
                 header: 'Order Number',
@@ -91,25 +148,6 @@ export default function PaymentsIndex({
                     optionLabel(paymentTypeOptions, payment.type),
             },
         ],
-        fields: [
-            { name: 'amount', label: 'Amount', type: 'currency' },
-            { name: 'date', label: 'Date', type: 'date' },
-            {
-                name: 'type',
-                label: 'Type',
-                type: 'select',
-                options: paymentTypeOptions,
-            },
-        ],
-        toFormData: (payment) => ({
-            amount: payment?.amount ?? '',
-            date: payment?.date ?? '',
-            type: payment?.type ?? 'regular',
-        }),
-        routes: {
-            update: (id) => update(Number(id)),
-            destroy: (id) => destroy(Number(id)),
-        },
     };
 
     return (
@@ -118,5 +156,5 @@ export default function PaymentsIndex({
 }
 
 PaymentsIndex.layout = {
-    title: 'Payments',
+    title: 'Past Payments',
 };

@@ -6,7 +6,6 @@ use App\Enums\PaymentType;
 use App\Models\Payment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -16,8 +15,18 @@ class PaymentController extends Controller
     {
         $perPage = (int) $request->input('per_page', 25);
         $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 25;
+        $search = self::cleanSearchText($request->input('search', ''));
 
         $payments = Payment::with('order.customer')
+            ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
+                $searchPattern = "%{$search}%";
+
+                $query
+                    ->whereRaw('LOWER(order_number) LIKE ?', [$searchPattern])
+                    ->orWhereHas('order', fn ($order) => $order
+                        ->whereRaw('LOWER(vessel_name) LIKE ?', [$searchPattern])
+                        ->orWhereHas('customer', fn ($customer) => $customer->whereRaw('LOWER(name) LIKE ?', [$searchPattern])));
+            }))
             ->orderByDesc('date')
             ->paginate($perPage)
             ->withQueryString()
@@ -34,30 +43,25 @@ class PaymentController extends Controller
         return Inertia::render('payments/index', [
             'payments' => $payments,
             'paymentTypeOptions' => $this->enumOptions(PaymentType::cases()),
+            'canManagePayments' => false,
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 
-    public function update(Request $request, Payment $payment): RedirectResponse
+    private static function cleanSearchText(mixed $value): string
     {
-        $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0'],
-            'date' => ['required', 'date'],
-            'type' => ['required', Rule::enum(PaymentType::class)],
-        ]);
-
-        $payment->update($validated);
-        $payment->order?->syncPaymentTotals();
-
-        return $this->toast('Payment saved.');
+        return mb_strtolower(preg_replace('/\s+/', ' ', trim((string) $value)) ?? '');
     }
 
-    public function destroy(Payment $payment): RedirectResponse
+    public function update(): RedirectResponse
     {
-        $order = $payment->order;
+        abort(403);
+    }
 
-        $payment->delete();
-        $order?->syncPaymentTotals();
-
-        return $this->toast('Payment deleted.');
+    public function destroy(): RedirectResponse
+    {
+        abort(403);
     }
 }
