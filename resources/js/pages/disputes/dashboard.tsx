@@ -1,25 +1,12 @@
 import { Head } from '@inertiajs/react';
-import { Scale } from 'lucide-react';
 import { useState } from 'react';
 import type { DisputeRow } from '@/components/dispute-edit-dialog';
 import { DisputeEditDialog } from '@/components/dispute-edit-dialog';
-import { DetailRow } from '@/components/edit-panel/fields';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatMoney, shortDate } from '@/lib/utils';
 import type { EnumOption } from '@/types';
-
-/** Pastel tint per delivery port — colors the card frame (no red). */
-const PORT_STYLE: Record<string, string> = {
-    Colombo: 'border-info/40 bg-info/10 hover:ring-info/50',
-    Trincomalee: 'border-success/40 bg-success/10 hover:ring-success/50',
-    Galle: 'border-warning/40 bg-warning/10 hover:ring-warning/50',
-    Hambantota:
-        'border-violet-500/40 bg-violet-500/10 hover:ring-violet-500/50',
-};
-
-const NEUTRAL_PORT_STYLE = 'border-border bg-muted/40 hover:ring-foreground/30';
 
 interface DisputesDashboardProps {
     disputes: DisputeRow[];
@@ -44,64 +31,127 @@ function DisputeGrid({
     }
 
     return (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(24rem,1fr))] gap-8">
+        <div className="grid auto-rows-fr grid-cols-[repeat(auto-fill,minmax(24rem,1fr))] gap-4">
             {rows.map((row) => (
                 <button
                     key={row.id}
                     type="button"
                     onClick={() => onSelect(row)}
-                    className="block w-full text-left"
+                    className="group block h-full w-full rounded-xl text-left focus-visible:ring-2 focus-visible:ring-red-300 focus-visible:outline-none"
                 >
                     <Card
-                        className={`h-full min-h-56 cursor-pointer justify-center gap-4 border py-8 text-base transition [--card-spacing:--spacing(8)] hover:scale-[1.02] hover:ring-2 ${
-                            PORT_STYLE[row.port ?? ''] ?? NEUTRAL_PORT_STYLE
-                        }`}
+                        className="relative flex h-full min-h-64 flex-col overflow-hidden border-slate-200 bg-white py-0 shadow-sm transition group-hover:-translate-y-0.5 group-hover:border-red-200 group-hover:shadow-md"
                     >
-                        <CardHeader>
-                            <div className="flex items-start justify-between gap-2">
-                                <div>
-                                    <CardTitle className="flex items-center gap-2 text-2xl">
-                                        <Scale className="size-7" />
-                                        {row.order_number ?? `#${row.id}`}
-                                    </CardTitle>
-                                    <p className="text-sm text-muted-foreground">
+                        {row.dispute_status === 'open' ? (
+                            <span className="absolute inset-x-0 top-0 h-1 bg-red-500" />
+                        ) : null}
+                        <CardHeader className="p-4 pt-5">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <p className="text-xs font-semibold tracking-[0.08em] text-slate-400 uppercase">
                                         Dispute #{row.id}
                                     </p>
+                                    <CardTitle className="mt-1 flex flex-wrap items-center gap-2 text-lg">
+                                        <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-mono text-sm font-bold text-slate-900">
+                                            {row.order_number ?? `#${row.id}`}
+                                        </span>
+                                    </CardTitle>
                                 </div>
-                                <Badge
-                                    variant={
-                                        row.dispute_status === 'closed'
-                                            ? 'secondary'
-                                            : 'destructive'
-                                    }
-                                    className="text-sm capitalize"
-                                >
-                                    {row.dispute_status}
-                                </Badge>
+                                <StatusBadge status={row.dispute_status} />
                             </div>
                         </CardHeader>
-                        <CardContent className="flex flex-col gap-2">
-                            <DetailRow
-                                label="Created"
-                                value={shortDate(row.created_at)}
-                            />
-                            <DetailRow
-                                label="Customer"
-                                value={row.customer_name ?? '—'}
-                            />
-                            <DetailRow
-                                label="Type"
-                                value={row.type_of_dispute_label ?? '—'}
-                            />
-                            <DetailRow
-                                label="Value"
-                                value={formatMoney(row.dispute_value)}
-                            />
+                        <CardContent className="grid flex-1 gap-4 p-4 pt-0">
+                            <div className="flex flex-wrap gap-1.5">
+                                <span className="rounded-full bg-red-50 px-2 py-1 text-xs font-bold text-red-700 ring-1 ring-red-100">
+                                    {row.type_of_dispute_label ??
+                                        'General dispute'}
+                                </span>
+                                {row.port ? (
+                                    <span className="rounded-full bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-100">
+                                        {row.port}
+                                    </span>
+                                ) : null}
+                            </div>
+
+                            <div className="grid gap-2 sm:grid-cols-2">
+                                <Detail
+                                    label="Customer"
+                                    value={row.customer_name ?? 'Unassigned'}
+                                />
+                                <Detail
+                                    label="Vessel"
+                                    value={row.vessel_name ?? 'Unassigned'}
+                                />
+                                <Detail
+                                    label="Created"
+                                    value={shortDate(row.created_at)}
+                                />
+                                <Detail
+                                    label="Value"
+                                    value={formatMoney(row.dispute_value)}
+                                    alignRight
+                                />
+                            </div>
+
+                            <div className="mt-auto flex items-center justify-between gap-3 border-t border-slate-100 pt-3 text-xs">
+                                <span className="truncate font-medium text-muted-foreground">
+                                    {row.action_status
+                                        ? row.action_status.replaceAll('_', ' ')
+                                        : 'Action pending'}
+                                </span>
+                                <span className="font-semibold text-red-600 transition group-hover:text-red-700">
+                                    Review
+                                </span>
+                            </div>
                         </CardContent>
                     </Card>
                 </button>
             ))}
         </div>
+    );
+}
+
+function StatusBadge({ status }: { status: DisputeRow['dispute_status'] }) {
+    if (status === 'closed') {
+        return (
+            <Badge
+                variant="secondary"
+                className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 capitalize"
+            >
+                Closed
+            </Badge>
+        );
+    }
+
+    return (
+        <Badge className="shrink-0 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 shadow-none ring-1 ring-red-100 hover:bg-red-50">
+            Open
+        </Badge>
+    );
+}
+
+function Detail({
+    label,
+    value,
+    alignRight = false,
+}: {
+    label: string;
+    value: string;
+    alignRight?: boolean;
+}) {
+    return (
+        <span
+            className={`min-w-0 rounded-lg bg-slate-50 px-3 py-2 ${
+                alignRight ? 'sm:text-right' : ''
+            }`}
+        >
+            <span className="block text-[10px] font-bold tracking-[0.08em] text-slate-400 uppercase">
+                {label}
+            </span>
+            <span className="mt-0.5 block truncate text-sm font-semibold text-slate-800">
+                {value}
+            </span>
+        </span>
     );
 }
 

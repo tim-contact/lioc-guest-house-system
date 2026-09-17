@@ -4,6 +4,7 @@ use App\Enums\DisputeStatus;
 use App\Enums\OrderStatus;
 use App\Enums\ProductType;
 use App\Enums\UserType;
+use App\Models\Barge;
 use App\Models\Customer;
 use App\Models\Dispute;
 use App\Models\Enquiry;
@@ -22,13 +23,72 @@ test('super admins can view report analytics', function () {
             ->has('summary')
             ->has('funnel', 3)
             ->has('portStatusMetrics')
-            ->has('monthlyTrend', 6)
-            ->has('topPorts')
+            ->has('monthlyProductVolumes', 6)
             ->has('topCustomers')
-            ->has('productMix', 3)
-            ->has('rebondProductMix', 3)
+            ->has('bargeUtilization', 3)
+            ->has('pendingDisputesByPort')
+            ->has('productDemandComparison', 3)
+            ->has('productDemandByPort')
             ->has('cyLyProductSales', 3)
             ->has('cyLyProductSales.0.months', 12));
+});
+
+test('barge utilization is scoped to current month and last thirty days', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    Barge::factory()->create(['imo' => '8923844', 'name' => 'Barge Alpha']);
+    Barge::factory()->create(['imo' => '9021291', 'name' => 'Barge Bravo']);
+    Barge::factory()->create(['imo' => '8530570', 'name' => 'Barge Charlie']);
+
+    Order::factory()->create([
+        'status' => OrderStatus::Pending,
+        'barge_id' => '8923844',
+        'order_date' => now()->subDays(5),
+    ]);
+
+    Order::factory()->create([
+        'status' => OrderStatus::Delivered,
+        'barge_id' => '8923844',
+        'invoice_date' => now()->subDays(3),
+    ]);
+
+    Order::factory()->create([
+        'status' => OrderStatus::Closed,
+        'barge_id' => '9021291',
+        'invoice_date' => now()->startOfMonth(),
+    ]);
+
+    Order::factory()->create([
+        'status' => OrderStatus::Pending,
+        'barge_id' => '9021291',
+        'order_date' => now()->subDays(40),
+    ]);
+
+    Order::factory()->create([
+        'status' => OrderStatus::Delivered,
+        'barge_id' => '8530570',
+        'invoice_date' => now()->subDays(40),
+    ]);
+
+    $this->get(route('reports.analytics'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('bargeUtilization.0.imo', '8923844')
+            ->where('bargeUtilization.0.label', 'Barge Alpha')
+            ->where('bargeUtilization.0.periods.currentMonth.pending', 1)
+            ->where('bargeUtilization.0.periods.currentMonth.completed', 1)
+            ->where('bargeUtilization.0.periods.currentMonth.total', 2)
+            ->where('bargeUtilization.0.periods.last30Days.pending', 1)
+            ->where('bargeUtilization.0.periods.last30Days.completed', 1)
+            ->where('bargeUtilization.0.periods.last30Days.total', 2)
+            ->where('bargeUtilization.1.imo', '9021291')
+            ->where('bargeUtilization.1.periods.currentMonth.pending', 0)
+            ->where('bargeUtilization.1.periods.currentMonth.completed', 1)
+            ->where('bargeUtilization.1.periods.last30Days.pending', 0)
+            ->where('bargeUtilization.1.periods.last30Days.completed', 1)
+            ->where('bargeUtilization.2.imo', '8530570')
+            ->where('bargeUtilization.2.periods.currentMonth.total', 0)
+            ->where('bargeUtilization.2.periods.last30Days.total', 0));
 });
 
 test('report analytics includes enquiry to completed funnel counts', function () {
@@ -39,20 +99,40 @@ test('report analytics includes enquiry to completed funnel counts', function ()
     $enquiries = Enquiry::factory()
         ->count(4)
         ->create(['port_id' => $port->id]);
+    Enquiry::factory()->create([
+        'port_id' => $port->id,
+        'created_at' => now()->subMonth(),
+    ]);
 
     $pendingOrder = Order::factory()->create([
         'enquiry_id' => $enquiries[0]->id,
         'customer_id' => $customer->sap_id,
+        'vessel_name' => 'MT Pending Star',
         'port_id' => $port->id,
         'status' => OrderStatus::Pending,
+        'order_date' => now()->startOfMonth(),
+        'vlsfo_final_qty' => 100,
+        'mgo_final_qty' => 50,
+        'hsfo_final_qty' => 0,
+        'vlsfo_bdn_qty' => null,
+        'mgo_bdn_qty' => null,
+        'hsfo_bdn_qty' => null,
         'invoice_value' => 1000,
         'amount_received' => 250,
     ]);
     $deliveredOrder = Order::factory()->create([
         'enquiry_id' => $enquiries[1]->id,
         'customer_id' => $customer->sap_id,
+        'vessel_name' => 'MT Delivered Star',
         'port_id' => $port->id,
         'status' => OrderStatus::Delivered,
+        'invoice_date' => now()->startOfMonth(),
+        'vlsfo_final_qty' => 0,
+        'mgo_final_qty' => 0,
+        'hsfo_final_qty' => 0,
+        'vlsfo_bdn_qty' => 200,
+        'mgo_bdn_qty' => 0,
+        'hsfo_bdn_qty' => 25,
         'invoice_value' => 2000,
         'amount_received' => 2000,
     ]);
@@ -61,16 +141,34 @@ test('report analytics includes enquiry to completed funnel counts', function ()
         'customer_id' => $customer->sap_id,
         'port_id' => $port->id,
         'status' => OrderStatus::Closed,
+        'invoice_date' => now()->subMonth(),
+        'vlsfo_final_qty' => 0,
+        'mgo_final_qty' => 0,
+        'hsfo_final_qty' => 0,
+        'vlsfo_bdn_qty' => 999,
+        'mgo_bdn_qty' => 0,
+        'hsfo_bdn_qty' => 0,
         'invoice_value' => 3000,
         'amount_received' => 3000,
+    ]);
+    Order::factory()->create([
+        'enquiry_id' => $enquiries[3]->id,
+        'customer_id' => $customer->sap_id,
+        'port_id' => $port->id,
+        'status' => OrderStatus::Delivered,
+        'order_date' => now()->subMonth(),
+        'invoice_date' => now()->subMonth(),
+        'invoice_value' => 5000,
     ]);
     Dispute::factory()->create([
         'order_id' => $pendingOrder->id,
         'dispute_status' => DisputeStatus::Open,
+        'created_at' => now()->subMinute(),
     ]);
     Dispute::factory()->create([
         'order_id' => $deliveredOrder->id,
         'dispute_status' => DisputeStatus::Open,
+        'created_at' => now(),
     ]);
     Dispute::factory()->create([
         'order_id' => $closedOrder->id,
@@ -80,31 +178,48 @@ test('report analytics includes enquiry to completed funnel counts', function ()
     $this->get(route('reports.analytics'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('summary.enquiries', 7)
+            ->where('summary.enquiries', 8)
             ->where('summary.orders', 3)
-            ->where('summary.completed', 2)
-            ->where('summary.conversionRate', 42.9)
-            ->where('summary.completionRate', 66.7)
+            ->where('summary.completed', 1)
+            ->where('summary.conversionRate', 37.5)
+            ->where('summary.completionRate', 33.3)
+            ->where('summary.currentMonthVolume', 375)
+            ->where('monthlyProductVolumes.5.vlsfo', 300)
+            ->where('monthlyProductVolumes.5.hsfo', 25)
+            ->where('monthlyProductVolumes.5.mgo', 50)
+            ->where('monthlyProductVolumes.5.total', 375)
             ->where('funnel.0.label', 'Enquiries')
-            ->where('funnel.0.value', 7)
+            ->where('funnel.0.value', 8)
             ->where('funnel.1.label', 'Orders')
             ->where('funnel.1.value', 3)
             ->where('funnel.2.label', 'Completed')
-            ->where('funnel.2.value', 2)
+            ->where('funnel.2.value', 1)
             ->where('portStatusMetrics.0.label', 'Colombo')
             ->where('portStatusMetrics.0.pendingDeliveries', 1)
-            ->where('portStatusMetrics.0.completedDeliveries', 2)
+            ->where('portStatusMetrics.0.completedDeliveries', 1)
             ->where('portStatusMetrics.0.pendingDisputes', 2)
-            ->where('portStatusMetrics.0.total', 5));
+            ->where('portStatusMetrics.0.total', 4)
+            ->where('pendingDisputesByPort.0.label', 'Colombo')
+            ->where('pendingDisputesByPort.0.count', 2)
+            ->where('pendingDisputesByPort.0.disputes.0.customerName', 'Acme Marine')
+            ->where('pendingDisputesByPort.0.disputes.0.vesselName', 'MT Delivered Star')
+            ->where('pendingDisputesByPort.0.disputes.1.vesselName', 'MT Pending Star'));
 });
 
-test('product mix is scoped to current month sales', function () {
+test('product demand comparison is scoped to current month and same month last year sales', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $colombo = Port::factory()->create(['name' => 'Colombo']);
+    $galle = Port::factory()->create(['name' => 'Galle']);
+    $recentCustomer = Customer::factory()->create(['name' => 'Recent Customer']);
+    $olderCustomer = Customer::factory()->create(['name' => 'Older Customer']);
 
     Order::factory()->create([
         'status' => OrderStatus::Delivered,
         'invoice_date' => now()->startOfMonth(),
         'product_type' => ProductType::Bonded,
+        'customer_id' => $recentCustomer->sap_id,
+        'port_id' => $colombo->id,
         'invoice_value' => 1000,
         'vlsfo_bdn_qty' => 120,
         'mgo_bdn_qty' => 45,
@@ -115,6 +230,7 @@ test('product mix is scoped to current month sales', function () {
         'status' => OrderStatus::Closed,
         'invoice_date' => now()->endOfMonth(),
         'product_type' => ProductType::DutyPaid,
+        'port_id' => $galle->id,
         'invoice_value' => 500,
         'vlsfo_bdn_qty' => 30,
         'mgo_bdn_qty' => 5,
@@ -124,6 +240,8 @@ test('product mix is scoped to current month sales', function () {
     Order::factory()->create([
         'status' => OrderStatus::Delivered,
         'invoice_date' => now()->subMonth()->startOfMonth(),
+        'customer_id' => $olderCustomer->sap_id,
+        'port_id' => $galle->id,
         'invoice_value' => 9999,
         'vlsfo_bdn_qty' => 999,
         'mgo_bdn_qty' => 999,
@@ -132,7 +250,8 @@ test('product mix is scoped to current month sales', function () {
 
     Order::factory()->create([
         'status' => OrderStatus::Pending,
-        'invoice_date' => now()->startOfMonth(),
+        'invoice_date' => null,
+        'port_id' => $galle->id,
         'invoice_value' => 8888,
         'vlsfo_bdn_qty' => 999,
         'mgo_bdn_qty' => 999,
@@ -142,6 +261,8 @@ test('product mix is scoped to current month sales', function () {
     Order::factory()->create([
         'status' => OrderStatus::Delivered,
         'invoice_date' => now()->subYear()->startOfMonth(),
+        'product_type' => ProductType::Bonded,
+        'port_id' => $colombo->id,
         'invoice_value' => 700,
         'vlsfo_bdn_qty' => 77,
     ]);
@@ -152,18 +273,24 @@ test('product mix is scoped to current month sales', function () {
     $this->get(route('reports.analytics'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('productMix.0.label', 'VLSFO')
-            ->where('productMix.0.value', 150)
-            ->where('productMix.1.label', 'MGO')
-            ->where('productMix.1.value', 50)
-            ->where('productMix.2.label', 'HSFO')
-            ->where('productMix.2.value', 70)
-            ->where('rebondProductMix.0.label', 'VLSFO')
-            ->where('rebondProductMix.0.value', 120)
-            ->where('rebondProductMix.1.label', 'MGO')
-            ->where('rebondProductMix.1.value', 45)
-            ->where('rebondProductMix.2.label', 'HSFO')
-            ->where('rebondProductMix.2.value', 0)
+            ->where('productDemandComparison.0.label', 'VLSFO')
+            ->where('productDemandComparison.0.current.total', 150)
+            ->where('productDemandComparison.0.current.rebond', 120)
+            ->where('productDemandComparison.0.lastYear.total', 77)
+            ->where('productDemandComparison.0.lastYear.rebond', 77)
+            ->where('productDemandComparison.1.label', 'MGO')
+            ->where('productDemandComparison.1.current.total', 50)
+            ->where('productDemandComparison.1.current.rebond', 45)
+            ->where('productDemandComparison.2.label', 'HSFO')
+            ->where('productDemandComparison.2.current.total', 70)
+            ->where('productDemandComparison.2.current.rebond', 0)
+            ->where('productDemandByPort.0.label', 'Colombo')
+            ->where('productDemandByPort.0.data.0.current.total', 120)
+            ->where('productDemandByPort.0.data.0.lastYear.total', 77)
+            ->where('productDemandByPort.1.label', 'Galle')
+            ->where('productDemandByPort.1.data.0.current.total', 30)
+            ->where('topCustomers.0.label', 'Recent Customer')
+            ->where('topCustomers.0.value', 1000)
             ->where('cyLyProductSales.0.label', 'VLSFO')
             ->where("{$currentMonthPath}.currentYear", 150)
             ->where("{$currentMonthPath}.lastYear", 77));
