@@ -57,6 +57,39 @@ interface OrdersDashboardProps {
     actionStatusOptions: EnumOption[];
 }
 
+const PORT_ORDER = [
+    'Colombo',
+    'Trincomalee',
+    'Galle',
+    'Hambantota',
+    'Kankesanthurai',
+];
+
+function sortPortsByBusinessOrder(ports: PortOption[]): PortOption[] {
+    return [...ports].sort((first, second) => {
+        const firstIndex = PORT_ORDER.findIndex(
+            (port) => port.toLowerCase() === first.name.toLowerCase(),
+        );
+        const secondIndex = PORT_ORDER.findIndex(
+            (port) => port.toLowerCase() === second.name.toLowerCase(),
+        );
+
+        if (firstIndex === -1 && secondIndex === -1) {
+            return first.name.localeCompare(second.name);
+        }
+
+        if (firstIndex === -1) {
+            return 1;
+        }
+
+        if (secondIndex === -1) {
+            return -1;
+        }
+
+        return firstIndex - secondIndex;
+    });
+}
+
 export default function OrdersDashboard({
     pendingOrders,
     completedOrders,
@@ -107,7 +140,8 @@ export default function OrdersDashboard({
     ];
 
     const completedActions: RowAction<OrderEditRow>[] = [disputeAction];
-    const portNames = ports.map((port) => port.name);
+    const orderedPorts = sortPortsByBusinessOrder(ports);
+    const portNames = orderedPorts.map((port) => port.name);
 
     return (
         <>
@@ -136,7 +170,7 @@ export default function OrdersDashboard({
                     onOpenChange={(open) => !open && setEditing(null)}
                     order={editing}
                     customers={customers}
-                    ports={ports}
+                    ports={orderedPorts}
                     agents={agents}
                     agentPics={agentPics}
                     deliveryModeOptions={deliveryModeOptions}

@@ -50,6 +50,39 @@ interface OperationsDashboardProps {
     supplyLocationOptions: SupplyLocationOption[];
 }
 
+const PORT_ORDER = [
+    'Colombo',
+    'Trincomalee',
+    'Galle',
+    'Hambantota',
+    'Kankesanthurai',
+];
+
+function sortPortsByBusinessOrder(ports: string[]): string[] {
+    return [...ports].sort((first, second) => {
+        const firstIndex = PORT_ORDER.findIndex(
+            (port) => port.toLowerCase() === first.toLowerCase(),
+        );
+        const secondIndex = PORT_ORDER.findIndex(
+            (port) => port.toLowerCase() === second.toLowerCase(),
+        );
+
+        if (firstIndex === -1 && secondIndex === -1) {
+            return first.localeCompare(second);
+        }
+
+        if (firstIndex === -1) {
+            return 1;
+        }
+
+        if (secondIndex === -1) {
+            return -1;
+        }
+
+        return firstIndex - secondIndex;
+    });
+}
+
 export default function OperationsDashboard({
     pendingOrders,
     completedOrders,
@@ -68,13 +101,14 @@ export default function OperationsDashboard({
     const rowActions: RowAction<OpsEditRow>[] = [
         { label: 'Edit', variant: 'default', onClick: setEditing },
     ];
+    const orderedPorts = useMemo(() => sortPortsByBusinessOrder(ports), [ports]);
 
     const visiblePorts = useMemo(
         () =>
             filters.port === ALL_PORTS_VALUE
-                ? ports
-                : ports.filter((port) => port === filters.port),
-        [filters.port, ports],
+                ? orderedPorts
+                : orderedPorts.filter((port) => port === filters.port),
+        [filters.port, orderedPorts],
     );
     const filteredPendingOrders = useMemo(
         () => filterPortScopedRows(pendingOrders, filters),
@@ -94,7 +128,7 @@ export default function OperationsDashboard({
             <main className="min-h-[calc(100svh-4.25rem)] overflow-x-clip bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.045),transparent_32%),#F4F7FA] px-3 py-4 sm:px-4 md:px-6">
                 <div className="flex w-full flex-col gap-4">
                     <PortScopedOrderSearch
-                        ports={ports}
+                        ports={orderedPorts}
                         value={filters}
                         onChange={setFilters}
                         resultCount={resultCount}
