@@ -1,8 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { CheckCircle2, CreditCard, XCircle } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { ExportButton } from '@/components/export-button';
 import {
     PaginationControls,
     type PaginationMeta,
@@ -15,7 +14,16 @@ import {
 import { SortableHead } from '@/components/sortable-head';
 import { TableFrame } from '@/components/table-frame';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Table,
     TableBody,
@@ -26,6 +34,7 @@ import {
 } from '@/components/ui/table';
 import type { SortDir } from '@/hooks/use-sortable';
 import type { ExportColumn } from '@/lib/export-xlsx';
+import { exportToXlsx } from '@/lib/export-xlsx';
 import { cn, formatMoney, productColor, shortDate } from '@/lib/utils';
 import { close as closeFinanceOrder } from '@/routes/finance';
 import type { EnumOption } from '@/types';
@@ -45,8 +54,10 @@ export interface PaymentRow {
 export interface CompletedRow {
     id: number;
     order_number: string | null;
+    order_date: string | null;
     customer_name: string | null;
     vessel_name: string | null;
+    eta: string | null;
     port: string | null;
     location: string | null;
     vlsfo_qty: string | null;
@@ -93,9 +104,14 @@ const COLUMNS: Column[] = [
         cell: (row) => <OrderCell row={row} />,
     },
     {
-        header: 'Customer / Vessel',
+        header: 'Customer',
         sortKey: 'customer_name',
-        cell: (row) => <CustomerVesselCell row={row} />,
+        cell: (row) => <CustomerCell row={row} />,
+    },
+    {
+        header: 'Vessel',
+        sortKey: 'vessel_name',
+        cell: (row) => <VesselCell row={row} />,
     },
     {
         header: 'Products',
@@ -109,28 +125,46 @@ const COLUMNS: Column[] = [
         cell: (row) => <ChargesCell row={row} />,
     },
     {
-        header: 'Invoice',
+        header: 'Invoice Value',
         sortKey: 'invoice_value',
         align: 'right',
-        cell: (row) => <InvoiceCell row={row} />,
+        cell: (row) => <MoneyCell value={row.invoice_value} />,
     },
     {
-        header: 'Payment',
+        header: 'Invoice Date',
+        sortKey: 'invoice_date',
+        cell: (row) => <DateCell value={row.invoice_date} />,
+    },
+    {
+        header: 'Due Date',
         sortKey: 'payment_due_date',
+        cell: (row) => <DateCell value={row.payment_due_date} />,
+    },
+    {
+        header: 'Payments Received',
+        sortKey: 'amount_received',
         align: 'right',
-        cell: (row) => <PaymentCell row={row} />,
+        cell: (row) => <MoneyCell value={row.amount_received} />,
+    },
+    {
+        header: 'Outstanding',
+        sortKey: 'amount_remaining',
+        align: 'right',
+        cell: (row) => <MoneyCell value={row.amount_remaining} strong />,
     },
     {
         header: 'Status',
-        sortKey: 'status',
+        sortKey: 'amount_remaining',
         cell: (row) => <StatusCell row={row} />,
     },
 ];
 
 const EXPORT_COLUMNS: ExportColumn<CompletedRow>[] = [
     { header: 'Order Number', value: (row) => row.order_number ?? '' },
+    { header: 'Order Date', value: (row) => row.order_date ?? '' },
     { header: 'Customer Name', value: (row) => row.customer_name ?? '' },
     { header: 'Vessel Name', value: (row) => row.vessel_name ?? '' },
+    { header: 'ETA', value: (row) => row.eta ?? '' },
     { header: 'Supply Location', value: (row) => row.location ?? '' },
     { header: 'VLSFO Qty', value: (row) => row.vlsfo_qty ?? '' },
     { header: 'MGO Qty', value: (row) => row.mgo_qty ?? '' },
@@ -142,7 +176,7 @@ const EXPORT_COLUMNS: ExportColumn<CompletedRow>[] = [
     { header: 'Payment Due Date', value: (row) => row.payment_due_date ?? '' },
     {
         header: 'Payment Status',
-        value: (row) => (row.paid_in_full ? 'Received' : 'Not Received'),
+        value: (row) => getPaymentStatus(row).label,
     },
     { header: 'Amount Received', value: (row) => row.amount_received ?? '' },
     { header: 'Amount Remaining', value: (row) => row.amount_remaining },
@@ -150,7 +184,6 @@ const EXPORT_COLUMNS: ExportColumn<CompletedRow>[] = [
         header: 'Last Payment Date',
         value: (row) => row.payment_receipt_date ?? '',
     },
-    { header: 'Order Status', value: (row) => row.status ?? '' },
 ];
 
 export default function FinanceDashboard({
@@ -162,6 +195,7 @@ export default function FinanceDashboard({
     const rows = completedOrders.data;
     const [closingId, setClosingId] = useState<number | null>(null);
     const [payingRow, setPayingRow] = useState<CompletedRow | null>(null);
+    const [exportDialogOpen, setExportDialogOpen] = useState(false);
     const [searchFilters, setSearchFilters] = useState<PortSearchState>({
         query: filters.search,
         port: ALL_PORTS_VALUE,
@@ -266,11 +300,18 @@ export default function FinanceDashboard({
                                     {completedOrders.total}
                                 </span>
                             </div>
-                            <ExportButton
-                                rows={rows}
-                                columns={EXPORT_COLUMNS}
-                                filename="finance"
-                            />
+                            <Button
+                                variant="outline"
+                                onClick={() => setExportDialogOpen(true)}
+                            >
+                                <img
+                                    src="/images/icons/excel-file.png"
+                                    alt=""
+                                    aria-hidden="true"
+                                    className="mr-2 h-4 w-4 shrink-0"
+                                />
+                                Export to Excel
+                            </Button>
                         </div>
                         <div className="px-4 pb-4">
                             <TableFrame className="rounded-[14px] border-[#E3EAF2]">
@@ -398,6 +439,11 @@ export default function FinanceDashboard({
                     paymentTypeOptions={paymentTypeOptions}
                 />
             )}
+
+            <FinanceExportDialog
+                open={exportDialogOpen}
+                onOpenChange={setExportDialogOpen}
+            />
         </>
     );
 }
@@ -416,6 +462,199 @@ function hasPositiveAmount(value: string | number | null): boolean {
     return Number(value ?? 0) > 0;
 }
 
+interface ExportFilters {
+    order_date_from: string;
+    order_date_to: string;
+    eta_from: string;
+    eta_to: string;
+}
+
+function FinanceExportDialog({
+    open,
+    onOpenChange,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}) {
+    const [filters, setFilters] = useState<ExportFilters>({
+        order_date_from: '',
+        order_date_to: '',
+        eta_from: '',
+        eta_to: '',
+    });
+    const [exporting, setExporting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    function setFilter(key: keyof ExportFilters, value: string): void {
+        setFilters((current) => ({ ...current, [key]: value }));
+    }
+
+    async function exportRows(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setError(null);
+        setExporting(true);
+
+        const params = new URLSearchParams();
+
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value) {
+                params.set(key, value);
+            }
+        });
+
+        try {
+            const response = await fetch(`/finance/export?${params}`, {
+                headers: {
+                    Accept: 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Unable to export finance rows.');
+            }
+
+            const payload = (await response.json()) as { rows: CompletedRow[] };
+
+            if (payload.rows.length === 0) {
+                setError('No finance rows match the selected filters.');
+                return;
+            }
+
+            exportToXlsx(payload.rows, EXPORT_COLUMNS, 'finance');
+            onOpenChange(false);
+        } catch {
+            setError('Unable to export finance rows. Please try again.');
+        } finally {
+            setExporting(false);
+        }
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-xl">
+                <form onSubmit={exportRows} className="contents">
+                    <DialogHeader>
+                        <DialogTitle>Export finance rows</DialogTitle>
+                        <DialogDescription>
+                            Filter the full finance list before exporting to
+                            Excel.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="grid gap-5 sm:grid-cols-2">
+                        <DateRangeFields
+                            title="Order Date"
+                            fromId="finance-export-order-date-from"
+                            toId="finance-export-order-date-to"
+                            fromValue={filters.order_date_from}
+                            toValue={filters.order_date_to}
+                            onFromChange={(value) =>
+                                setFilter('order_date_from', value)
+                            }
+                            onToChange={(value) =>
+                                setFilter('order_date_to', value)
+                            }
+                        />
+                        <DateRangeFields
+                            title="ETA Date"
+                            fromId="finance-export-eta-from"
+                            toId="finance-export-eta-to"
+                            fromValue={filters.eta_from}
+                            toValue={filters.eta_to}
+                            onFromChange={(value) =>
+                                setFilter('eta_from', value)
+                            }
+                            onToChange={(value) => setFilter('eta_to', value)}
+                        />
+                    </div>
+
+                    {error && (
+                        <p className="rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-sm font-medium text-[#B91C1C]">
+                            {error}
+                        </p>
+                    )}
+
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => onOpenChange(false)}
+                            disabled={exporting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={exporting}>
+                            <img
+                                src="/images/icons/excel-file.png"
+                                alt=""
+                                aria-hidden="true"
+                                className="mr-2 h-4 w-4 shrink-0"
+                            />
+                            {exporting ? 'Exporting...' : 'Export'}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function DateRangeFields({
+    title,
+    fromId,
+    toId,
+    fromValue,
+    toValue,
+    onFromChange,
+    onToChange,
+}: {
+    title: string;
+    fromId: string;
+    toId: string;
+    fromValue: string;
+    toValue: string;
+    onFromChange: (value: string) => void;
+    onToChange: (value: string) => void;
+}) {
+    return (
+        <fieldset className="grid gap-3 rounded-xl border border-[#E3EAF2] p-3">
+            <legend className="px-1 text-xs font-bold tracking-[0.08em] text-[#64748B] uppercase">
+                {title}
+            </legend>
+            <div className="grid gap-2">
+                <Label
+                    htmlFor={fromId}
+                    className="text-xs font-semibold text-[#64748B]"
+                >
+                    From
+                </Label>
+                <Input
+                    id={fromId}
+                    type="date"
+                    value={fromValue}
+                    onChange={(event) => onFromChange(event.target.value)}
+                    className="h-10 rounded-lg border-[#CBD5E1]"
+                />
+            </div>
+            <div className="grid gap-2">
+                <Label
+                    htmlFor={toId}
+                    className="text-xs font-semibold text-[#64748B]"
+                >
+                    To
+                </Label>
+                <Input
+                    id={toId}
+                    type="date"
+                    value={toValue}
+                    onChange={(event) => onToChange(event.target.value)}
+                    className="h-10 rounded-lg border-[#CBD5E1]"
+                />
+            </div>
+        </fieldset>
+    );
+}
+
 function OrderCell({ row }: { row: CompletedRow }) {
     return (
         <div className="flex min-w-32 flex-col gap-1">
@@ -429,14 +668,21 @@ function OrderCell({ row }: { row: CompletedRow }) {
     );
 }
 
-function CustomerVesselCell({ row }: { row: CompletedRow }) {
+function CustomerCell({ row }: { row: CompletedRow }) {
     return (
-        <div className="flex min-w-44 flex-col gap-1">
+        <div className="flex min-w-40 flex-col gap-1">
             <span className="font-semibold text-[#172033]">
                 {row.customer_name ?? '—'}
             </span>
-            <span className="text-xs text-[#64748B]">
-                {row.vessel_name ?? 'No vessel'}
+        </div>
+    );
+}
+
+function VesselCell({ row }: { row: CompletedRow }) {
+    return (
+        <div className="flex min-w-36 flex-col gap-1">
+            <span className="font-semibold text-[#172033]">
+                {row.vessel_name ?? '—'}
             </span>
         </div>
     );
@@ -488,53 +734,76 @@ function ChargesCell({ row }: { row: CompletedRow }) {
     );
 }
 
-function InvoiceCell({ row }: { row: CompletedRow }) {
+function MoneyCell({
+    value,
+    strong = false,
+}: {
+    value: string | number | null;
+    strong?: boolean;
+}) {
     return (
-        <div className="flex min-w-32 flex-col items-end gap-1">
-            <span className="font-semibold text-[#172033] tabular-nums">
-                {formatMoney(row.invoice_value)}
-            </span>
-            <span className="text-xs text-[#64748B]">
-                {shortDate(row.invoice_date)}
+        <div className="min-w-28 text-right">
+            <span
+                className={cn(
+                    'text-sm text-[#172033] tabular-nums',
+                    strong && 'font-semibold',
+                )}
+            >
+                {formatMoney(value)}
             </span>
         </div>
     );
 }
 
-function PaymentCell({ row }: { row: CompletedRow }) {
+function DateCell({ value }: { value: string | null }) {
     return (
-        <div className="flex min-w-36 flex-col items-end gap-1">
-            <span className="text-sm text-[#172033]">
-                Due {shortDate(row.payment_due_date)}
+        <div className="min-w-28">
+            <span className="text-sm font-medium text-[#334155]">
+                {shortDate(value)}
             </span>
-            <span className="text-xs text-[#64748B]">
-                Received {formatMoney(row.amount_received)}
-            </span>
-            <span className="text-xs font-semibold text-[#334155]">
-                Balance {formatMoney(row.amount_remaining)}
-            </span>
-            {row.payment_receipt_date && (
-                <span className="text-xs text-[#64748B]">
-                    Last {shortDate(row.payment_receipt_date)}
-                </span>
-            )}
         </div>
     );
+}
+
+function getPaymentStatus(row: CompletedRow): {
+    label: 'Paid' | 'Partially paid' | 'Not paid';
+    className: string;
+} {
+    const amountReceived = Number(row.amount_received ?? 0);
+    const amountRemaining = Number(row.amount_remaining ?? 0);
+
+    if (row.paid_in_full || amountRemaining <= 0) {
+        return {
+            label: 'Paid',
+            className: 'border-[#0F766E] bg-[#0F766E] text-white',
+        };
+    }
+
+    if (amountReceived > 0) {
+        return {
+            label: 'Partially paid',
+            className: 'border-[#92400E] bg-[#92400E] text-white',
+        };
+    }
+
+    return {
+        label: 'Not paid',
+        className: 'border-[#991B1B] bg-[#991B1B] text-white',
+    };
 }
 
 function StatusCell({ row }: { row: CompletedRow }) {
+    const status = getPaymentStatus(row);
+
     return (
-        <div className="flex min-w-24 flex-col gap-1">
-            <span className="font-semibold text-[#172033]">
-                {row.status ?? '—'}
-            </span>
+        <div className="flex min-w-28">
             <span
                 className={cn(
-                    'text-xs font-medium',
-                    row.paid_in_full ? 'text-[#0F766E]' : 'text-[#B45309]',
+                    'inline-flex rounded-full border px-2.5 py-1 text-xs font-bold',
+                    status.className,
                 )}
             >
-                {row.paid_in_full ? 'Received' : 'Not received'}
+                {status.label}
             </span>
         </div>
     );

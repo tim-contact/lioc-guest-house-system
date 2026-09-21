@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Services\OrderService;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -44,36 +45,7 @@ class FinanceController extends Controller
             ->orderBy('order_number')
             ->paginate($perPage)
             ->withQueryString()
-            ->through(fn (Order $order): array => [
-                'id' => $order->id,
-                'order_number' => $order->order_number,
-                'customer_name' => $order->customer?->name,
-                'vessel_name' => $order->vessel_name,
-                'location' => $order->deliveryLocation?->name,
-                'vlsfo_qty' => $order->vlsfo_bdn_qty ?? $order->vlsfo_final_qty,
-                'mgo_qty' => $order->mgo_bdn_qty ?? $order->mgo_final_qty,
-                'hsfo_qty' => $order->hsfo_bdn_qty ?? $order->hsfo_final_qty,
-                'barging_cost' => $order->barging_cost,
-                'agent_fees' => $order->agent_fees,
-                'invoice_value' => $order->invoice_value,
-                'invoice_date' => $order->invoice_date,
-                'payment_due_date' => $order->payment_due_date,
-                'amount_received' => $order->amount_received,
-                'amount_remaining' => $order->balance_amount,
-                'payment_receipt_date' => $order->payment_receipt_date,
-                'status' => $order->status->label(),
-                'paid_in_full' => $order->isPaidInFull(),
-                'can_close' => $order->canBeClosed(),
-                'payments' => $order->payments
-                    ->sortByDesc('date')
-                    ->values()
-                    ->map(fn (Payment $payment): array => [
-                        'id' => $payment->id,
-                        'amount' => $payment->amount,
-                        'date' => $payment->date->toDateString(),
-                        'type' => $payment->type->value,
-                    ]),
-            ]);
+            ->through(fn (Order $order): array => $this->financeOrderRow($order));
 
         return Inertia::render('finance/dashboard', [
             'completedOrders' => $completedOrders,
@@ -84,6 +56,31 @@ class FinanceController extends Controller
                 'sort' => $sort,
                 'dir' => $direction,
             ],
+        ]);
+    }
+
+    public function export(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'order_date_from' => ['nullable', 'date'],
+            'order_date_to' => ['nullable', 'date', 'after_or_equal:order_date_from'],
+            'eta_from' => ['nullable', 'date'],
+            'eta_to' => ['nullable', 'date', 'after_or_equal:eta_from'],
+        ]);
+
+        $orders = Order::with(['customer', 'deliveryLocation', 'payments'])
+            ->whereIn('status', OrderStatus::completedStatuses())
+            ->when($validated['order_date_from'] ?? null, fn ($query, string $date) => $query->whereDate('order_date', '>=', $date))
+            ->when($validated['order_date_to'] ?? null, fn ($query, string $date) => $query->whereDate('order_date', '<=', $date))
+            ->when($validated['eta_from'] ?? null, fn ($query, string $date) => $query->whereDate('eta', '>=', $date))
+            ->when($validated['eta_to'] ?? null, fn ($query, string $date) => $query->whereDate('eta', '<=', $date))
+            ->orderBy('order_number')
+            ->get()
+            ->map(fn (Order $order): array => $this->financeOrderRow($order))
+            ->values();
+
+        return response()->json([
+            'rows' => $orders,
         ]);
     }
 
@@ -161,6 +158,45 @@ class FinanceController extends Controller
             'amount_remaining' => $query->orderByRaw("(COALESCE(orders.invoice_value, 0) - COALESCE(orders.amount_received, 0)) {$direction}"),
             default => $query->orderBy("orders.{$sort}", $direction),
         };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function financeOrderRow(Order $order): array
+    {
+        return [
+            'id' => $order->id,
+            'order_number' => $order->order_number,
+            'order_date' => $order->order_date?->toDateString(),
+            'customer_name' => $order->customer?->name,
+            'vessel_name' => $order->vessel_name,
+            'eta' => $order->eta?->toDateTimeString(),
+            'location' => $order->deliveryLocation?->name,
+            'vlsfo_qty' => $order->vlsfo_bdn_qty ?? $order->vlsfo_final_qty,
+            'mgo_qty' => $order->mgo_bdn_qty ?? $order->mgo_final_qty,
+            'hsfo_qty' => $order->hsfo_bdn_qty ?? $order->hsfo_final_qty,
+            'barging_cost' => $order->barging_cost,
+            'agent_fees' => $order->agent_fees,
+            'invoice_value' => $order->invoice_value,
+            'invoice_date' => $order->invoice_date,
+            'payment_due_date' => $order->payment_due_date,
+            'amount_received' => $order->amount_received,
+            'amount_remaining' => $order->balance_amount,
+            'payment_receipt_date' => $order->payment_receipt_date,
+            'status' => $order->status->label(),
+            'paid_in_full' => $order->isPaidInFull(),
+            'can_close' => $order->canBeClosed(),
+            'payments' => $order->payments
+                ->sortByDesc('date')
+                ->values()
+                ->map(fn (Payment $payment): array => [
+                    'id' => $payment->id,
+                    'amount' => $payment->amount,
+                    'date' => $payment->date->toDateString(),
+                    'type' => $payment->type->value,
+                ]),
+        ];
     }
 
     public function close(Order $order): RedirectResponse

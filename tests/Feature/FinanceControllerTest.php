@@ -141,6 +141,44 @@ test('finance dashboard paginates completed orders', function () {
             ->where('completedOrders.data.0.order_number', 'ORD-FIN-026'));
 });
 
+test('finance export returns all matching rows filtered by order and eta date ranges', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Finance]));
+
+    foreach (range(1, 26) as $number) {
+        createFinanceOrder([
+            'order_number' => 'ORD-FIN-EXP-'.str_pad((string) $number, 3, '0', STR_PAD_LEFT),
+            'order_date' => '2026-09-10',
+            'eta' => '2026-09-15 08:00:00',
+            'invoice_value' => 1000,
+            'amount_received' => 100,
+        ]);
+    }
+
+    createFinanceOrder([
+        'order_number' => 'ORD-FIN-OUTSIDE-ORDER-DATE',
+        'order_date' => '2026-08-31',
+        'eta' => '2026-09-15 08:00:00',
+    ]);
+
+    createFinanceOrder([
+        'order_number' => 'ORD-FIN-OUTSIDE-ETA',
+        'order_date' => '2026-09-10',
+        'eta' => '2026-10-01 08:00:00',
+    ]);
+
+    $this->getJson(route('finance.export', [
+        'order_date_from' => '2026-09-01',
+        'order_date_to' => '2026-09-30',
+        'eta_from' => '2026-09-01',
+        'eta_to' => '2026-09-30',
+    ]))
+        ->assertOk()
+        ->assertJsonCount(26, 'rows')
+        ->assertJsonPath('rows.0.order_number', 'ORD-FIN-EXP-001')
+        ->assertJsonMissing(['order_number' => 'ORD-FIN-OUTSIDE-ORDER-DATE'])
+        ->assertJsonMissing(['order_number' => 'ORD-FIN-OUTSIDE-ETA']);
+});
+
 test('finance dashboard sorts the full paginated result set by customer name', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 

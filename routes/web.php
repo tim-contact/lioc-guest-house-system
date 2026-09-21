@@ -108,6 +108,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     // --- Finance section: super_admin, master, finance ---
     Route::middleware('role:super_admin,master,finance')->group(function () {
         Route::get('finance', [FinanceController::class, 'index'])->name('finance');
+        Route::get('finance/export', [FinanceController::class, 'export'])->name('finance.export');
         Route::patch('finance/{order}/agent-fees', [FinanceController::class, 'updateAgentFees'])->name('finance.agent-fees.update');
         Route::post('finance/{order}/payments', [FinanceController::class, 'storePayment'])->name('finance.payments.store');
         Route::patch('finance/{order}/close', [FinanceController::class, 'close'])->name('finance.close');
