@@ -16,6 +16,7 @@ import {
     TrendingUp,
     Users,
     Wallet,
+    Warehouse,
     Wrench,
 } from 'lucide-react';
 import { edit as enquiriesEdit } from '@/actions/App/Http/Controllers/EnquiryController';
@@ -179,9 +180,20 @@ export const navGroups: NavGroup[] = [
     },
     {
         title: 'Operations',
-        href: operations(),
-        icon: Wrench,
-        description: 'Coordinate operational work',
+        items: [
+            {
+                title: 'Operations Dashboard',
+                href: operations(),
+                icon: Wrench,
+                description: 'Coordinate operational work',
+            },
+            {
+                title: 'Stock Movement',
+                href: '/stock-movements',
+                icon: Warehouse,
+                description: 'Track terminal and barge stock',
+            },
+        ],
     },
     {
         title: 'Surveyor',
