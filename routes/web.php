@@ -16,6 +16,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PortController;
 use App\Http\Controllers\ReportAnalyticsController;
+use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\SupplyLocationController;
 use App\Http\Controllers\SurveyingController;
 use App\Http\Controllers\SurveyorController;
@@ -93,6 +94,8 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::middleware('role:super_admin,master,operations')->group(function () {
         Route::get('operations', [OperationController::class, 'index'])->name('operations');
         Route::patch('operations/{order}', [OperationController::class, 'update'])->name('operations.update');
+        Route::get('stock-movements', [StockMovementController::class, 'index'])->name('stock-movements.index');
+        Route::post('stock-movements', [StockMovementController::class, 'store'])->name('stock-movements.store');
     });
 
     // --- Surveyor section: super_admin, master, surveyor ---
