@@ -33,6 +33,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::middleware('role:super_admin,master')->group(function () {
         Route::inertia('admin', 'admin')->name('admin');
         Route::get('reports/analytics', [ReportAnalyticsController::class, 'index'])->name('reports.analytics');
+        Route::get('reports/analytics/barges/{barge}', [ReportAnalyticsController::class, 'bargeOrders'])->name('reports.barges.orders');
 
         // User management.
         Route::get('users', [UserManagementController::class, 'index'])->name('users.index');

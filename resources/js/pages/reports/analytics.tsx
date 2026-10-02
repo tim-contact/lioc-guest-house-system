@@ -75,7 +75,6 @@ type ProductDemandPort = {
 };
 
 type BargeUtilizationPeriod = {
-    pending: number;
     completed: number;
     total: number;
 };
@@ -83,6 +82,7 @@ type BargeUtilizationPeriod = {
 type BargeUtilizationMetric = {
     imo: string;
     label: string;
+    ordersUrl: string | null;
     periods: {
         currentMonth: BargeUtilizationPeriod;
         last30Days: BargeUtilizationPeriod;
@@ -128,6 +128,7 @@ type Summary = {
 };
 
 type AnalyticsProps = {
+    stockPosition: StockPosition;
     summary: Summary;
     funnel: FunnelStage[];
     portStatusMetrics: PortStatusMetric[];
@@ -138,6 +139,15 @@ type AnalyticsProps = {
     productDemandComparison: ProductDemandComparison[];
     productDemandByPort: ProductDemandPort[];
     cyLyProductSales: CyLyProductSalesMetric[];
+};
+
+type StockPosition = {
+    asOf: string;
+    rows: {
+        label: string;
+        support: string | null;
+        values: Record<'vlsfo' | 'mgo' | 'hsfo', number | null>;
+    }[];
 };
 
 const compactNumber = new Intl.NumberFormat('en-US', {
@@ -184,13 +194,7 @@ function niceAxisMax(value: number): number {
     const magnitude = 10 ** Math.floor(Math.log10(value));
     const normalized = value / magnitude;
     const niceNormalized =
-        normalized <= 1
-            ? 1
-            : normalized <= 2
-              ? 2
-              : normalized <= 5
-                ? 5
-                : 10;
+        normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
 
     return niceNormalized * magnitude;
 }
@@ -210,6 +214,7 @@ function displayScaleMax(values: number[]): number {
 }
 
 export default function ReportAnalytics({
+    stockPosition,
     summary,
     funnel,
     portStatusMetrics,
@@ -229,9 +234,7 @@ export default function ReportAnalytics({
                 <AnalyticsKpiGrid summary={summary} />
 
                 <section className="grid gap-6 xl:grid-cols-3">
-                    <MonthlyVolumeStackedBarCard
-                        data={monthlyProductVolumes}
-                    />
+                    <MonthlyVolumeStackedBarCard data={monthlyProductVolumes} />
                     <PortOrdersBarCard data={portStatusMetrics} />
                     <EnquiryFunnelCompactCard data={funnel} />
                 </section>
@@ -247,7 +250,7 @@ export default function ReportAnalytics({
                         data={productDemandComparison}
                         ports={productDemandByPort}
                     />
-                    <StockPositionPlaceholderCard />
+                    <StockPositionCard data={stockPosition} />
                 </section>
 
                 <section className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
@@ -490,10 +493,10 @@ function MonthlyVolumeStackedBarCard({
                     className={`flex items-center gap-2 ${analyticsCardTitleClassName}`}
                 >
                     <BarChart3 className="size-5 text-[#3155E7]" />
-                    Monthly Volume 
-                                <span className="text-sm font-semibold text-slate-400">
-                                    (MT)
-                                </span>
+                    Monthly Volume
+                    <span className="text-sm font-semibold text-slate-400">
+                        (MT)
+                    </span>
                 </CardTitle>
                 <CardDescription>
                     Product-wise pending and delivered volume by month.
@@ -589,7 +592,9 @@ function MonthlyVolumeStackedBarCard({
                                             key={month.label}
                                             className="flex h-full min-w-0 flex-1 justify-center outline-none"
                                             onBlur={() => setActiveIndex(null)}
-                                            onFocus={() => setActiveIndex(index)}
+                                            onFocus={() =>
+                                                setActiveIndex(index)
+                                            }
                                             onPointerEnter={() =>
                                                 setActiveIndex(index)
                                             }
@@ -598,7 +603,7 @@ function MonthlyVolumeStackedBarCard({
                                             aria-label={`${month.label}: ${volume.format(month.total)} MT`}
                                         >
                                             <div className="relative h-full w-full max-w-12">
-                                                <div className="absolute inset-y-0 inset-x-0 rounded-t-xl bg-slate-100/70 shadow-inner ring-1 ring-slate-200/70" />
+                                                <div className="absolute inset-x-0 inset-y-0 rounded-t-xl bg-slate-100/70 shadow-inner ring-1 ring-slate-200/70" />
                                                 {hasOverflow && (
                                                     <span
                                                         className="absolute inset-x-0 top-0 z-10 h-1.5 bg-slate-900/35"
@@ -1010,7 +1015,7 @@ function BargeUtilizationCard({ data }: { data: BargeUtilizationMetric[] }) {
                             Barge Utilization
                         </CardTitle>
                         <CardDescription>
-                            Pending, completed and total orders by barge.
+                            Completed deliveries by BDN delivery date.
                         </CardDescription>
                     </div>
                     <div className="flex gap-2">
@@ -1048,19 +1053,28 @@ function BargeUtilizationCard({ data }: { data: BargeUtilizationMetric[] }) {
                     <div className="grid gap-3">
                         {data.map((barge) => {
                             const values = barge.periods[period];
-                            const pendingWidth =
-                                values.total > 0
-                                    ? (values.pending / max) * 100
-                                    : 0;
                             const completedWidth =
                                 values.total > 0
                                     ? (values.completed / max) * 100
                                     : 0;
 
                             return (
-                                <div
+                                <Link
                                     key={barge.imo}
-                                    className="grid gap-2 rounded-xl border border-[#E3EAF2] bg-white px-3 py-2.5"
+                                    href={barge.ordersUrl ?? '#'}
+                                    data={{ period }}
+                                    aria-label={`View orders for ${barge.label}`}
+                                    aria-disabled={!barge.ordersUrl}
+                                    tabIndex={barge.ordersUrl ? undefined : -1}
+                                    onClick={(event) => {
+                                        if (!barge.ordersUrl)
+                                            event.preventDefault();
+                                    }}
+                                    className={cn(
+                                        'grid gap-2 rounded-xl border border-[#E3EAF2] bg-white px-3 py-2.5 transition-colors focus-visible:outline-2 focus-visible:outline-blue-600',
+                                        barge.ordersUrl &&
+                                            'hover:border-blue-300 hover:bg-blue-50/40',
+                                    )}
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
@@ -1087,16 +1101,7 @@ function BargeUtilizationCard({ data }: { data: BargeUtilizationMetric[] }) {
                                                     className="absolute inset-y-0 left-0"
                                                     style={{
                                                         backgroundColor:
-                                                            statusColors.pending,
-                                                        width: `${pendingWidth}%`,
-                                                    }}
-                                                />
-                                                <span
-                                                    className="absolute inset-y-0"
-                                                    style={{
-                                                        backgroundColor:
                                                             statusColors.completed,
-                                                        left: `${pendingWidth}%`,
                                                         width: `${completedWidth}%`,
                                                     }}
                                                 />
@@ -1105,17 +1110,7 @@ function BargeUtilizationCard({ data }: { data: BargeUtilizationMetric[] }) {
                                             <span className="absolute inset-y-0 left-0 w-4 rounded-full bg-slate-200" />
                                         )}
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2 text-[10px] font-semibold text-slate-500">
-                                        <span className="flex items-center gap-1.5">
-                                            <span
-                                                className="size-2 rounded-full"
-                                                style={{
-                                                    backgroundColor:
-                                                        statusColors.pending,
-                                                }}
-                                            />
-                                            Pending {values.pending}
-                                        </span>
+                                    <div className="flex items-center justify-between gap-2 text-[10px] font-semibold text-slate-500">
                                         <span className="flex items-center gap-1.5">
                                             <span
                                                 className="size-2 rounded-full"
@@ -1124,13 +1119,13 @@ function BargeUtilizationCard({ data }: { data: BargeUtilizationMetric[] }) {
                                                         statusColors.completed,
                                                 }}
                                             />
-                                            Completed {values.completed}
+                                            Delivered {values.completed}
                                         </span>
-                                        <span className="text-right tabular-nums text-slate-700">
+                                        <span className="text-right text-slate-700 tabular-nums">
                                             {periodLabel}
                                         </span>
                                     </div>
-                                </div>
+                                </Link>
                             );
                         })}
                     </div>
@@ -1140,45 +1135,7 @@ function BargeUtilizationCard({ data }: { data: BargeUtilizationMetric[] }) {
     );
 }
 
-const stockPositionRows = [
-    {
-        label: 'Stock at Terminal',
-        support: 'Excluding dead stock',
-        values: { vlsfo: '18.4K', mgo: '2.8K', hsfo: '1.2K' },
-    },
-    {
-        label: 'Stock on Barge',
-        support: null,
-        values: { vlsfo: '3.2K', mgo: '640', hsfo: '0' },
-    },
-    {
-        label: 'Total Stock',
-        support: null,
-        values: { vlsfo: '21.6K', mgo: '3.4K', hsfo: '1.2K' },
-    },
-    {
-        label: 'Stock Sold',
-        support: null,
-        values: { vlsfo: '10.8K', mgo: '642', hsfo: '0' },
-    },
-    {
-        label: 'Saleable Stock',
-        support: null,
-        values: { vlsfo: '10.8K', mgo: '2.8K', hsfo: '1.2K' },
-    },
-    {
-        label: 'Planned Import',
-        support: null,
-        values: { vlsfo: '12.0K', mgo: '1.5K', hsfo: '-' },
-    },
-    {
-        label: 'Date',
-        support: null,
-        values: { vlsfo: '30 Sep', mgo: '24 Sep', hsfo: '-' },
-    },
-] as const;
-
-function StockPositionPlaceholderCard() {
+function StockPositionCard({ data }: { data: StockPosition }) {
     return (
         <Card className={`${chartCardClassName} min-h-[300px]`}>
             <CardHeader className="pb-2">
@@ -1188,9 +1145,7 @@ function StockPositionPlaceholderCard() {
                     <FileText className="size-5 text-[#2563eb]" />
                     Stock Position
                 </CardTitle>
-                <CardDescription>
-                    Placeholder matrix for terminal, barge and saleable stock.
-                </CardDescription>
+                <CardDescription>All ports · {data.asOf} · MT</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="overflow-hidden rounded-xl border border-[#E3EAF2] bg-white">
@@ -1209,7 +1164,7 @@ function StockPositionPlaceholderCard() {
                         ))}
                     </div>
                     <div className="divide-y divide-slate-100">
-                        {stockPositionRows.map((row) => (
+                        {data.rows.map((row) => (
                             <div
                                 key={row.label}
                                 className="grid grid-cols-[minmax(112px,1.25fr)_repeat(3,minmax(0,0.65fr))] items-stretch"
@@ -1225,7 +1180,7 @@ function StockPositionPlaceholderCard() {
                                     ) : null}
                                 </div>
                                 {(['vlsfo', 'mgo', 'hsfo'] as const).map(
-                                    (product, index) => {
+                                    (product) => {
                                         const value = row.values[product];
 
                                         return (
@@ -1233,22 +1188,19 @@ function StockPositionPlaceholderCard() {
                                                 key={`${row.label}-${product}`}
                                                 className="flex items-center justify-center border-l border-slate-100 px-1.5 py-2"
                                             >
-                                                {value ? (
-                                                    <span
-                                                        className="rounded-full px-2 py-1 text-[10px] font-bold text-white"
-                                                        style={{
-                                                            backgroundColor:
-                                                                productColor(
-                                                                    product,
-                                                                    index,
-                                                                ),
-                                                        }}
-                                                    >
-                                                        {value}
-                                                    </span>
-                                                ) : (
-                                                    <span className="h-1.5 w-6 rounded-full bg-slate-100" />
-                                                )}
+                                                <span
+                                                    className={`min-w-0 text-right text-[10px] font-bold [overflow-wrap:anywhere] tabular-nums ${value !== null && value < 0 ? 'text-red-700' : 'text-slate-900'}`}
+                                                >
+                                                    {value === null
+                                                        ? '—'
+                                                        : value.toLocaleString(
+                                                              'en-US',
+                                                              {
+                                                                  minimumFractionDigits: 3,
+                                                                  maximumFractionDigits: 3,
+                                                              },
+                                                          )}
+                                                </span>
                                             </div>
                                         );
                                     },
@@ -1319,9 +1271,7 @@ function ProductDemandComparisonCard({
     ports: ProductDemandPort[];
 }) {
     const [selectedPortKey, setSelectedPortKey] = useState('all');
-    const selectedPort = ports.find(
-        (port) => port.portKey === selectedPortKey,
-    );
+    const selectedPort = ports.find((port) => port.portKey === selectedPortKey);
     const chartData = selectedPort?.data ?? data;
     const hasData = chartData.some(
         (product) => product.current.total > 0 || product.lastYear.total > 0,
@@ -1423,7 +1373,7 @@ function ProductDemandColumn({
 }) {
     const color = productColor(product.label, index);
     const max = niceAxisMax(
-        (Math.max(product.current.total, product.lastYear.total, 1)),
+        Math.max(product.current.total, product.lastYear.total, 1),
     );
 
     return (

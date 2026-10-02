@@ -10,18 +10,22 @@ use App\Models\Barge;
 use App\Models\Dispute;
 use App\Models\Enquiry;
 use App\Models\Order;
+use App\Models\Port;
+use App\Services\StockMovementService;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ReportAnalyticsController extends Controller
 {
-    public function index(): Response
+    public function index(StockMovementService $stockMovementService): Response
     {
         $enquiries = Enquiry::with('port')->get();
-        $orders = Order::with(['customer', 'port'])->get();
+        $orders = Order::with(['customer', 'port', 'bdn'])->get();
         $disputes = Dispute::with(['order.customer', 'order.port'])->get();
         $completedStatuses = [OrderStatus::Delivered->value, OrderStatus::Closed->value];
         $currentMonthVolumeOrders = $orders->filter(
@@ -81,6 +85,115 @@ class ReportAnalyticsController extends Controller
             'productDemandComparison' => $this->productDemandComparison($orders, $completedStatuses),
             'productDemandByPort' => $this->productDemandByPort($orders, $completedStatuses),
             'cyLyProductSales' => $this->cyLyProductSales($orders, $completedStatuses),
+            'stockPosition' => $this->stockPosition($orders, $stockMovementService),
+        ]);
+    }
+
+    /**
+     * @param  Collection<int, Order>  $orders
+     * @return array{asOf: string, rows: list<array{label: string, support: string|null, values: array<string, float|null>}>}
+     */
+    private function stockPosition(Collection $orders, StockMovementService $stockMovementService): array
+    {
+        $today = CarbonImmutable::today();
+        $ports = Port::query()->pluck('id');
+        $terminal = array_fill_keys(FuelGrade::keys(), 0.0);
+        $barges = $terminal;
+        $total = $terminal;
+        $committed = $terminal;
+        $saleable = $terminal;
+
+        foreach ($ports as $portId) {
+            $report = $stockMovementService->report($portId, $today, $today);
+
+            foreach (FuelGrade::keys() as $grade) {
+                $terminal[$grade] += $report['totals']['terminal_closing'][$grade]
+                    - $report['totals']['dead_stock'][$grade];
+                $barges[$grade] += $report['totals']['barge_closing'][$grade];
+                $total[$grade] += $report['totals']['removable_closing'][$grade];
+            }
+        }
+
+        foreach ($orders as $order) {
+            if ($order->status !== OrderStatus::Pending
+                || ! $ports->contains($order->port_id)
+                || $order->order_date?->gt($today) === true) {
+                continue;
+            }
+
+            foreach (FuelGrade::keys() as $grade) {
+                $committed[$grade] += (float) ($order->{"{$grade}_final_qty"} ?? 0);
+            }
+        }
+
+        foreach (FuelGrade::keys() as $grade) {
+            $saleable[$grade] = $total[$grade] - $committed[$grade];
+        }
+
+        $unavailable = array_fill_keys(FuelGrade::keys(), null);
+
+        return [
+            'asOf' => $today->toDateString(),
+            'rows' => [
+                ['label' => 'Stock at Terminal', 'support' => 'Excluding dead stock', 'values' => $terminal],
+                ['label' => 'Stock on Barge', 'support' => null, 'values' => $barges],
+                ['label' => 'Total Stock', 'support' => null, 'values' => $total],
+                ['label' => 'Stock Sold', 'support' => 'Awaiting delivery', 'values' => $committed],
+                ['label' => 'Saleable Stock', 'support' => null, 'values' => $saleable],
+                ['label' => 'Planned Import', 'support' => null, 'values' => $unavailable],
+                ['label' => 'Import Date', 'support' => null, 'values' => $unavailable],
+            ],
+        ];
+    }
+
+    public function bargeOrders(Request $request, Barge $barge): Response
+    {
+        $filters = $request->validate([
+            'period' => ['sometimes', Rule::in(['currentMonth', 'last30Days', 'all'])],
+            'per_page' => ['sometimes', 'integer', Rule::in([10, 25, 50, 100])],
+        ]);
+        $period = $filters['period'] ?? 'currentMonth';
+        $today = CarbonImmutable::today();
+        $periodStart = $period === 'last30Days'
+            ? $today->subDays(29)
+            : $today->startOfMonth();
+
+        $orders = Order::query()
+            ->whereIn('status', [OrderStatus::Delivered->value, OrderStatus::Closed->value])
+            ->whereHas('bdn', function ($query) use ($period, $periodStart, $today, $barge): void {
+                $query->whereDate('delivery_date', '<=', $today->toDateString())
+                    ->where(function ($assignment) use ($barge): void {
+                        $assignment->where('barge_id', $barge->imo)
+                            ->orWhere(fn ($fallback) => $fallback->whereNull('barge_id')
+                                ->whereHas('order', fn ($order) => $order->where('barge_id', $barge->imo)));
+                    });
+                if ($period !== 'all') {
+                    $query->whereDate('delivery_date', '>=', $periodStart->toDateString());
+                }
+            });
+
+        return Inertia::render('reports/barge-orders', [
+            'barge' => ['imo' => $barge->imo, 'name' => $barge->name],
+            'filters' => ['period' => $period],
+            'summary' => ['completed' => (clone $orders)->count()],
+            'orders' => $orders
+                ->with(['customer', 'port', 'bdn'])
+                ->orderByDesc('id')
+                ->paginate((int) ($filters['per_page'] ?? 25))
+                ->withQueryString()
+                ->through(fn (Order $order): array => [
+                    'id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'vessel_name' => $order->vessel_name,
+                    'customer_name' => $order->customer?->name,
+                    'port_name' => $order->port?->name,
+                    'status' => $order->status->value,
+                    'order_date' => $order->order_date?->toDateString(),
+                    'delivery_date' => $order->bdn?->delivery_date?->toDateString(),
+                    'products' => collect(FuelGrade::keys())->mapWithKeys(fn (string $grade): array => [
+                        $grade => $order->{"{$grade}_bdn_qty"} ?? $order->bdn?->{"{$grade}_metric_ton"},
+                    ])->all(),
+                ]),
         ]);
     }
 
@@ -407,7 +520,7 @@ class ReportAnalyticsController extends Controller
     /**
      * @param  Collection<int, Order>  $orders
      * @param  list<string>  $completedStatuses
-     * @return list<array{imo: string, label: string, periods: array{currentMonth: array{pending: int, completed: int, total: int}, last30Days: array{pending: int, completed: int, total: int}}}>
+     * @return list<array{imo: string, label: string, ordersUrl: string|null, periods: array{currentMonth: array{completed: int, total: int}, last30Days: array{completed: int, total: int}}}>
      */
     private function bargeUtilization(Collection $orders, array $completedStatuses): array
     {
@@ -419,6 +532,7 @@ class ReportAnalyticsController extends Controller
             ->map(fn (string $imo): array => [
                 'imo' => $imo,
                 'label' => $bargeNames->get($imo, $imo),
+                'ordersUrl' => $bargeNames->has($imo) ? route('reports.barges.orders', $imo) : null,
                 'periods' => [
                     'currentMonth' => $this->bargeUtilizationForPeriod(
                         $orders,
@@ -440,35 +554,30 @@ class ReportAnalyticsController extends Controller
     /**
      * @param  Collection<int, Order>  $orders
      * @param  list<string>  $completedStatuses
-     * @return array{pending: int, completed: int, total: int}
+     * @return array{completed: int, total: int}
      */
     private function bargeUtilizationForPeriod(Collection $orders, array $completedStatuses, string $imo, string $period): array
     {
-        $periodOrders = $orders->where('barge_id', $imo);
-        $pending = $periodOrders
-            ->filter(fn (Order $order): bool => $order->status === OrderStatus::Pending
-                && $this->isOrderInUtilizationPeriod($order->order_date, $period))
-            ->count();
-        $completed = $periodOrders
+        $completed = $orders
             ->filter(fn (Order $order): bool => in_array($order->status->value, $completedStatuses, true)
-                && $this->isOrderInUtilizationPeriod($order->invoice_date, $period))
+                && ($order->bdn?->barge_id ?? $order->barge_id) === $imo
+                && $this->isOrderInUtilizationPeriod($order->bdn?->delivery_date, $period))
             ->count();
 
         return [
-            'pending' => $pending,
             'completed' => $completed,
-            'total' => $pending + $completed,
+            'total' => $completed,
         ];
     }
 
     private function isOrderInUtilizationPeriod(?CarbonInterface $date, string $period): bool
     {
-        if ($date === null) {
+        if ($date === null || $date->gt(CarbonImmutable::today()->endOfDay())) {
             return false;
         }
 
         if ($period === 'last30Days') {
-            return $date->greaterThanOrEqualTo(CarbonImmutable::now()->subDays(30)->startOfDay());
+            return $date->greaterThanOrEqualTo(CarbonImmutable::today()->subDays(29));
         }
 
         return $date->isCurrentMonth();
