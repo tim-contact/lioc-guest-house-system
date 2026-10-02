@@ -70,6 +70,7 @@ RUN apk add --no-cache \
         nodejs \
         npm \
         nss \
+        perl \
         postgresql-dev \
         supervisor \
         font-freefont \
