@@ -7,16 +7,11 @@ import {
     Ship,
     Warehouse,
 } from 'lucide-react';
-import type { FormEvent, ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     Table,
     TableBody,
@@ -45,6 +40,8 @@ interface TerminalRow {
     date: string;
     opening: ProductTotals;
     opening_entries: ProductTotals;
+    imports?: ProductTotals;
+    rebond_sales?: ProductTotals;
     loadings: ProductTotals;
     dead_stock_opening: ProductTotals;
     dead_stock: ProductTotals;
@@ -57,6 +54,7 @@ interface BargeRow {
     date: string;
     barge_id: string;
     barge_name: string;
+    vessel_names: string[];
     opening: ProductTotals;
     opening_entries: ProductTotals;
     loadings: ProductTotals;
@@ -134,6 +132,27 @@ const PRODUCTS: { key: ProductKey; label: string }[] = [
     { key: 'hsfo', label: 'HSFO' },
 ];
 
+const MOVEMENT_OPTIONS = [
+    {
+        key: 'import',
+        label: 'Import',
+        scope: 'terminal',
+        type: 'loading',
+    },
+    {
+        key: 'load-barge',
+        label: 'Load barge',
+        scope: 'barge',
+        type: 'loading',
+    },
+    {
+        key: 'rebond-sale',
+        label: 'Re-bond sale',
+        scope: 'terminal',
+        type: 'rebond_transfer',
+    },
+] as const;
+
 function formatQty(value: string | number | null | undefined): string {
     const parsed = Number(value ?? 0);
 
@@ -142,17 +161,6 @@ function formatQty(value: string | number | null | undefined): string {
     }
 
     return parsed.toLocaleString(undefined, { maximumFractionDigits: 3 });
-}
-
-function productCells(totals: ProductTotals) {
-    return PRODUCTS.map((product) => (
-        <TableCell
-            key={product.key}
-            className="text-right text-xs font-semibold tabular-nums text-[#172033]"
-        >
-            {formatQty(totals[product.key])}
-        </TableCell>
-    ));
 }
 
 function addTotals(first: ProductTotals, second: ProductTotals): ProductTotals {
@@ -224,7 +232,6 @@ function productColor(product: ProductKey): string {
 export default function StockMovementsIndex({
     ports,
     barges,
-    movementTypeOptions,
     filters,
     report,
     stockOverview,
@@ -242,13 +249,49 @@ export default function StockMovementsIndex({
         hsfo_qty: '',
         notes: '',
     });
+    const [showNote, setShowNote] = useState(false);
+    const [selectedReportBargeId, setSelectedReportBargeId] = useState('');
+    const selectedMovement =
+        MOVEMENT_OPTIONS.find(
+            (option) =>
+                option.scope === movementForm.data.movement_scope &&
+                option.type === movementForm.data.movement_type,
+        ) ?? MOVEMENT_OPTIONS[0];
+    const requiresBarge = selectedMovement.scope === 'barge';
+    const showsCompany = selectedMovement.scope === 'terminal';
+    const reportBarges = Array.from(
+        new Map(
+            report.barges.map((row) => [
+                String(row.barge_id),
+                { imo: String(row.barge_id), name: row.barge_name },
+            ]),
+        ).values(),
+    );
+    const activeReportBargeId = reportBarges.some(
+        (barge) => barge.imo === selectedReportBargeId,
+    )
+        ? selectedReportBargeId
+        : (reportBarges[0]?.imo ?? '');
+
+    const selectMovement = (option: (typeof MOVEMENT_OPTIONS)[number]) => {
+        movementForm.setData('movement_scope', option.scope);
+        movementForm.setData('movement_type', option.type);
+
+        if (option.scope !== 'barge') {
+            movementForm.setData('barge_id', '');
+        }
+
+        if (option.scope === 'barge') {
+            movementForm.setData('counterparty_name', '');
+        }
+    };
 
     const submitMovement = (event: FormEvent) => {
         event.preventDefault();
 
         movementForm.post('/stock-movements', {
             preserveScroll: true,
-            onSuccess: () =>
+            onSuccess: () => {
                 movementForm.reset(
                     'barge_id',
                     'counterparty_name',
@@ -256,7 +299,9 @@ export default function StockMovementsIndex({
                     'vlsfo_qty',
                     'hsfo_qty',
                     'notes',
-                ),
+                );
+                setShowNote(false);
+            },
         });
     };
 
@@ -284,21 +329,18 @@ export default function StockMovementsIndex({
 
             <main className="min-h-[calc(100svh-4.25rem)] bg-[#F2F1EF] px-3 py-4 sm:px-4 md:px-6">
                 <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-4">
-                    <section className="overflow-hidden rounded-2xl border border-[#DCE3EC] bg-white shadow-sm">
-                        <div className="flex flex-col gap-4 border-b border-[#E6EBF1] px-4 py-4 md:flex-row md:items-end md:justify-between">
+                    <section className="rounded-lg border border-[#DCE3EC] bg-white shadow-xs">
+                        <div className="flex flex-col gap-4 border-b border-[#E6EBF1] px-4 py-4 lg:flex-row lg:items-end lg:justify-between">
                             <div className="max-w-2xl">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">
-                                    Stock control
-                                </p>
-                                <h1 className="mt-1 text-2xl font-bold text-[#0F172A]">
-                                    {selectedPort?.name ?? 'Port'} stock movement
+                                <h1 className="text-xl font-bold text-slate-900">
+                                    Stock overview
                                 </h1>
                                 <p className="mt-1 text-sm text-[#64748B]">
-                                    A simple view of terminal stock, barge stock,
-                                    loadings and BDN deliveries.
+                                    {selectedPort?.name ?? 'Port'} ·{' '}
+                                    {filters.date_from} – {filters.date_to}
                                 </p>
                             </div>
-                            <div className="grid gap-3 sm:grid-cols-3 md:min-w-[620px]">
+                            <div className="grid gap-3 sm:grid-cols-3 lg:w-[560px] lg:shrink-0">
                                 <Field label="Port" htmlFor="stock-port">
                                     <select
                                         id="stock-port"
@@ -310,7 +352,7 @@ export default function StockMovementsIndex({
                                                 ),
                                             })
                                         }
-                                        className="h-10 rounded-xl border border-[#D6DEE9] bg-[#F8FAFC] px-3 text-sm font-semibold text-[#172033] outline-none transition focus:border-[#2455E6] focus:bg-white"
+                                        className="h-10 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-600"
                                     >
                                         {ports.map((port) => (
                                             <option
@@ -322,12 +364,10 @@ export default function StockMovementsIndex({
                                         ))}
                                     </select>
                                 </Field>
-                                <Field
-                                    label="From"
-                                    htmlFor="stock-date-from"
-                                >
+                                <Field label="From" htmlFor="stock-date-from">
                                     <Input
                                         id="stock-date-from"
+                                        className="h-10 min-w-0 rounded-lg border-slate-200 bg-white"
                                         type="date"
                                         value={filters.date_from}
                                         onChange={(event) =>
@@ -340,6 +380,7 @@ export default function StockMovementsIndex({
                                 <Field label="To" htmlFor="stock-date-to">
                                     <Input
                                         id="stock-date-to"
+                                        className="h-10 min-w-0 rounded-lg border-slate-200 bg-white"
                                         type="date"
                                         value={filters.date_to}
                                         onChange={(event) =>
@@ -383,27 +424,15 @@ export default function StockMovementsIndex({
                             <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
                                 <form
                                     onSubmit={submitMovement}
-                                    className="overflow-hidden rounded-2xl border border-[#DCE3EC] bg-white shadow-sm"
+                                    className="rounded-2xl border border-[#DCE3EC] bg-white p-5 shadow-sm"
                                 >
-                                    <div className="border-b border-[#E6EBF1] px-4 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <span className="flex size-10 items-center justify-center rounded-2xl bg-[#EEF4FF] text-[#2455E6]">
-                                                <PackagePlus className="size-5" />
-                                            </span>
-                                            <div>
-                                                <h2 className="text-base font-bold text-[#0F172A]">
-                                                    Record today&apos;s movement
-                                                </h2>
-                                                <p className="text-xs text-[#64748B]">
-                                                    Pick the task and enter the
-                                                    quantity. The report updates
-                                                    from the saved movement.
-                                                </p>
-                                            </div>
-                                        </div>
+                                    <div className="mb-5">
+                                        <h2 className="text-lg font-bold text-[#0F172A]">
+                                            Record movement
+                                        </h2>
                                     </div>
 
-                                    <div className="grid gap-4 p-4">
+                                    <div className="grid gap-5">
                                         <div className="grid gap-3 md:grid-cols-2">
                                             <FormField
                                                 label="Date"
@@ -443,7 +472,7 @@ export default function StockMovementsIndex({
                                                             event.target.value,
                                                         )
                                                     }
-                                                    className="h-10 rounded-xl border border-[#D6DEE9] bg-white px-3 text-sm"
+                                                    className="h-10 rounded-xl border border-[#D6DEE9] bg-white px-3 text-sm font-semibold text-[#172033] transition outline-none focus:border-[#2455E6] focus:ring-3 focus:ring-[#2455E6]/15"
                                                 >
                                                     {ports.map((port) => (
                                                         <option
@@ -457,337 +486,199 @@ export default function StockMovementsIndex({
                                             </FormField>
                                         </div>
 
-                                        <FriendlyPanel
-                                            title="What are you updating?"
-                                            description="These replace the sheet rows with simple tasks."
-                                        >
-                                            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-                                                <MovementChoice
-                                                    title="Terminal stock"
-                                                    description="Opening or import at terminal"
-                                                    icon={
-                                                        <Warehouse className="size-4" />
-                                                    }
-                                                    active={
-                                                        movementForm.data
-                                                            .movement_scope ===
-                                                            'terminal' &&
-                                                        [
-                                                            'opening',
-                                                            'loading',
-                                                            'rebond_transfer',
-                                                        ].includes(
-                                                            movementForm.data
-                                                                .movement_type,
-                                                        )
-                                                    }
-                                                    onClick={() => {
-                                                        movementForm.setData(
-                                                            'movement_scope',
-                                                            'terminal',
-                                                        );
-                                                        movementForm.setData(
-                                                            'movement_type',
-                                                            'loading',
-                                                        );
-                                                        movementForm.setData(
-                                                            'barge_id',
-                                                            '',
-                                                        );
-                                                    }}
-                                                />
-                                                <MovementChoice
-                                                    title="Barge stock"
-                                                    description="Opening stock on a barge"
-                                                    icon={
-                                                        <Ship className="size-4" />
-                                                    }
-                                                    active={
-                                                        movementForm.data
-                                                            .movement_scope ===
-                                                            'barge' &&
-                                                        movementForm.data
-                                                            .movement_type ===
-                                                            'opening'
-                                                    }
-                                                    onClick={() => {
-                                                        movementForm.setData(
-                                                            'movement_scope',
-                                                            'barge',
-                                                        );
-                                                        movementForm.setData(
-                                                            'movement_type',
-                                                            'opening',
-                                                        );
-                                                    }}
-                                                />
-                                                <MovementChoice
-                                                    title="Transfer"
-                                                    description="Terminal to barge loading"
-                                                    icon={
-                                                        <ArrowRightLeft className="size-4" />
-                                                    }
-                                                    active={
-                                                        movementForm.data
-                                                            .movement_scope ===
-                                                            'barge' &&
-                                                        movementForm.data
-                                                            .movement_type ===
-                                                            'loading'
-                                                    }
-                                                    onClick={() => {
-                                                        movementForm.setData(
-                                                            'movement_scope',
-                                                            'barge',
-                                                        );
-                                                        movementForm.setData(
-                                                            'movement_type',
-                                                            'loading',
-                                                        );
-                                                    }}
-                                                />
-                                                <MovementChoice
-                                                    title="Dead stock"
-                                                    description="Deduct non-removable stock"
-                                                    icon={
-                                                        <Gauge className="size-4" />
-                                                    }
-                                                    active={
-                                                        movementForm.data
-                                                            .movement_scope ===
-                                                            'terminal' &&
-                                                        movementForm.data
-                                                            .movement_type ===
-                                                            'dead_stock'
-                                                    }
-                                                    onClick={() => {
-                                                        movementForm.setData(
-                                                            'movement_scope',
-                                                            'terminal',
-                                                        );
-                                                        movementForm.setData(
-                                                            'movement_type',
-                                                            'dead_stock',
-                                                        );
-                                                        movementForm.setData(
-                                                            'barge_id',
-                                                            '',
-                                                        );
-                                                    }}
-                                                />
-                                            </div>
-                                        </FriendlyPanel>
+                                        <div className="grid gap-2">
+                                            <span className="text-xs font-semibold text-[#64748B]">
+                                                Movement
+                                            </span>
+                                            <div className="grid gap-1.5 rounded-xl border border-[#D6DEE9] bg-[#F8FAFC] p-1 sm:grid-cols-3">
+                                                {MOVEMENT_OPTIONS.map(
+                                                    (option) => {
+                                                        const active =
+                                                            selectedMovement.key ===
+                                                            option.key;
 
-                                        <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-                                            <FriendlyPanel
-                                                title="Location details"
-                                                description="Only choose a barge when the movement affects a barge."
-                                            >
-                                                <div className="grid gap-3">
-                                                    <FormField
-                                                        label="Movement type"
-                                                        error={
-                                                            movementForm.errors
-                                                                .movement_type
-                                                        }
-                                                    >
-                                                        <select
-                                                            value={
-                                                                movementForm
-                                                                    .data
-                                                                    .movement_type
-                                                            }
-                                                            onChange={(event) =>
-                                                                movementForm.setData(
-                                                                    'movement_type',
-                                                                    event.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            className="h-10 rounded-xl border border-[#D6DEE9] bg-white px-3 text-sm"
-                                                        >
-                                                            {movementTypeOptions
-                                                                .filter(
-                                                                    (
+                                                        return (
+                                                            <button
+                                                                key={option.key}
+                                                                type="button"
+                                                                aria-pressed={
+                                                                    active
+                                                                }
+                                                                onClick={() =>
+                                                                    selectMovement(
                                                                         option,
-                                                                    ) =>
-                                                                        option.value !==
-                                                                            'adjustment' &&
-                                                                        (movementForm
-                                                                            .data
-                                                                            .movement_scope ===
-                                                                            'terminal' ||
-                                                                            ![
-                                                                                'rebond_transfer',
-                                                                                'dead_stock',
-                                                                            ].includes(
-                                                                                option.value,
-                                                                            )),
-                                                                )
-                                                                .map((
-                                                                    option,
-                                                                ) => (
-                                                                    <option
-                                                                        key={
-                                                                            option.value
-                                                                        }
-                                                                        value={
-                                                                            option.value
-                                                                        }
-                                                                    >
-                                                                        {
-                                                                            option.label
-                                                                        }
-                                                                    </option>
-                                                                ))}
-                                                        </select>
-                                                    </FormField>
-                                                    <FormField
-                                                        label="Barge"
-                                                        error={
-                                                            movementForm.errors
+                                                                    )
+                                                                }
+                                                                className={`h-9 rounded-lg px-3 text-sm font-bold transition focus-visible:ring-3 focus-visible:ring-[#2455E6]/25 focus-visible:outline-none ${
+                                                                    active
+                                                                        ? 'bg-[#2455E6] text-white shadow-sm'
+                                                                        : 'text-[#475569] hover:bg-white hover:text-[#0F172A]'
+                                                                }`}
+                                                            >
+                                                                {option.label}
+                                                            </button>
+                                                        );
+                                                    },
+                                                )}
+                                            </div>
+                                            {movementForm.errors
+                                                .movement_type && (
+                                                <span className="text-xs text-[#B91C1C]">
+                                                    {
+                                                        movementForm.errors
+                                                            .movement_type
+                                                    }
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="grid gap-3 md:grid-cols-2">
+                                            {requiresBarge && (
+                                                <FormField
+                                                    label="Barge"
+                                                    error={
+                                                        movementForm.errors
+                                                            .barge_id
+                                                    }
+                                                >
+                                                    <select
+                                                        value={
+                                                            movementForm.data
                                                                 .barge_id
                                                         }
+                                                        onChange={(event) =>
+                                                            movementForm.setData(
+                                                                'barge_id',
+                                                                event.target
+                                                                    .value,
+                                                            )
+                                                        }
+                                                        className="h-10 rounded-xl border border-[#D6DEE9] bg-white px-3 text-sm font-semibold text-[#172033] transition outline-none focus:border-[#2455E6] focus:ring-3 focus:ring-[#2455E6]/15"
                                                     >
-                                                        <select
-                                                            value={
-                                                                movementForm
-                                                                    .data
-                                                                    .barge_id
-                                                            }
-                                                            onChange={(event) =>
-                                                                movementForm.setData(
-                                                                    'barge_id',
-                                                                    event.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            disabled={
-                                                                movementForm
-                                                                    .data
-                                                                    .movement_scope !==
-                                                                'barge'
-                                                            }
-                                                            className="h-10 rounded-xl border border-[#D6DEE9] bg-white px-3 text-sm disabled:bg-slate-100 disabled:text-slate-400"
-                                                        >
-                                                            <option value="">
-                                                                Select barge
+                                                        <option value="">
+                                                            Select barge
+                                                        </option>
+                                                        {barges.map((barge) => (
+                                                            <option
+                                                                key={barge.imo}
+                                                                value={
+                                                                    barge.imo
+                                                                }
+                                                            >
+                                                                {barge.name}
                                                             </option>
-                                                            {barges.map(
-                                                                (barge) => (
-                                                                    <option
-                                                                        key={
-                                                                            barge.imo
-                                                                        }
-                                                                        value={
-                                                                            barge.imo
-                                                                        }
-                                                                    >
-                                                                        {
-                                                                            barge.name
-                                                                        }
-                                                                    </option>
-                                                                ),
-                                                            )}
-                                                        </select>
-                                                    </FormField>
-                                                    <FormField label="Counterparty / Company">
+                                                        ))}
+                                                    </select>
+                                                </FormField>
+                                            )}
+
+                                            {showsCompany && (
+                                                <FormField
+                                                    label="Company"
+                                                    error={
+                                                        movementForm.errors
+                                                            .counterparty_name
+                                                    }
+                                                >
+                                                    <Input
+                                                        value={
+                                                            movementForm.data
+                                                                .counterparty_name
+                                                        }
+                                                        onChange={(event) =>
+                                                            movementForm.setData(
+                                                                'counterparty_name',
+                                                                event.target
+                                                                    .value,
+                                                            )
+                                                        }
+                                                        placeholder="Company name"
+                                                    />
+                                                </FormField>
+                                            )}
+                                        </div>
+
+                                        <div className="grid gap-3">
+                                            <span className="text-xs font-semibold text-[#64748B]">
+                                                Quantity (MT)
+                                            </span>
+                                            <div className="grid gap-3 sm:grid-cols-3">
+                                                {PRODUCTS.map((product) => (
+                                                    <FormField
+                                                        key={product.key}
+                                                        label={product.label}
+                                                        error={
+                                                            movementForm.errors[
+                                                                `${product.key}_qty`
+                                                            ]
+                                                        }
+                                                    >
                                                         <Input
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.001"
                                                             value={
                                                                 movementForm
-                                                                    .data
-                                                                    .counterparty_name
-                                                            }
-                                                            onChange={(event) =>
-                                                                movementForm.setData(
-                                                                    'counterparty_name',
-                                                                    event.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            placeholder="Southern Star"
-                                                        />
-                                                    </FormField>
-                                                </div>
-                                            </FriendlyPanel>
-
-                                            <FriendlyPanel
-                                                title="Quantity in MT"
-                                                description="Use positive values for opening stock, loadings, transfers and dead stock."
-                                            >
-                                                <div className="grid gap-3 sm:grid-cols-3">
-                                                    {PRODUCTS.map((product) => (
-                                                        <FormField
-                                                            key={product.key}
-                                                            label={
-                                                                product.label
-                                                            }
-                                                            error={
-                                                                movementForm
-                                                                    .errors[
+                                                                    .data[
                                                                     `${product.key}_qty`
                                                                 ]
                                                             }
-                                                        >
-                                                            <Input
-                                                                type="number"
-                                                                min="0"
-                                                                step="0.001"
-                                                                value={
-                                                                    movementForm
-                                                                        .data[
-                                                                        `${product.key}_qty`
-                                                                    ]
-                                                                }
-                                                                onChange={(
-                                                                    event,
-                                                                ) =>
-                                                                    movementForm.setData(
-                                                                        `${product.key}_qty`,
-                                                                        event
-                                                                            .target
-                                                                            .value,
-                                                                    )
-                                                                }
-                                                                placeholder="0.000"
-                                                            />
-                                                        </FormField>
-                                                    ))}
-                                                </div>
-                                                <div className="mt-3">
-                                                    <FormField label="Notes">
-                                                        <Input
-                                                            value={
-                                                                movementForm
-                                                                    .data.notes
-                                                            }
                                                             onChange={(event) =>
                                                                 movementForm.setData(
-                                                                    'notes',
+                                                                    `${product.key}_qty`,
                                                                     event.target
                                                                         .value,
                                                                 )
                                                             }
-                                                            placeholder="Optional note"
+                                                            placeholder="0.000"
                                                         />
                                                     </FormField>
-                                                </div>
-                                            </FriendlyPanel>
+                                                ))}
+                                            </div>
                                         </div>
 
-                                        <div className="flex flex-col gap-2 rounded-2xl bg-[#F8FAFC] p-3 sm:flex-row sm:items-center sm:justify-between">
-                                            <p className="text-xs text-[#64748B]">
-                                                Deliveries are deducted from
-                                                completed BDN quantities. Manual
-                                                entries are for opening stock,
-                                                imports, transfers and dead
-                                                stock.
+                                        <div>
+                                            {showNote ? (
+                                                <FormField label="Notes">
+                                                    <Input
+                                                        value={
+                                                            movementForm.data
+                                                                .notes
+                                                        }
+                                                        onChange={(event) =>
+                                                            movementForm.setData(
+                                                                'notes',
+                                                                event.target
+                                                                    .value,
+                                                            )
+                                                        }
+                                                        placeholder="Optional note"
+                                                    />
+                                                </FormField>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setShowNote(true)
+                                                    }
+                                                    className="text-sm font-bold text-[#2455E6] transition hover:text-[#123B9F] focus-visible:ring-3 focus-visible:ring-[#2455E6]/25 focus-visible:outline-none"
+                                                >
+                                                    + Add note
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className="flex flex-col gap-3 border-t border-[#E6EBF1] pt-4 sm:flex-row sm:items-center sm:justify-between">
+                                            <p className="text-xs font-medium text-[#64748B]">
+                                                The daily report updates after
+                                                you save.
                                             </p>
                                             <Button
                                                 type="submit"
                                                 disabled={
                                                     movementForm.processing
                                                 }
+                                                className="bg-[#2455E6] text-white hover:bg-[#123B9F] sm:ml-auto"
                                             >
                                                 Save movement
                                             </Button>
@@ -799,6 +690,7 @@ export default function StockMovementsIndex({
                                     portName={
                                         selectedPort?.name ?? 'Selected port'
                                     }
+                                    date={filters.date_to}
                                     terminalClosing={terminalClosing}
                                     bargeClosing={bargeClosing}
                                     deadStock={deadStock}
@@ -807,28 +699,27 @@ export default function StockMovementsIndex({
                                         balanceAfterDeliveries
                                     }
                                     latestTerminalRow={latestTerminalRow}
+                                    bargeRows={report.barges}
                                 />
                             </div>
                         </TabsContent>
 
                         <TabsContent value="report-preview" className="mt-0">
                             <div className="grid gap-4">
-                                <BalanceOnHandCard
-                                    totals={removableClosing}
-                                />
-                                <ReportSection
-                                    icon={<Warehouse className="size-5" />}
-                                    title={`${selectedPort?.name ?? 'Port'} Terminal Stock`}
-                                    subtitle="Opening + loadings / re-bond transfers - barge loadings"
-                                >
-                                    <TerminalTable rows={report.terminal} />
-                                </ReportSection>
                                 <ReportSection
                                     icon={<Ship className="size-5" />}
                                     title="Barge Stock Movement"
-                                    subtitle="Opening + operations loading - surveyor BDN delivery quantities"
+                                    subtitle="Opening + terminal-to-barge loading - surveyor BDN delivery quantities"
                                 >
-                                    <BargeTable rows={report.barges} />
+                                    <BargeReportFilter
+                                        barges={reportBarges}
+                                        value={activeReportBargeId}
+                                        onChange={setSelectedReportBargeId}
+                                    />
+                                    <BargeTable
+                                        rows={report.barges}
+                                        bargeId={activeReportBargeId}
+                                    />
                                 </ReportSection>
                             </div>
                         </TabsContent>
@@ -837,7 +728,7 @@ export default function StockMovementsIndex({
                             <ReportSection
                                 icon={<FileClock className="size-5" />}
                                 title="Recent Manual Entries"
-                                subtitle="Latest opening, loading, re-bond transfer and dead stock records"
+                                subtitle="Latest imports, terminal-to-barge loadings and re-bond sales"
                             >
                                 <RecentMovementsTable
                                     movements={recentMovements}
@@ -898,64 +789,6 @@ function FormField({
     );
 }
 
-function FriendlyPanel({
-    title,
-    description,
-    children,
-}: {
-    title: string;
-    description: string;
-    children: ReactNode;
-}) {
-    return (
-        <section className="rounded-2xl border border-[#E3EAF2] bg-[#F8FAFC] p-3">
-            <div className="mb-3">
-                <h3 className="text-sm font-bold text-[#0F172A]">{title}</h3>
-                <p className="mt-0.5 text-xs text-[#64748B]">{description}</p>
-            </div>
-            {children}
-        </section>
-    );
-}
-
-function MovementChoice({
-    title,
-    description,
-    icon,
-    active,
-    onClick,
-}: {
-    title: string;
-    description: string;
-    icon: ReactNode;
-    active: boolean;
-    onClick: () => void;
-}) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={`rounded-2xl border p-3 text-left transition ${
-                active
-                    ? 'border-[#2455E6] bg-[#EEF4FF] text-[#123B9F]'
-                    : 'border-[#DDE6F0] bg-white text-[#172033] hover:border-[#BFD0E6]'
-            }`}
-        >
-            <span
-                className={`mb-3 flex size-8 items-center justify-center rounded-xl ${
-                    active ? 'bg-[#2455E6] text-white' : 'bg-[#F1F5F9]'
-                }`}
-            >
-                {icon}
-            </span>
-            <span className="block text-sm font-bold">{title}</span>
-            <span className="mt-1 block text-xs leading-5 text-[#64748B]">
-                {description}
-            </span>
-        </button>
-    );
-}
-
 function OverviewKpiCards({
     overview,
 }: {
@@ -965,480 +798,487 @@ function OverviewKpiCards({
         (totals, barge) => addTotals(totals, barge.totals),
         zeroTotals(),
     );
-
     return (
-        <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
-            <div className="grid gap-2.5 lg:grid-cols-3">
-                <PortTerminalCard
-                    title="Colombo Terminal Closing"
-                    subtitle="Terminal stock at Colombo"
-                    totals={overview.colombo_terminal}
-                />
-                <PortTerminalCard
-                    title="Trincomalee Terminal Closing"
-                    subtitle="Terminal stock at Trincomalee"
-                    totals={overview.trinco_terminal}
-                />
-                <TrackedBargesCard
-                    barges={overview.tracked_barges}
-                    totals={bargeTotals}
-                />
-            </div>
-            <BalancePieCard totals={overview.balance_on_hand} />
+        <div className="grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <OverviewStockCard
+                title="Colombo terminal"
+                totals={overview.colombo_terminal}
+            />
+            <OverviewStockCard
+                title="Trincomalee terminal"
+                totals={overview.trinco_terminal}
+            />
+            <OverviewStockCard title="Barge stocks" totals={bargeTotals} />
+            <OverviewBalanceCard totals={overview.balance_on_hand} />
         </div>
     );
 }
 
-function PortTerminalCard({
+function OverviewStockCard({
     title,
-    subtitle,
     totals,
 }: {
     title: string;
-    subtitle: string;
     totals: ProductTotals;
 }) {
     return (
-        <div className="h-fit rounded-xl border border-[#E1E8F0] bg-[#FBFCFE] p-3 shadow-[0_4px_14px_rgba(15,23,42,0.03)]">
-            <div className="mb-2.5 border-l-2 border-[#2455E6] pl-2.5">
-                <h2 className="text-[13px] font-bold text-[#0F172A]">
+        <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
+            <div className="mb-5 flex items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold text-slate-900">
                     {title}
                 </h2>
-                <p className="mt-0.5 text-[11px] text-[#64748B]">{subtitle}</p>
+                <span className="text-xs text-slate-500">MT</span>
             </div>
-            <ProductMiniGrid totals={totals} />
-        </div>
-    );
-}
-
-function TrackedBargesCard({
-    barges,
-    totals,
-}: {
-    barges: TrackedBargeStock[];
-    totals: ProductTotals;
-}) {
-    return (
-        <div className="h-fit rounded-xl border border-[#E1E8F0] bg-[#FBFCFE] p-3 shadow-[0_4px_14px_rgba(15,23,42,0.03)]">
-            <div className="mb-2.5 border-l-2 border-[#2455E6] pl-2.5">
-                <h2 className="text-[13px] font-bold text-[#0F172A]">
-                    Barge Stocks
-                </h2>
-                <p className="mt-0.5 truncate text-[11px] text-[#64748B]">
-                    Ceylon Star, Southern Star, Sanvi69
-                </p>
-            </div>
-            <ProductMiniGrid totals={totals} />
-            <div className="mt-2 flex flex-wrap gap-1">
+            <div className="grid grid-cols-3 gap-3">
+                {PRODUCTS.map((product) => {
+                    const quantity = reportQty(totals[product.key]);
+                    return (
+                        <div key={product.key} className="min-w-0">
+                            <p className="mb-2 text-xs text-slate-500">
+                                {product.label}
+                            </p>
+                            <p
+                                className={`leading-snug font-bold [overflow-wrap:anywhere] tabular-nums ${quantity.length > 9 ? 'text-sm' : 'text-lg'} ${Number(totals[product.key]) < 0 ? 'text-red-700' : 'text-slate-900'}`}
+                            >
+                                {quantity}
+                            </p>
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
 }
 
-function BalancePieCard({ totals }: { totals: ProductTotals }) {
+function OverviewBalanceCard({ totals }: { totals: ProductTotals }) {
+    const total = productTotal(totals);
+    const hasCompleteBalance = PRODUCTS.every(
+        (product) =>
+            totals[product.key] !== null &&
+            totals[product.key] !== undefined &&
+            Number.isFinite(Number(totals[product.key])),
+    );
     const hasMeaningfulComposition =
-        productTotal(totals) > 0 && !hasNegativeBalance(totals);
-    const pieTotals = hasMeaningfulComposition
+        hasCompleteBalance && total > 0 && !hasNegativeBalance(totals);
+    const shareTotals = hasMeaningfulComposition
         ? positiveTotals(totals)
         : zeroTotals();
-    const mgoShare = productShare(pieTotals, 'mgo');
-    const vlsfoShare = productShare(pieTotals, 'vlsfo');
-    const hsfoShare = productShare(pieTotals, 'hsfo');
-
     return (
-        <div className="h-fit rounded-xl border border-[#E1E8F0] bg-white p-3 shadow-[0_4px_14px_rgba(15,23,42,0.03)]">
-            <div className="mb-2.5">
-                <h2 className="text-[13px] font-bold text-[#0F172A]">
-                    Balance on Hand by Product
+        <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
+            <div className="mb-3 flex items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold text-slate-900">
+                    Balance on hand
                 </h2>
-                <p className="mt-0.5 text-[11px] text-[#64748B]">
-                    Colombo + Trincomalee + tracked barges
-                </p>
+                <span className="text-xs text-slate-500">MT</span>
             </div>
-            {hasMeaningfulComposition ? (
-                <div className="flex items-center gap-3">
-                    <div
-                        className="grid size-[5.5rem] shrink-0 place-items-center rounded-full"
-                        style={{
-                            background: `conic-gradient(${productColor('mgo')} 0 ${mgoShare}%, ${productColor('vlsfo')} ${mgoShare}% ${mgoShare + vlsfoShare}%, ${productColor('hsfo')} ${mgoShare + vlsfoShare}% ${mgoShare + vlsfoShare + hsfoShare}%, #E2E8F0 ${mgoShare + vlsfoShare + hsfoShare}% 100%)`,
-                        }}
-                    >
-                        <div className="grid size-12 place-items-center rounded-full bg-white px-1.5 text-center shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]">
-                            <span className="text-[10px] font-bold leading-3 text-[#0F172A]">
-                                {formatQty(productTotal(pieTotals))}
-                                <span className="block text-[9px] font-semibold text-[#94A3B8]">
-                                    MT
-                                </span>
-                            </span>
-                        </div>
-                    </div>
-                    <div className="grid flex-1 gap-1.5">
-                        {PRODUCTS.map((product) => (
-                            <div
-                                key={product.key}
-                                className="flex items-center justify-between gap-2 text-[11px]"
-                            >
-                                <span className="flex items-center gap-2 font-semibold text-[#475569]">
-                                    <span
-                                        className="size-2.5 rounded-full"
-                                        style={{
-                                            backgroundColor: productColor(
-                                                product.key,
-                                            ),
-                                        }}
-                                    />
-                                    {product.label}
-                                </span>
-                                <span className="font-bold tabular-nums text-[#172033]">
-                                    {productShare(pieTotals, product.key)}%
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            ) : (
-                <div className="grid gap-2">
-                    <p className="rounded-xl bg-[#F8FAFC] px-2.5 py-2 text-[11px] font-semibold text-[#64748B]">
-                        Balance summary shown because these values are not a
-                        nonnegative composition.
-                    </p>
-                    <ProductValueList totals={totals} />
-                </div>
-            )}
-        </div>
-    );
-}
-
-function ProductMiniGrid({ totals }: { totals: ProductTotals }) {
-    return (
-        <div className="grid grid-cols-3 gap-1.5">
-            {PRODUCTS.map((product) => (
-                <div
-                    key={product.key}
-                    className="min-w-0 rounded-lg border border-[#E7EDF4] bg-white px-2 py-1.5"
-                >
-                    <span
-                        className="text-[10px] font-bold"
-                        style={{ color: productColor(product.key) }}
-                    >
-                        {product.label}
-                    </span>
-                    <span
-                        className={`mt-0.5 block whitespace-nowrap text-right text-[11px] font-bold tabular-nums 2xl:text-xs ${
-                            Number(totals[product.key] ?? 0) < 0
-                                ? 'text-[#B42318]'
-                                : 'text-[#172033]'
-                        }`}
-                    >
-                        {formatQty(totals[product.key])} MT
-                    </span>
-                </div>
-            ))}
-        </div>
-    );
-}
-
-function ProductValueList({ totals }: { totals: ProductTotals }) {
-    return (
-        <div className="grid gap-1.5">
-            {PRODUCTS.map((product) => (
-                <div
-                    key={product.key}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-[#E7EDF4] bg-white px-3 py-2 text-xs"
-                >
-                    <span className="flex items-center gap-2 font-semibold text-[#475569]">
+            <p
+                className={`text-2xl leading-snug font-bold [overflow-wrap:anywhere] tabular-nums ${total < 0 ? 'text-red-700' : 'text-slate-900'}`}
+            >
+                {reportQty(hasCompleteBalance ? total : null)}
+            </p>
+            <div
+                className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-slate-100"
+                role="img"
+                aria-label={
+                    hasMeaningfulComposition
+                        ? PRODUCTS.map(
+                              (product) =>
+                                  `${product.label} ${productShare(shareTotals, product.key)}%`,
+                          ).join(', ')
+                        : 'Product shares unavailable'
+                }
+            >
+                {hasMeaningfulComposition &&
+                    PRODUCTS.map((product) => (
                         <span
-                            className="size-2.5 rounded-full"
-                            style={{ backgroundColor: productColor(product.key) }}
+                            key={product.key}
+                            className="h-full"
+                            style={{
+                                backgroundColor: productColor(product.key),
+                                width: `${(Number(shareTotals[product.key]) / total) * 100}%`,
+                            }}
                         />
-                        {product.label}
-                    </span>
-                    <span
-                        className={`whitespace-nowrap font-bold tabular-nums ${
-                            Number(totals[product.key] ?? 0) < 0
-                                ? 'text-[#B42318]'
-                                : 'text-[#172033]'
-                        }`}
-                    >
-                        {formatQty(totals[product.key])} MT
-                    </span>
-                </div>
-            ))}
+                    ))}
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+                {PRODUCTS.map((product) => (
+                    <div key={product.key} className="min-w-0 text-xs">
+                        <span className="flex items-center gap-1.5 text-slate-500">
+                            <span
+                                className="size-1.5 shrink-0 rounded-full"
+                                style={{
+                                    backgroundColor: productColor(product.key),
+                                }}
+                            />
+                            {product.label}
+                        </span>
+                        <span className="mt-1 block font-semibold text-slate-900 tabular-nums">
+                            {hasMeaningfulComposition
+                                ? `${productShare(shareTotals, product.key)}%`
+                                : '—'}
+                        </span>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }
 
 function DailyReportPreview({
     portName,
+    date,
     terminalClosing,
     bargeClosing,
     deadStock,
     removableClosing,
     balanceAfterDeliveries,
     latestTerminalRow,
+    bargeRows,
 }: {
     portName: string;
+    date: string;
     terminalClosing: ProductTotals;
     bargeClosing: ProductTotals;
     deadStock: ProductTotals;
     removableClosing: ProductTotals;
     balanceAfterDeliveries: ProductTotals;
     latestTerminalRow?: TerminalRow;
+    bargeRows: BargeRow[];
 }) {
+    const reportDate = latestTerminalRow?.date ?? date;
+    const todayDeliveries = bargeRows
+        .filter((row) => row.date === reportDate)
+        .reduce(
+            (totals, row) => addTotals(totals, row.deliveries),
+            zeroTotals(),
+        );
+    const preDeliveryRemovable = addTotals(removableClosing, todayDeliveries);
+    const imports = latestTerminalRow?.imports ?? latestTerminalRow?.loadings;
+    const reportRows = [
+        ['Terminal', terminalClosing, false],
+        ['Barges', bargeClosing, false],
+        ['Dead stock', deadStock, false],
+        ['Available after deliveries', removableClosing, true],
+    ] as const;
+
     return (
-        <aside className="overflow-hidden rounded-2xl border border-[#DCE3EC] bg-white shadow-sm">
-            <div className="border-b border-[#E6EBF1] px-4 py-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">
-                    Live preview
-                </p>
-                <h2 className="mt-1 text-lg font-bold text-[#0F172A]">
+        <aside className="rounded-2xl border border-[#DCE3EC] bg-white p-4 shadow-sm">
+            <div className="mb-3">
+                <h2 className="text-base font-bold text-[#0F172A]">
                     Daily bunker report
                 </h2>
-                <p className="mt-1 text-xs text-[#64748B]">
-                    This is the friendly replacement for the daily sheet.
+                <p className="mt-0.5 text-xs font-medium text-[#64748B]">
+                    {portName} · {reportDate} · MT
                 </p>
             </div>
 
-            <div className="grid gap-4 p-4">
-                <ReportPreviewBlock title={`Stock at ${portName}`}>
-                    <PreviewProductRow
-                        label="Terminal stock"
-                        totals={terminalClosing}
-                    />
-                    <PreviewProductRow
-                        label="Barge stock"
-                        totals={bargeClosing}
-                    />
-                    <PreviewProductRow
-                        label="Less dead stock"
-                        totals={deadStock}
-                    />
-                    <PreviewProductRow
-                        label="Total stock removable"
-                        totals={removableClosing}
-                        strong
-                    />
-                </ReportPreviewBlock>
+            <div className="overflow-hidden rounded-xl border border-[#E6EBF1]">
+                <table className="w-full border-collapse text-xs">
+                    <thead className="bg-[#F8FAFC] text-[#64748B]">
+                        <tr>
+                            <th className="px-3 py-2 text-left font-bold">
+                                Stock
+                            </th>
+                            {PRODUCTS.map((product) => (
+                                <th
+                                    key={product.key}
+                                    className="px-3 py-2 text-right font-bold"
+                                >
+                                    {product.label}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {reportRows.map(([label, totals, highlight]) => (
+                            <tr
+                                key={label}
+                                className={`border-t border-[#EDF2F7] ${
+                                    highlight
+                                        ? 'bg-[#EEF4FF] font-bold text-[#123B9F]'
+                                        : 'text-[#172033]'
+                                }`}
+                            >
+                                <td className="px-3 py-2 font-semibold">
+                                    {label}
+                                </td>
+                                {PRODUCTS.map((product) => (
+                                    <ReportAmountCell
+                                        key={product.key}
+                                        value={totals[product.key]}
+                                    />
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
 
-                <ReportPreviewBlock title="Today’s movement summary">
-                    <PreviewProductRow
-                        label="Loadings / re-bond transfer"
-                        totals={latestTerminalRow?.loadings ?? zeroTotals()}
+            <details className="mt-3 rounded-xl border border-[#E6EBF1] bg-[#FBFCFE]">
+                <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-[#2455E6] transition outline-none hover:text-[#123B9F] focus-visible:ring-3 focus-visible:ring-[#2455E6]/20">
+                    View movements and stock breakdown
+                </summary>
+                <div className="grid gap-2 border-t border-[#E6EBF1] p-3">
+                    <CompactReportRow
+                        label="Imports"
+                        totals={imports ?? zeroTotals()}
                     />
-                    <PreviewProductRow
+                    <CompactReportRow
+                        label="Re-bond sales"
+                        totals={latestTerminalRow?.rebond_sales ?? zeroTotals()}
+                    />
+                    <CompactReportRow
                         label="Barge loading"
                         totals={
                             latestTerminalRow?.barge_loadings ?? zeroTotals()
                         }
                     />
-                    <PreviewProductRow
-                        label="Dead stock entered"
-                        totals={latestTerminalRow?.dead_stock ?? zeroTotals()}
-                    />
-                </ReportPreviewBlock>
-
-                <ReportPreviewBlock title="Balance after deliveries">
-                    <PreviewProductRow
+                    <CompactReportRow
                         label="Gross balance"
                         totals={balanceAfterDeliveries}
                     />
-                    <PreviewProductRow
-                        label="Removable balance"
-                        totals={removableClosing}
-                        strong
+                    <CompactReportRow
+                        label="Pre-delivery removable stock"
+                        totals={preDeliveryRemovable}
                     />
-                </ReportPreviewBlock>
-
-                <BalanceOnHandCard totals={removableClosing} compact />
-            </div>
+                    <CompactReportRow
+                        label="Terminal stock"
+                        totals={terminalClosing}
+                    />
+                    <CompactReportRow
+                        label="Barge stock"
+                        totals={bargeClosing}
+                    />
+                    <CompactReportRow label="Dead stock" totals={deadStock} />
+                </div>
+            </details>
         </aside>
     );
 }
 
-function ReportPreviewBlock({
-    title,
-    children,
-}: {
-    title: string;
-    children: ReactNode;
-}) {
+function reportQty(value: number | null | undefined): string {
+    if (
+        value === null ||
+        value === undefined ||
+        !Number.isFinite(Number(value))
+    ) {
+        return '—';
+    }
+
+    return Number(value).toLocaleString(undefined, {
+        minimumFractionDigits: 3,
+        maximumFractionDigits: 3,
+    });
+}
+
+function ReportAmountCell({ value }: { value: number | null | undefined }) {
+    const numericValue = Number(value ?? 0);
+
     return (
-        <div className="rounded-2xl border border-[#E3EAF2] bg-[#FBFCFE] p-3">
-            <h3 className="mb-3 text-sm font-bold text-[#0F172A]">{title}</h3>
-            <div className="grid gap-2">{children}</div>
-        </div>
+        <td
+            className={`px-3 py-2 text-right tabular-nums ${
+                numericValue < 0 ? 'text-[#B42318]' : ''
+            }`}
+        >
+            {reportQty(value)}
+        </td>
     );
 }
 
-function PreviewProductRow({
+function CompactReportRow({
     label,
     totals,
-    strong = false,
 }: {
     label: string;
     totals: ProductTotals;
-    strong?: boolean;
 }) {
     return (
-        <div
-            className={`grid grid-cols-[1fr_repeat(3,minmax(0,84px))] items-center gap-2 rounded-xl px-3 py-2 ${
-                strong ? 'bg-[#EEF4FF]' : 'bg-white'
-            }`}
-        >
-            <span
-                className={`min-w-0 truncate text-xs ${
-                    strong
-                        ? 'font-bold text-[#123B9F]'
-                        : 'font-semibold text-[#475569]'
-                }`}
-            >
+        <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,minmax(56px,72px))] items-center gap-2 text-xs">
+            <span className="min-w-0 truncate font-semibold text-[#475569]">
                 {label}
             </span>
             {PRODUCTS.map((product) => (
                 <span
                     key={product.key}
-                    className="text-right text-xs font-bold tabular-nums text-[#172033]"
+                    className={`text-right font-bold tabular-nums ${
+                        Number(totals[product.key] ?? 0) < 0
+                            ? 'text-[#B42318]'
+                            : 'text-[#172033]'
+                    }`}
                 >
-                    {formatQty(totals[product.key])}
+                    {reportQty(totals[product.key])}
                 </span>
             ))}
         </div>
     );
 }
 
-function BalanceOnHandCard({
-    totals,
-    compact = false,
+function BargeReportFilter({
+    barges,
+    value,
+    onChange,
 }: {
-    totals: ProductTotals;
-    compact?: boolean;
+    barges: BargeOption[];
+    value: string;
+    onChange: (value: string) => void;
 }) {
     return (
-        <section
-            className={`rounded-2xl border border-[#E3EAF2] bg-white ${
-                compact ? 'p-3' : 'p-4 shadow-sm'
+        <div className="mb-4 w-full sm:max-w-xs">
+            <Field label="Barge" htmlFor="report-barge">
+                <select
+                    id="report-barge"
+                    value={value}
+                    onChange={(event) => onChange(event.target.value)}
+                    disabled={barges.length === 0}
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-600 disabled:opacity-50"
+                >
+                    {barges.length === 0 && (
+                        <option value="">No barges available</option>
+                    )}
+                    {barges.map((barge) => (
+                        <option key={barge.imo} value={barge.imo}>
+                            {barge.name}
+                        </option>
+                    ))}
+                </select>
+            </Field>
+        </div>
+    );
+}
+
+function BargeTable({ rows, bargeId }: { rows: BargeRow[]; bargeId: string }) {
+    const filteredRows = rows.filter((row) => String(row.barge_id) === bargeId);
+
+    return (
+        <TableFrame>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead rowSpan={2}>Date</TableHead>
+                        <TableHead rowSpan={2}>Vessel</TableHead>
+                        {PRODUCTS.map((product) => (
+                            <TableHead
+                                key={product.key}
+                                colSpan={3}
+                                className="border-l text-center"
+                            >
+                                {product.label} (MT)
+                            </TableHead>
+                        ))}
+                    </TableRow>
+                    <TableRow>
+                        {PRODUCTS.map((product) =>
+                            ['Opening', 'Movement', 'Closing'].map(
+                                (label, index) => (
+                                    <TableHead
+                                        key={`${product.key}-${label}`}
+                                        className={`text-right ${index === 0 ? 'border-l' : ''}`}
+                                    >
+                                        {label}
+                                    </TableHead>
+                                ),
+                            ),
+                        )}
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {filteredRows.map((row) => (
+                        <TableRow key={`${row.date}-${row.barge_id}`}>
+                            <TableCell className="font-semibold whitespace-nowrap text-[#172033]">
+                                {row.date}
+                            </TableCell>
+                            <TableCell className="max-w-64 min-w-40 text-sm whitespace-normal text-slate-900">
+                                {row.vessel_names.length > 0
+                                    ? row.vessel_names.map((name) => (
+                                          <div key={name}>{name}</div>
+                                      ))
+                                    : '—'}
+                            </TableCell>
+                            {PRODUCTS.map((product) => (
+                                <BargeProductCells
+                                    key={product.key}
+                                    row={row}
+                                    product={product.key}
+                                />
+                            ))}
+                        </TableRow>
+                    ))}
+                    {filteredRows.length === 0 && <EmptyRow colSpan={11} />}
+                </TableBody>
+            </Table>
+        </TableFrame>
+    );
+}
+
+function BargeProductCells({
+    row,
+    product,
+}: {
+    row: BargeRow;
+    product: ProductKey;
+}) {
+    const loading = row.loadings[product];
+    const delivery = row.deliveries[product];
+
+    return (
+        <>
+            <ProductTableCell
+                value={addTotals(row.opening, row.opening_entries)[product]}
+                className="border-l"
+            />
+            <TableCell className="text-right text-xs font-semibold whitespace-nowrap tabular-nums">
+                {loading !== 0 && (
+                    <div
+                        className={
+                            loading < 0 ? 'text-red-700' : 'text-blue-600'
+                        }
+                        title="Loading"
+                    >
+                        {loading > 0 ? '+' : '-'}
+                        {reportQty(Math.abs(loading))}
+                    </div>
+                )}
+                {delivery !== 0 && (
+                    <div
+                        className={
+                            delivery > 0 ? 'text-red-700' : 'text-blue-600'
+                        }
+                        title="Delivery"
+                    >
+                        {delivery > 0 ? '-' : '+'}
+                        {reportQty(Math.abs(delivery))}
+                    </div>
+                )}
+                {loading === 0 && delivery === 0 && (
+                    <span className="text-slate-500">{reportQty(0)}</span>
+                )}
+            </TableCell>
+            <ProductTableCell value={row.closing[product]} />
+        </>
+    );
+}
+
+function ProductTableCell({
+    value,
+    className = '',
+}: {
+    value: number | null | undefined;
+    className?: string;
+}) {
+    const numericValue = Number(value ?? 0);
+
+    return (
+        <TableCell
+            className={`${className} text-right text-xs font-semibold whitespace-nowrap tabular-nums ${
+                numericValue < 0 ? 'text-[#B42318]' : 'text-[#172033]'
             }`}
         >
-            <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                    <h3 className="text-sm font-bold text-[#0F172A]">
-                        Balance on hand
-                    </h3>
-                    <p className="text-xs text-[#64748B]">
-                        Product share of current balance
-                    </p>
-                </div>
-                <span className="rounded-full bg-[#0F172A] px-3 py-1 text-xs font-bold text-white">
-                    MT
-                </span>
-            </div>
-            <div className="grid gap-3">
-                {PRODUCTS.map((product) => {
-                    const share = productShare(totals, product.key);
-
-                    return (
-                        <div key={product.key} className="grid gap-1.5">
-                            <div className="flex items-center justify-between text-xs">
-                                <span className="font-bold text-[#475569]">
-                                    {product.label}
-                                </span>
-                                <span className="font-bold tabular-nums text-[#172033]">
-                                    {share}%
-                                </span>
-                            </div>
-                            <div className="h-2 overflow-hidden rounded-full bg-[#E8EEF5]">
-                                <div
-                                    className="h-full rounded-full bg-[#2455E6]"
-                                    style={{ width: `${share}%` }}
-                                />
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-        </section>
+            {reportQty(value)}
+        </TableCell>
     );
 }
 
-function TerminalTable({ rows }: { rows: TerminalRow[] }) {
-    return (
-        <TableFrame>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Date</TableHead>
-                        <ProductHeads prefix="Opening" />
-                        <ProductHeads prefix="Load / Transfer" />
-                        <ProductHeads prefix="Dead Stock" />
-                        <ProductHeads prefix="Barge Loading" />
-                        <ProductHeads prefix="Closing" />
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {rows.map((row) => (
-                        <TableRow key={row.date}>
-                            <TableCell className="font-semibold text-[#172033]">
-                                {row.date}
-                            </TableCell>
-                            {productCells(
-                                addTotals(row.opening, row.opening_entries),
-                            )}
-                            {productCells(row.loadings)}
-                            {productCells(row.dead_stock_closing)}
-                            {productCells(row.barge_loadings)}
-                            {productCells(row.closing)}
-                        </TableRow>
-                    ))}
-                    {rows.length === 0 && <EmptyRow colSpan={16} />}
-                </TableBody>
-            </Table>
-        </TableFrame>
-    );
-}
-
-function BargeTable({ rows }: { rows: BargeRow[] }) {
-    return (
-        <TableFrame>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Barge</TableHead>
-                        <ProductHeads prefix="Opening" />
-                        <ProductHeads prefix="Loading" />
-                        <ProductHeads prefix="Deliveries" />
-                        <ProductHeads prefix="Closing" />
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {rows.map((row) => (
-                        <TableRow key={`${row.date}-${row.barge_id}`}>
-                            <TableCell className="font-semibold text-[#172033]">
-                                {row.date}
-                            </TableCell>
-                            <TableCell className="font-semibold text-[#172033]">
-                                {row.barge_name}
-                            </TableCell>
-                            {productCells(
-                                addTotals(row.opening, row.opening_entries),
-                            )}
-                            {productCells(row.loadings)}
-                            {productCells(row.deliveries)}
-                            {productCells(row.closing)}
-                        </TableRow>
-                    ))}
-                    {rows.length === 0 && <EmptyRow colSpan={14} />}
-                </TableBody>
-            </Table>
-        </TableFrame>
-    );
-}
-
-function RecentMovementsTable({
-    movements,
-}: {
-    movements: RecentMovement[];
-}) {
+function RecentMovementsTable({ movements }: { movements: RecentMovement[] }) {
     return (
         <TableFrame>
             <Table>
@@ -1472,9 +1312,7 @@ function RecentMovementsTable({
                                     key={product.key}
                                     className="text-right text-xs font-semibold tabular-nums"
                                 >
-                                    {formatQty(
-                                        movement[`${product.key}_qty`],
-                                    )}
+                                    {formatQty(movement[`${product.key}_qty`])}
                                 </TableCell>
                             ))}
                             <TableCell className="max-w-60 truncate text-[#64748B]">
@@ -1565,7 +1403,7 @@ function SummaryCard({
                         <span className="text-[11px] font-bold text-[#64748B]">
                             {product.label}
                         </span>
-                        <span className="mt-1 block text-base font-bold tabular-nums text-[#172033]">
+                        <span className="mt-1 block text-base font-bold text-[#172033] tabular-nums">
                             {formatQty(totals[product.key])} MT
                         </span>
                     </div>
@@ -1624,7 +1462,7 @@ function ProductHeads({ prefix }: { prefix?: string }) {
             {PRODUCTS.map((product) => (
                 <TableHead
                     key={`${prefix ?? 'product'}-${product.key}`}
-                    className="min-w-24 text-right text-[11px] font-bold uppercase tracking-wide text-[#64748B]"
+                    className="min-w-24 text-right text-[11px] font-bold tracking-wide text-[#64748B] uppercase"
                 >
                     {prefix ? `${prefix} ${product.label}` : product.label}
                 </TableHead>

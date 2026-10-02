@@ -6,6 +6,7 @@ import { ReadOnlyValue } from '@/components/edit-panel/fields';
 import { SummaryBand } from '@/components/edit-panel/summary-band';
 import InputError from '@/components/input-error';
 import { MoneyInput } from '@/components/money-input';
+import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -267,6 +268,16 @@ function FieldControl({
                 id={field.name}
                 value={Array.isArray(value) ? value[0] : String(value)}
                 onChange={onChange}
+            />
+        );
+    }
+
+    if (field.type === 'password') {
+        return (
+            <PasswordInput
+                id={field.name}
+                value={Array.isArray(value) ? value.join(', ') : String(value)}
+                onChange={(e) => onChange(e.target.value)}
             />
         );
     }
