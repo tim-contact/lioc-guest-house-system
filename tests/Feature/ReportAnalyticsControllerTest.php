@@ -102,6 +102,66 @@ test('barge drilldown uses completed BDN deliveries and agrees with utilization 
     'all history' => ['all', 7],
 ]);
 
+test('pending barge utilization and drilldown include all assigned pending orders', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    $barge = Barge::factory()->create(['imo' => '8923844']);
+    $other = Barge::factory()->create(['imo' => '9021291']);
+
+    foreach ([now()->subDays(60), now(), now()->addDays(10)] as $date) {
+        Order::factory()->create([
+            'barge_id' => $barge->imo,
+            'status' => OrderStatus::Pending,
+            'order_date' => $date,
+            'mgo_final_qty' => 12.345,
+            'mgo_bdn_qty' => 999,
+        ]);
+    }
+
+    foreach ([OrderStatus::Delivered, OrderStatus::Closed, OrderStatus::Cancelled] as $status) {
+        Order::factory()->create(['barge_id' => $barge->imo, 'status' => $status]);
+    }
+    Order::factory()->create(['barge_id' => $other->imo, 'status' => OrderStatus::Pending]);
+    Order::factory()->create(['barge_id' => null, 'status' => OrderStatus::Pending]);
+
+    $this->get(route('reports.analytics'))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('bargeUtilization.0.periods.pending.pending', 3)
+            ->where('bargeUtilization.0.periods.pending.total', 3)
+            ->where('bargeUtilization.1.periods.pending.total', 1)
+            ->where('bargeUtilization.2.periods.pending.total', 0)
+            ->where('bargeUtilization.0.periods.currentMonth.total', 0)
+            ->where('bargeUtilization.0.periods.last30Days.total', 0));
+
+    $this->get(route('reports.barges.orders', ['barge' => $barge->imo, 'period' => 'pending']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('reports/barge-orders')
+            ->where('filters.period', 'pending')
+            ->where('summary.pending', 3)
+            ->missing('summary.completed')
+            ->where('orders.total', 3)
+            ->has('orders.data', 3)
+            ->where('orders.data.0.status', 'pending')
+            ->where('orders.data.0.delivery_date', null)
+            ->where('orders.data.0.products.mgo', '12.345'));
+});
+
+test('pending barge orders paginate and preserve their filter', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    $barge = Barge::factory()->create(['imo' => '8923844']);
+    Order::factory()->count(11)->create(['barge_id' => $barge->imo, 'status' => OrderStatus::Pending]);
+
+    $this->get(route('reports.barges.orders', [
+        'barge' => $barge->imo, 'period' => 'pending', 'per_page' => 10, 'page' => 2,
+    ]))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('summary.pending', 11)
+            ->where('orders.total', 11)
+            ->where('orders.current_page', 2)
+            ->has('orders.data', 1)
+            ->where('orders.prev_page_url', fn ($url): bool => str_contains($url, 'period=pending')));
+});
+
 test('barge deliveries paginate and preserve filters', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::Master]));
     $barge = Barge::factory()->create();

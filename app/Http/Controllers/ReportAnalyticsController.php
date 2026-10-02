@@ -149,7 +149,7 @@ class ReportAnalyticsController extends Controller
     public function bargeOrders(Request $request, Barge $barge): Response
     {
         $filters = $request->validate([
-            'period' => ['sometimes', Rule::in(['currentMonth', 'last30Days', 'all'])],
+            'period' => ['sometimes', Rule::in(['currentMonth', 'last30Days', 'pending', 'all'])],
             'per_page' => ['sometimes', 'integer', Rule::in([10, 25, 50, 100])],
         ]);
         $period = $filters['period'] ?? 'currentMonth';
@@ -158,24 +158,31 @@ class ReportAnalyticsController extends Controller
             ? $today->subDays(29)
             : $today->startOfMonth();
 
-        $orders = Order::query()
-            ->whereIn('status', [OrderStatus::Delivered->value, OrderStatus::Closed->value])
-            ->whereHas('bdn', function ($query) use ($period, $periodStart, $today, $barge): void {
-                $query->whereDate('delivery_date', '<=', $today->toDateString())
-                    ->where(function ($assignment) use ($barge): void {
-                        $assignment->where('barge_id', $barge->imo)
-                            ->orWhere(fn ($fallback) => $fallback->whereNull('barge_id')
-                                ->whereHas('order', fn ($order) => $order->where('barge_id', $barge->imo)));
-                    });
-                if ($period !== 'all') {
-                    $query->whereDate('delivery_date', '>=', $periodStart->toDateString());
-                }
-            });
+        $orders = Order::query();
+        if ($period === 'pending') {
+            $orders->where('status', OrderStatus::Pending->value)
+                ->where('barge_id', $barge->imo);
+        } else {
+            $orders->whereIn('status', [OrderStatus::Delivered->value, OrderStatus::Closed->value])
+                ->whereHas('bdn', function ($query) use ($period, $periodStart, $today, $barge): void {
+                    $query->whereDate('delivery_date', '<=', $today->toDateString())
+                        ->where(function ($assignment) use ($barge): void {
+                            $assignment->where('barge_id', $barge->imo)
+                                ->orWhere(fn ($fallback) => $fallback->whereNull('barge_id')
+                                    ->whereHas('order', fn ($order) => $order->where('barge_id', $barge->imo)));
+                        });
+                    if ($period !== 'all') {
+                        $query->whereDate('delivery_date', '>=', $periodStart->toDateString());
+                    }
+                });
+        }
 
         return Inertia::render('reports/barge-orders', [
             'barge' => ['imo' => $barge->imo, 'name' => $barge->name],
             'filters' => ['period' => $period],
-            'summary' => ['completed' => (clone $orders)->count()],
+            'summary' => $period === 'pending'
+                ? ['pending' => (clone $orders)->count()]
+                : ['completed' => (clone $orders)->count()],
             'orders' => $orders
                 ->with(['customer', 'port', 'bdn'])
                 ->orderByDesc('id')
@@ -191,7 +198,9 @@ class ReportAnalyticsController extends Controller
                     'order_date' => $order->order_date?->toDateString(),
                     'delivery_date' => $order->bdn?->delivery_date?->toDateString(),
                     'products' => collect(FuelGrade::keys())->mapWithKeys(fn (string $grade): array => [
-                        $grade => $order->{"{$grade}_bdn_qty"} ?? $order->bdn?->{"{$grade}_metric_ton"},
+                        $grade => $period === 'pending'
+                            ? $order->{"{$grade}_final_qty"}
+                            : ($order->{"{$grade}_bdn_qty"} ?? $order->bdn?->{"{$grade}_metric_ton"}),
                     ])->all(),
                 ]),
         ]);
@@ -520,7 +529,7 @@ class ReportAnalyticsController extends Controller
     /**
      * @param  Collection<int, Order>  $orders
      * @param  list<string>  $completedStatuses
-     * @return list<array{imo: string, label: string, ordersUrl: string|null, periods: array{currentMonth: array{completed: int, total: int}, last30Days: array{completed: int, total: int}}}>
+     * @return list<array{imo: string, label: string, ordersUrl: string|null, periods: array{currentMonth: array{completed: int, total: int}, last30Days: array{completed: int, total: int}, pending: array{pending: int, total: int}}}>
      */
     private function bargeUtilization(Collection $orders, array $completedStatuses): array
     {
@@ -529,25 +538,33 @@ class ReportAnalyticsController extends Controller
             ->pluck('name', 'imo');
 
         return collect($bargeImos)
-            ->map(fn (string $imo): array => [
-                'imo' => $imo,
-                'label' => $bargeNames->get($imo, $imo),
-                'ordersUrl' => $bargeNames->has($imo) ? route('reports.barges.orders', $imo) : null,
-                'periods' => [
-                    'currentMonth' => $this->bargeUtilizationForPeriod(
-                        $orders,
-                        $completedStatuses,
-                        $imo,
-                        'currentMonth',
-                    ),
-                    'last30Days' => $this->bargeUtilizationForPeriod(
-                        $orders,
-                        $completedStatuses,
-                        $imo,
-                        'last30Days',
-                    ),
-                ],
-            ])
+            ->map(function (string $imo) use ($orders, $completedStatuses, $bargeNames): array {
+                $pending = $orders->filter(
+                    fn (Order $order): bool => $order->status === OrderStatus::Pending
+                        && $order->barge_id === $imo,
+                )->count();
+
+                return [
+                    'imo' => $imo,
+                    'label' => $bargeNames->get($imo, $imo),
+                    'ordersUrl' => $bargeNames->has($imo) ? route('reports.barges.orders', $imo) : null,
+                    'periods' => [
+                        'currentMonth' => $this->bargeUtilizationForPeriod(
+                            $orders,
+                            $completedStatuses,
+                            $imo,
+                            'currentMonth',
+                        ),
+                        'last30Days' => $this->bargeUtilizationForPeriod(
+                            $orders,
+                            $completedStatuses,
+                            $imo,
+                            'last30Days',
+                        ),
+                        'pending' => ['pending' => $pending, 'total' => $pending],
+                    ],
+                ];
+            })
             ->all();
     }
 

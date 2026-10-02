@@ -86,6 +86,7 @@ type BargeUtilizationMetric = {
     periods: {
         currentMonth: BargeUtilizationPeriod;
         last30Days: BargeUtilizationPeriod;
+        pending: { pending: number; total: number };
     };
 };
 
@@ -997,7 +998,13 @@ function BargeUtilizationCard({ data }: { data: BargeUtilizationMetric[] }) {
     const [period, setPeriod] =
         useState<keyof BargeUtilizationMetric['periods']>('currentMonth');
     const periodLabel =
-        period === 'currentMonth' ? 'Current month' : 'Last 30 days';
+        period === 'pending'
+            ? 'Pending orders'
+            : period === 'currentMonth'
+              ? 'Current month'
+              : 'Last 30 days';
+    const isPending = period === 'pending';
+    const barColor = isPending ? statusColors.pending : statusColors.completed;
     const max = Math.max(
         ...data.map((barge) => barge.periods[period].total),
         1,
@@ -1015,23 +1022,27 @@ function BargeUtilizationCard({ data }: { data: BargeUtilizationMetric[] }) {
                             Barge Utilization
                         </CardTitle>
                         <CardDescription>
-                            Completed deliveries by BDN delivery date.
+                            {isPending
+                                ? 'All pending orders assigned to each barge.'
+                                : 'Completed deliveries by BDN delivery date.'}
                         </CardDescription>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-nowrap gap-1">
                         {[
                             ['currentMonth', 'Current month'],
                             ['last30Days', 'Last 30 days'],
+                            ['pending', 'Pending orders'],
                         ].map(([key, label]) => (
                             <button
                                 key={key}
                                 className={cn(
-                                    'rounded-full border px-3 py-1.5 text-xs font-bold transition-colors',
+                                    'min-w-0 flex-1 rounded-full border px-1 py-1.5 text-[10px] font-bold whitespace-nowrap transition-colors',
                                     period === key
                                         ? 'border-blue-600 bg-blue-600 text-white'
                                         : 'border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700',
                                 )}
                                 type="button"
+                                aria-pressed={period === key}
                                 onClick={() =>
                                     setPeriod(
                                         key as keyof BargeUtilizationMetric['periods'],
@@ -1053,9 +1064,9 @@ function BargeUtilizationCard({ data }: { data: BargeUtilizationMetric[] }) {
                     <div className="grid gap-3">
                         {data.map((barge) => {
                             const values = barge.periods[period];
-                            const completedWidth =
+                            const barWidth =
                                 values.total > 0
-                                    ? (values.completed / max) * 100
+                                    ? (values.total / max) * 100
                                     : 0;
 
                             return (
@@ -1101,8 +1112,8 @@ function BargeUtilizationCard({ data }: { data: BargeUtilizationMetric[] }) {
                                                     className="absolute inset-y-0 left-0"
                                                     style={{
                                                         backgroundColor:
-                                                            statusColors.completed,
-                                                        width: `${completedWidth}%`,
+                                                            barColor,
+                                                        width: `${barWidth}%`,
                                                     }}
                                                 />
                                             </>
@@ -1115,11 +1126,13 @@ function BargeUtilizationCard({ data }: { data: BargeUtilizationMetric[] }) {
                                             <span
                                                 className="size-2 rounded-full"
                                                 style={{
-                                                    backgroundColor:
-                                                        statusColors.completed,
+                                                    backgroundColor: barColor,
                                                 }}
                                             />
-                                            Delivered {values.completed}
+                                            {isPending
+                                                ? 'Pending'
+                                                : 'Delivered'}{' '}
+                                            {values.total}
                                         </span>
                                         <span className="text-right text-slate-700 tabular-nums">
                                             {periodLabel}
