@@ -20,7 +20,7 @@ import { analytics } from '@/routes/reports';
 import { orders as bargeOrders } from '@/routes/reports/barges';
 
 type Filters = {
-    period: 'currentMonth' | 'last30Days' | 'all';
+    period: 'currentMonth' | 'last30Days' | 'pending' | 'all';
 };
 
 type BargeOrder = {
@@ -29,7 +29,7 @@ type BargeOrder = {
     vessel_name: string | null;
     customer_name: string | null;
     port_name: string | null;
-    status: 'delivered' | 'closed';
+    status: 'pending' | 'delivered' | 'closed';
     order_date: string | null;
     delivery_date: string | null;
     products: Record<'mgo' | 'vlsfo' | 'hsfo', string | number | null>;
@@ -38,7 +38,7 @@ type BargeOrder = {
 type Props = {
     barge: { imo: string; name: string };
     filters: Filters;
-    summary: { completed: number };
+    summary: { completed?: number; pending?: number };
     orders: PaginationMeta & { data: BargeOrder[] };
 };
 
@@ -84,9 +84,13 @@ export default function BargeOrders({
                             IMO {barge.imo}
                         </p>
                         <p className="mt-2 text-sm text-slate-600">
-                            Delivered{' '}
+                            {filters.period === 'pending'
+                                ? 'Pending'
+                                : 'Delivered'}{' '}
                             <strong className="text-slate-900 tabular-nums">
-                                {summary.completed}
+                                {filters.period === 'pending'
+                                    ? summary.pending
+                                    : summary.completed}
                             </strong>
                         </p>
                     </div>
@@ -108,6 +112,7 @@ export default function BargeOrders({
                                     Current month
                                 </option>
                                 <option value="last30Days">Last 30 days</option>
+                                <option value="pending">Pending orders</option>
                                 <option value="all">All history</option>
                             </select>
                         </div>
@@ -153,10 +158,18 @@ export default function BargeOrders({
                                         {order.port_name ?? '\u2014'}
                                     </TableCell>
                                     <TableCell>
-                                        <span className="text-emerald-700">
-                                            {order.status === 'closed'
-                                                ? 'Delivered (closed)'
-                                                : 'Delivered'}
+                                        <span
+                                            className={
+                                                order.status === 'pending'
+                                                    ? 'text-amber-700'
+                                                    : 'text-emerald-700'
+                                            }
+                                        >
+                                            {order.status === 'pending'
+                                                ? 'Pending'
+                                                : order.status === 'closed'
+                                                  ? 'Delivered (closed)'
+                                                  : 'Delivered'}
                                         </span>
                                     </TableCell>
                                     <TableCell className="whitespace-nowrap">
