@@ -70,6 +70,13 @@ class StockMovementController extends Controller
             return back()->withErrors(['barge_id' => 'Select a barge for barge stock movements.'])->withInput();
         }
 
+        if (
+            $validated['movement_scope'] === StockMovementScope::Barge->value
+            && $validated['movement_type'] !== StockMovementType::Loading->value
+        ) {
+            return back()->withErrors(['movement_type' => 'Barge movements can only be terminal-to-barge loadings.'])->withInput();
+        }
+
         if ($validated['movement_scope'] === StockMovementScope::Terminal->value) {
             $validated['barge_id'] = null;
         }
@@ -92,7 +99,10 @@ class StockMovementController extends Controller
     {
         return array_values(array_filter(
             StockMovementType::cases(),
-            fn (StockMovementType $type): bool => $type !== StockMovementType::Adjustment,
+            fn (StockMovementType $type): bool => in_array($type, [
+                StockMovementType::Loading,
+                StockMovementType::RebondTransfer,
+            ], true),
         ));
     }
 
@@ -103,7 +113,10 @@ class StockMovementController extends Controller
     {
         return StockMovement::with(['port', 'barge'])
             ->when($portId > 0, fn ($query) => $query->where('port_id', $portId))
-            ->where('movement_type', '!=', StockMovementType::Adjustment->value)
+            ->whereIn('movement_type', array_map(
+                fn (StockMovementType $type): string => $type->value,
+                $this->availableMovementTypes(),
+            ))
             ->latest('movement_date')
             ->latest('id')
             ->limit(20)

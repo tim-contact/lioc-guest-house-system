@@ -55,9 +55,7 @@ export default function UsersIndex({ users, roleOptions }: UsersIndexProps) {
                 cell: (user) => (
                     <span
                         className={
-                            user.is_active
-                                ? 'text-green-600'
-                                : 'text-red-600'
+                            user.is_active ? 'text-green-600' : 'text-red-600'
                         }
                     >
                         {user.is_active ? 'Active' : 'Inactive'}
@@ -86,7 +84,7 @@ export default function UsersIndex({ users, roleOptions }: UsersIndexProps) {
             email: user?.email ?? '',
             type: user?.type ?? 'sales',
             user_id: user?.user_id ?? '',
-            password: "[redacted]"
+            password: '',
         }),
         routes: {
             store: () => store(),

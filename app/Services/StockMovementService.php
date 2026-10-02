@@ -23,17 +23,29 @@ class StockMovementService
      */
     public function report(int $portId, CarbonImmutable $start, CarbonImmutable $end): array
     {
+        $configuredBargeStart = config('stock.barge_stock_start_date');
+        $bargeStart = filled($configuredBargeStart)
+            ? CarbonImmutable::createFromFormat('!Y-m-d', $configuredBargeStart)
+            : null;
+
         $movements = StockMovement::with('barge')
             ->where('port_id', $portId)
             ->whereDate('movement_date', '<=', $end->toDateString())
             ->orderBy('movement_date')
             ->get();
 
+        $bargeMovements = $movements->filter(
+            fn (StockMovement $movement): bool => $bargeStart === null
+                || $movement->movement_date->gte($bargeStart),
+        );
+
         $deliveries = Bdn::with(['order.barge'])
             ->whereHas('order', fn ($query) => $query
                 ->where('port_id', $portId)
                 ->whereIn('status', [OrderStatus::Delivered, OrderStatus::Closed]))
             ->whereDate('delivery_date', '<=', $end->toDateString())
+            ->when($bargeStart !== null, fn ($query) => $query
+                ->whereDate('delivery_date', '>=', $bargeStart->toDateString()))
             ->get();
 
         $products = FuelGrade::keys();
@@ -44,7 +56,7 @@ class StockMovementService
         $terminalRows = [];
         $bargeRows = [];
 
-        $this->applyPreRangeBalances($movements, $deliveries, $start, $terminalBalance, $deadStockBalance, $bargeBalances, $bargeNames);
+        $this->applyPreRangeBalances($movements, $deliveries, $start, $terminalBalance, $deadStockBalance, $bargeBalances, $bargeNames, $bargeStart);
 
         foreach (CarbonPeriod::create($start, $end) as $date) {
             $day = CarbonImmutable::instance($date)->startOfDay();
@@ -52,16 +64,15 @@ class StockMovementService
             $terminalOpening = $terminalBalance;
             $deadStockOpening = $deadStockBalance;
             $dailyTerminalOpening = $this->sumManualMovements($movements, $day, StockMovementScope::Terminal, [StockMovementType::Opening]);
-            $dailyTerminalIn = $this->sumManualMovements($movements, $day, StockMovementScope::Terminal, [
-                StockMovementType::Loading,
-                StockMovementType::RebondTransfer,
-            ]);
+            $dailyImports = $this->sumManualMovements($movements, $day, StockMovementScope::Terminal, [StockMovementType::Loading]);
+            $dailyRebondSales = $this->sumManualMovements($movements, $day, StockMovementScope::Terminal, [StockMovementType::RebondTransfer]);
             $dailyDeadStock = $this->sumManualMovements($movements, $day, StockMovementScope::Terminal, [StockMovementType::DeadStock]);
             $dailyBargeLoadings = $this->sumManualMovements($movements, $day, StockMovementScope::Barge, [StockMovementType::Loading]);
 
             foreach ($products as $product) {
                 $terminalBalance[$product] += $dailyTerminalOpening[$product]
-                    + $dailyTerminalIn[$product]
+                    + $dailyImports[$product]
+                    - $dailyRebondSales[$product]
                     - $dailyBargeLoadings[$product];
 
                 $deadStockBalance[$product] += $dailyDeadStock[$product];
@@ -71,7 +82,9 @@ class StockMovementService
                 'date' => $day->toDateString(),
                 'opening' => $terminalOpening,
                 'opening_entries' => $dailyTerminalOpening,
-                'loadings' => $dailyTerminalIn,
+                'imports' => $dailyImports,
+                'rebond_sales' => $dailyRebondSales,
+                'loadings' => $dailyImports,
                 'dead_stock_opening' => $deadStockOpening,
                 'dead_stock' => $dailyDeadStock,
                 'dead_stock_closing' => $deadStockBalance,
@@ -80,7 +93,7 @@ class StockMovementService
             ];
 
             $dayBargeIds = collect()
-                ->merge($this->dailyBargeMovementIds($movements, $day))
+                ->merge($this->dailyBargeMovementIds($bargeMovements, $day))
                 ->merge($this->dailyDeliveryBargeIds($deliveries, $day))
                 ->unique()
                 ->filter()
@@ -92,8 +105,8 @@ class StockMovementService
                 $bargeNames[$bargeId] ??= $this->bargeName($movements, $deliveries, $bargeId);
 
                 $opening = $bargeBalances[$bargeId];
-                $bargeOpening = $this->sumManualMovements($movements, $day, StockMovementScope::Barge, [StockMovementType::Opening], $bargeId);
-                $bargeLoading = $this->sumManualMovements($movements, $day, StockMovementScope::Barge, [StockMovementType::Loading], $bargeId);
+                $bargeOpening = $this->sumManualMovements($bargeMovements, $day, StockMovementScope::Barge, [StockMovementType::Opening], $bargeId);
+                $bargeLoading = $this->sumManualMovements($bargeMovements, $day, StockMovementScope::Barge, [StockMovementType::Loading], $bargeId);
                 $bargeDeliveries = $this->sumDeliveries($deliveries, $day, $bargeId);
 
                 foreach ($products as $product) {
@@ -106,6 +119,14 @@ class StockMovementService
                     'date' => $day->toDateString(),
                     'barge_id' => $bargeId,
                     'barge_name' => $bargeNames[$bargeId] ?? $bargeId,
+                    'vessel_names' => $deliveries
+                        ->filter(fn (Bdn $bdn): bool => $bdn->delivery_date?->isSameDay($day) === true
+                            && ($bdn->barge_id ?? $bdn->order?->barge_id) === $bargeId)
+                        ->map(fn (Bdn $bdn): ?string => $bdn->order?->vessel_name)
+                        ->filter(fn (?string $name): bool => filled($name))
+                        ->unique()
+                        ->values()
+                        ->all(),
                     'opening' => $opening,
                     'opening_entries' => $bargeOpening,
                     'loadings' => $bargeLoading,
@@ -146,10 +167,11 @@ class StockMovementService
         array &$deadStockBalance,
         array &$bargeBalances,
         array &$bargeNames,
+        ?CarbonImmutable $bargeStart,
     ): void {
         $movements
             ->filter(fn (StockMovement $movement): bool => $movement->movement_date->lt($start))
-            ->each(function (StockMovement $movement) use (&$terminalBalance, &$deadStockBalance, &$bargeBalances, &$bargeNames, $movements, $deliveries): void {
+            ->each(function (StockMovement $movement) use (&$terminalBalance, &$deadStockBalance, &$bargeBalances, &$bargeNames, $movements, $deliveries, $bargeStart): void {
                 if ($movement->movement_type === StockMovementType::Adjustment) {
                     return;
                 }
@@ -162,7 +184,10 @@ class StockMovementService
                             continue;
                         }
 
-                        $terminalBalance[$product] += (float) $movement->{"{$product}_qty"};
+                        $quantity = (float) $movement->{"{$product}_qty"};
+                        $terminalBalance[$product] += $movement->movement_type === StockMovementType::RebondTransfer
+                            ? -$quantity
+                            : $quantity;
                     }
 
                     return;
@@ -172,17 +197,21 @@ class StockMovementService
                     return;
                 }
 
+                if ($movement->movement_type === StockMovementType::Loading) {
+                    foreach (FuelGrade::keys() as $product) {
+                        $terminalBalance[$product] -= (float) $movement->{"{$product}_qty"};
+                    }
+                }
+
+                if ($bargeStart !== null && $movement->movement_date->lt($bargeStart)) {
+                    return;
+                }
+
                 $bargeBalances[$movement->barge_id] ??= $this->emptyProductTotals();
                 $bargeNames[$movement->barge_id] ??= $this->bargeName($movements, $deliveries, $movement->barge_id);
 
                 foreach (FuelGrade::keys() as $product) {
-                    $quantity = (float) $movement->{"{$product}_qty"};
-
-                    if ($movement->movement_type === StockMovementType::Loading) {
-                        $terminalBalance[$product] -= $quantity;
-                    }
-
-                    $bargeBalances[$movement->barge_id][$product] += $quantity;
+                    $bargeBalances[$movement->barge_id][$product] += (float) $movement->{"{$product}_qty"};
                 }
             });
 
