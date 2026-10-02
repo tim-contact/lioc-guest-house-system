@@ -3,15 +3,25 @@
 use App\Enums\DisputeStatus;
 use App\Enums\OrderStatus;
 use App\Enums\ProductType;
+use App\Enums\StockMovementScope;
+use App\Enums\StockMovementType;
 use App\Enums\UserType;
 use App\Models\Barge;
+use App\Models\Bdn;
 use App\Models\Customer;
 use App\Models\Dispute;
 use App\Models\Enquiry;
 use App\Models\Order;
 use App\Models\Port;
+use App\Models\StockMovement;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
+
+beforeEach(function () {
+    $this->withoutVite();
+    $this->travelTo(now()->startOfMonth()->addDays(14)->startOfDay());
+    config(['stock.barge_stock_start_date' => null]);
+});
 
 test('super admins can view report analytics', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
@@ -21,6 +31,7 @@ test('super admins can view report analytics', function () {
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('reports/analytics')
             ->has('summary')
+            ->has('stockPosition.rows', 7)
             ->has('funnel', 3)
             ->has('portStatusMetrics')
             ->has('monthlyProductVolumes', 6)
@@ -33,62 +44,226 @@ test('super admins can view report analytics', function () {
             ->has('cyLyProductSales.0.months', 12));
 });
 
-test('barge utilization is scoped to current month and last thirty days', function () {
+test('barge drilldown uses completed BDN deliveries and agrees with utilization counts', function (string $period, int $total) {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    $barge = Barge::factory()->create(['imo' => '8923844']);
+    $other = Barge::factory()->create();
+    foreach ([
+        [$barge->imo, $barge->imo, OrderStatus::Pending, now()],
+        [$barge->imo, $barge->imo, OrderStatus::Delivered, now()],
+        [$barge->imo, $barge->imo, OrderStatus::Closed, now()->subDays(20)],
+        [$barge->imo, $barge->imo, OrderStatus::Delivered, now()->subDays(40)],
+        [$barge->imo, $barge->imo, OrderStatus::Delivered, null],
+        [$barge->imo, $barge->imo, OrderStatus::Cancelled, now()],
+        [$other->imo, $other->imo, OrderStatus::Delivered, now()],
+        [$barge->imo, $barge->imo, OrderStatus::Delivered, now()->addDay()],
+        [$barge->imo, $barge->imo, OrderStatus::Delivered, now()->subDays(29)],
+        [$barge->imo, $barge->imo, OrderStatus::Delivered, now()->subDays(30)],
+        [$barge->imo, $other->imo, OrderStatus::Delivered, now()],
+        [$other->imo, $barge->imo, OrderStatus::Delivered, now()],
+        [$barge->imo, null, OrderStatus::Delivered, now()],
+    ] as [$orderBarge, $bdnBarge, $status, $deliveryDate]) {
+        $order = Order::factory()->create([
+            'barge_id' => $orderBarge,
+            'status' => $status,
+            'order_date' => now(),
+            'invoice_date' => $deliveryDate?->isToday() ? now()->subDays(40) : now(),
+        ]);
+        if ($deliveryDate !== null) {
+            Bdn::factory()->create([
+                'order_id' => $order->id,
+                'barge_id' => $bdnBarge,
+                'delivery_date' => $deliveryDate,
+            ]);
+        }
+    }
 
-    Barge::factory()->create(['imo' => '8923844', 'name' => 'Barge Alpha']);
-    Barge::factory()->create(['imo' => '9021291', 'name' => 'Barge Bravo']);
-    Barge::factory()->create(['imo' => '8530570', 'name' => 'Barge Charlie']);
+    $this->get(route('reports.barges.orders', ['barge' => $barge->imo, 'period' => $period]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('reports/barge-orders')
+            ->where('barge.imo', $barge->imo)
+            ->where('filters.period', $period)
+            ->where('summary.completed', $total)
+            ->where('orders.total', $total)
+            ->has('orders.data', $total)
+            ->missing('summary.pending'));
 
+    if ($period !== 'all') {
+        $this->get(route('reports.analytics'))->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where("bargeUtilization.0.periods.{$period}.completed", $total)
+                ->where("bargeUtilization.0.periods.{$period}.total", $total)
+                ->missing("bargeUtilization.0.periods.{$period}.pending"));
+    }
+})->with([
+    'current month' => ['currentMonth', 3],
+    'last thirty days' => ['last30Days', 5],
+    'all history' => ['all', 7],
+]);
+
+test('barge deliveries paginate and preserve filters', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Master]));
+    $barge = Barge::factory()->create();
+    $orders = Order::factory()->count(12)->create(['barge_id' => $barge->imo, 'status' => OrderStatus::Delivered]);
+    foreach ($orders as $order) {
+        Bdn::factory()->create(['order_id' => $order->id, 'barge_id' => $barge->imo, 'delivery_date' => now()]);
+    }
+
+    $this->get(route('reports.barges.orders', [
+        'barge' => $barge->imo, 'period' => 'all', 'per_page' => 10, 'page' => 2,
+    ]))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('orders.total', 12)
+            ->where('orders.current_page', 2)
+            ->has('orders.data', 2)
+            ->where('orders.prev_page_url', fn (string $url): bool => str_contains($url, 'period=all')));
+});
+
+test('barge drilldown follows analytics access permissions', function () {
+    $barge = Barge::factory()->create();
+    $url = route('reports.barges.orders', $barge->imo);
+    $this->get($url)->assertRedirect(route('login'));
+    $this->actingAs(User::factory()->create(['type' => UserType::Operations]));
+    $this->get($url)->assertRedirect();
+});
+
+test('barge drilldown validates filters and handles unknown barges', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    $barge = Barge::factory()->create();
+    $this->get(route('reports.barges.orders', ['barge' => $barge->imo, 'period' => 'invalid', 'status' => 'invalid']))
+        ->assertSessionHasErrors(['period']);
+    $this->get(route('reports.barges.orders', 'not-a-barge'))->assertNotFound();
+});
+
+test('analytics stock position uses current stock balances and pending commitments', function (?string $cutoff, int $bargeBalance) {
+    $this->travelTo(now()->setDate(2026, 10, 5)->startOfDay());
+    config(['stock.barge_stock_start_date' => $cutoff]);
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    $colombo = Port::factory()->create(['name' => 'Colombo']);
+    $trinco = Port::factory()->create(['name' => 'Trincomalee']);
+    $barge = Barge::factory()->create();
+
+    foreach ([
+        [$colombo->id, '2026-10-03', StockMovementScope::Terminal, StockMovementType::Opening, 1000],
+        [$colombo->id, '2026-10-04', StockMovementScope::Terminal, StockMovementType::DeadStock, 100],
+        [$trinco->id, '2026-10-04', StockMovementScope::Terminal, StockMovementType::Opening, 200],
+        [$trinco->id, '2026-10-04', StockMovementScope::Terminal, StockMovementType::DeadStock, 20],
+        [$colombo->id, '2026-10-04', StockMovementScope::Barge, StockMovementType::Opening, 50],
+        [$colombo->id, '2026-10-05', StockMovementScope::Barge, StockMovementType::Loading, 20],
+        [$colombo->id, '2026-10-06', StockMovementScope::Terminal, StockMovementType::Loading, 500],
+    ] as [$portId, $date, $scope, $type, $quantity]) {
+        StockMovement::factory()->create([
+            'port_id' => $portId,
+            'movement_date' => $date,
+            'movement_scope' => $scope,
+            'movement_type' => $type,
+            'barge_id' => $scope === StockMovementScope::Barge ? $barge->imo : null,
+            'mgo_qty' => $quantity,
+            'vlsfo_qty' => 0,
+            'hsfo_qty' => 0,
+        ]);
+    }
+
+    foreach ([['2026-10-03', 30], ['2026-10-05', 10]] as [$date, $quantity]) {
+        $order = Order::factory()->create([
+            'port_id' => $colombo->id,
+            'barge_id' => $barge->imo,
+            'status' => OrderStatus::Delivered,
+            'mgo_bdn_qty' => $quantity,
+            'vlsfo_bdn_qty' => 0,
+            'hsfo_bdn_qty' => 0,
+        ]);
+        $knownOrderIds = Order::query()->pluck('id');
+        Bdn::factory()->create([
+            'order_id' => $order->id,
+            'barge_id' => $barge->imo,
+            'delivery_date' => $date,
+        ]);
+        // BdnFactory creates an additional default order even when order_id is supplied.
+        Order::query()->whereNotIn('id', $knownOrderIds)->update(['status' => OrderStatus::Cancelled]);
+    }
+
+    foreach ([
+        [OrderStatus::Pending, '2026-10-05', 200],
+        [OrderStatus::Cancelled, '2026-10-05', 100],
+        [OrderStatus::Pending, '2026-10-06', 500],
+    ] as [$status, $date, $quantity]) {
+        Order::factory()->create([
+            'port_id' => $colombo->id,
+            'status' => $status,
+            'order_date' => $date,
+            'mgo_final_qty' => $quantity,
+            'vlsfo_final_qty' => 0,
+            'hsfo_final_qty' => 0,
+            'mgo_bdn_qty' => 999,
+        ]);
+    }
+
+    $this->get(route('reports.analytics'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('stockPosition.asOf', '2026-10-05')
+            ->where('stockPosition.rows.0.values.mgo', 1060)
+            ->where('stockPosition.rows.1.values.mgo', $bargeBalance)
+            ->where('stockPosition.rows.2.values.mgo', 1060 + $bargeBalance)
+            ->where('stockPosition.rows.3.values.mgo', 200)
+            ->where('stockPosition.rows.4.values.mgo', 860 + $bargeBalance)
+            ->where('stockPosition.rows.4.values.hsfo', 0)
+            ->where('stockPosition.rows.5.values.mgo', null)
+            ->where('stockPosition.rows.6.values.mgo', null));
+})->with([
+    'all history' => [null, 30],
+    'configured barge cutoff' => ['2026-10-04', 60],
+]);
+
+test('analytics stock position preserves zero and negative balances', function () {
+    $this->travelTo(now()->setDate(2026, 10, 5)->startOfDay());
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    $port = Port::factory()->create();
     Order::factory()->create([
+        'port_id' => $port->id,
         'status' => OrderStatus::Pending,
-        'barge_id' => '8923844',
-        'order_date' => now()->subDays(5),
-    ]);
-
-    Order::factory()->create([
-        'status' => OrderStatus::Delivered,
-        'barge_id' => '8923844',
-        'invoice_date' => now()->subDays(3),
-    ]);
-
-    Order::factory()->create([
-        'status' => OrderStatus::Closed,
-        'barge_id' => '9021291',
-        'invoice_date' => now()->startOfMonth(),
-    ]);
-
-    Order::factory()->create([
-        'status' => OrderStatus::Pending,
-        'barge_id' => '9021291',
-        'order_date' => now()->subDays(40),
-    ]);
-
-    Order::factory()->create([
-        'status' => OrderStatus::Delivered,
-        'barge_id' => '8530570',
-        'invoice_date' => now()->subDays(40),
+        'order_date' => '2026-10-05',
+        'mgo_final_qty' => 10,
+        'vlsfo_final_qty' => 0,
+        'hsfo_final_qty' => 0,
     ]);
 
     $this->get(route('reports.analytics'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('bargeUtilization.0.imo', '8923844')
+            ->where('stockPosition.rows.0.values.mgo', 0)
+            ->where('stockPosition.rows.1.values.mgo', 0)
+            ->where('stockPosition.rows.2.values.mgo', 0)
+            ->where('stockPosition.rows.4.values.mgo', -10));
+});
+
+test('barge utilization excludes pending orders and uses BDN dates instead of invoice dates', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    $barge = Barge::factory()->create(['imo' => '8923844', 'name' => 'Barge Alpha']);
+    Order::factory()->create(['barge_id' => $barge->imo, 'status' => OrderStatus::Pending, 'order_date' => now()]);
+    $delivered = Order::factory()->create([
+        'barge_id' => $barge->imo, 'status' => OrderStatus::Delivered, 'invoice_date' => now()->subDays(40),
+    ]);
+    Bdn::factory()->create(['order_id' => $delivered->id, 'barge_id' => $barge->imo, 'delivery_date' => now()]);
+    $old = Order::factory()->create([
+        'barge_id' => $barge->imo, 'status' => OrderStatus::Delivered, 'invoice_date' => now(),
+    ]);
+    Bdn::factory()->create(['order_id' => $old->id, 'barge_id' => $barge->imo, 'delivery_date' => now()->subDays(40)]);
+
+    $this->get(route('reports.analytics'))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('bargeUtilization.0.imo', $barge->imo)
             ->where('bargeUtilization.0.label', 'Barge Alpha')
-            ->where('bargeUtilization.0.periods.currentMonth.pending', 1)
+            ->where('bargeUtilization.0.ordersUrl', route('reports.barges.orders', $barge->imo))
             ->where('bargeUtilization.0.periods.currentMonth.completed', 1)
-            ->where('bargeUtilization.0.periods.currentMonth.total', 2)
-            ->where('bargeUtilization.0.periods.last30Days.pending', 1)
+            ->where('bargeUtilization.0.periods.currentMonth.total', 1)
             ->where('bargeUtilization.0.periods.last30Days.completed', 1)
-            ->where('bargeUtilization.0.periods.last30Days.total', 2)
-            ->where('bargeUtilization.1.imo', '9021291')
-            ->where('bargeUtilization.1.periods.currentMonth.pending', 0)
-            ->where('bargeUtilization.1.periods.currentMonth.completed', 1)
-            ->where('bargeUtilization.1.periods.last30Days.pending', 0)
-            ->where('bargeUtilization.1.periods.last30Days.completed', 1)
-            ->where('bargeUtilization.2.imo', '8530570')
-            ->where('bargeUtilization.2.periods.currentMonth.total', 0)
-            ->where('bargeUtilization.2.periods.last30Days.total', 0));
+            ->where('bargeUtilization.0.periods.last30Days.total', 1)
+            ->missing('bargeUtilization.0.periods.currentMonth.pending')
+            ->where('bargeUtilization.1.periods.currentMonth.total', 0)
+            ->where('bargeUtilization.2.periods.currentMonth.total', 0));
 });
 
 test('report analytics includes enquiry to completed funnel counts', function () {
@@ -126,6 +301,7 @@ test('report analytics includes enquiry to completed funnel counts', function ()
         'vessel_name' => 'MT Delivered Star',
         'port_id' => $port->id,
         'status' => OrderStatus::Delivered,
+        'order_date' => now()->startOfMonth(),
         'invoice_date' => now()->startOfMonth(),
         'vlsfo_final_qty' => 0,
         'mgo_final_qty' => 0,
@@ -141,6 +317,7 @@ test('report analytics includes enquiry to completed funnel counts', function ()
         'customer_id' => $customer->sap_id,
         'port_id' => $port->id,
         'status' => OrderStatus::Closed,
+        'order_date' => now()->startOfMonth(),
         'invoice_date' => now()->subMonth(),
         'vlsfo_final_qty' => 0,
         'mgo_final_qty' => 0,
