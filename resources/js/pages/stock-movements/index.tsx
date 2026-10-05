@@ -410,7 +410,7 @@ export default function StockMovementsIndex({
                                 value="report-preview"
                                 className="h-full min-w-0 flex-1 rounded-none border-b-2 border-transparent px-4 text-xs font-semibold after:hidden sm:text-sm data-active:border-[#2455E6] data-active:bg-[#F8FAFF] data-active:text-[#2455E6]"
                             >
-                                Report Preview
+                                Barge Stock Movement
                             </TabsTrigger>
                             <TabsTrigger
                                 value="history"

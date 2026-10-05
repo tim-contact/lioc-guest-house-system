@@ -161,16 +161,18 @@ class StockMovementController extends Controller
 
         $bargeTotals = collect($trackedBarges)
             ->map(function (string $name, string $imo) use ($reportsByPort): array {
-                $latestRow = $reportsByPort
-                    ->flatMap(fn (array $report): array => $report['barges'] ?? [])
-                    ->filter(fn (array $row): bool => (string) ($row['barge_id'] ?? '') === $imo)
-                    ->sortBy('date')
-                    ->last();
+                $closingBalance = $reportsByPort->reduce(
+                    fn (array $totals, array $report): array => $this->addProductTotals(
+                        $totals,
+                        $report['barge_balances'][$imo] ?? $this->emptyProductTotals(),
+                    ),
+                    $this->emptyProductTotals(),
+                );
 
                 return [
                     'imo' => $imo,
                     'name' => $name,
-                    'totals' => $latestRow['closing'] ?? $this->emptyProductTotals(),
+                    'totals' => $closingBalance,
                 ];
             })
             ->values()

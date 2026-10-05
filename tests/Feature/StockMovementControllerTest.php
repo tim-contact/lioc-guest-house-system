@@ -507,3 +507,47 @@ test('overview includes colombo trinco tracked barges and balance on hand', func
             ->where('stockOverview.balance_on_hand.mgo', 2832)
             ->where('stockOverview.balance_on_hand.vlsfo', 22638));
 });
+
+test('overview retains deducted barge balances across dates and ports', function (string $from, string $to, int $expectedBalance) {
+    $this->actingAs(User::factory()->create(['type' => UserType::Operations]));
+    $colombo = Port::factory()->create(['name' => 'Colombo']);
+    $trinco = Port::factory()->create(['name' => 'Trincomalee']);
+    $barge = Barge::factory()->create(['imo' => '8923844']);
+    StockMovement::factory()->create([
+        'port_id' => $colombo->id,
+        'movement_date' => '2026-08-01',
+        'movement_scope' => StockMovementScope::Terminal,
+        'movement_type' => StockMovementType::Opening,
+        'mgo_qty' => 1000, 'vlsfo_qty' => 0, 'hsfo_qty' => 0,
+    ]);
+    StockMovement::factory()->create([
+        'port_id' => $colombo->id,
+        'barge_id' => $barge->imo,
+        'movement_date' => '2026-08-01',
+        'movement_scope' => StockMovementScope::Barge,
+        'movement_type' => StockMovementType::Loading,
+        'mgo_qty' => 100, 'vlsfo_qty' => 0, 'hsfo_qty' => 0,
+    ]);
+    foreach ([[$colombo, '2026-08-02', 20], [$trinco, '2026-08-03', 30]] as [$port, $date, $quantity]) {
+        $order = Order::factory()->create([
+            'port_id' => $port->id, 'barge_id' => $barge->imo,
+            'status' => OrderStatus::Delivered,
+            'mgo_bdn_qty' => $quantity, 'vlsfo_bdn_qty' => 0, 'hsfo_bdn_qty' => 0,
+        ]);
+        Bdn::factory()->create([
+            'order_id' => $order->id, 'barge_id' => $barge->imo, 'delivery_date' => $date,
+        ]);
+    }
+
+    $this->get(route('stock-movements.index', [
+        'port_id' => $colombo->id, 'date_from' => $from, 'date_to' => $to,
+    ]))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('report.totals.barge_closing.mgo', 80)
+            ->where('stockOverview.tracked_barges.1.totals.mgo', $expectedBalance)
+            ->where('stockOverview.balance_on_hand.mgo', 900 + $expectedBalance));
+})->with([
+    'delivery in range' => ['2026-08-01', '2026-08-02', 80],
+    'delivery before range' => ['2026-08-04', '2026-08-04', 50],
+    'deliveries at both ports' => ['2026-08-01', '2026-08-03', 50],
+]);

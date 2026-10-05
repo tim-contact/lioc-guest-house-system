@@ -18,6 +18,7 @@ class StockMovementService
      * @return array{
      *     terminal: list<array<string, mixed>>,
      *     barges: list<array<string, mixed>>,
+     *     barge_balances: array<string, array<string, float>>,
      *     totals: array<string, array<string, float>>
      * }
      */
@@ -139,6 +140,7 @@ class StockMovementService
         return [
             'terminal' => $terminalRows,
             'barges' => $bargeRows,
+            'barge_balances' => $bargeBalances,
             'totals' => [
                 'terminal_closing' => $terminalBalance,
                 'barge_closing' => $this->sumBargeBalances($bargeBalances),
