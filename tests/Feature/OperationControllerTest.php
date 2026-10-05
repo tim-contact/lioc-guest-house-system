@@ -67,7 +67,30 @@ test('index exposes the ordered quantity bounds', function () {
             ->where('pendingOrders.0.vlsfo_quantity_high', '250.000'));
 });
 
-test('index exposes current month completed orders with their port and final quantities', function () {
+test('operations includes assigned barge names and vessel IMOs for pending and completed orders', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    $barge = Barge::factory()->create(['name' => 'MT Assigned Barge']);
+
+    foreach ([OrderStatus::Pending, OrderStatus::Delivered] as $status) {
+        Order::factory()->create([
+            'status' => $status,
+            'invoice_date' => now(),
+            'barge_id' => $barge->imo,
+            'vessel_id' => '1234567',
+        ]);
+    }
+
+    $this->get(route('operations'))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('pendingOrders.0.barge_name', $barge->name)
+            ->where('pendingOrders.0.barge_id', $barge->imo)
+            ->where('pendingOrders.0.vessel_id', '1234567')
+            ->where('completedOrders.0.barge_name', $barge->name)
+            ->where('completedOrders.0.barge_id', $barge->imo)
+            ->where('completedOrders.0.vessel_id', '1234567'));
+});
+
+test('index exposes last thirty days completed orders with their port and final quantities', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $port = Port::factory()->create(['name' => 'Galle']);
@@ -75,7 +98,7 @@ test('index exposes current month completed orders with their port and final qua
     Order::factory()->create([
         'port_id' => $port->id,
         'status' => OrderStatus::Delivered,
-        'invoice_date' => now()->startOfMonth(),
+        'invoice_date' => now(),
         'vlsfo_final_qty' => 812.5,
         'vlsfo_bdn_qty' => 799.75,
     ]);

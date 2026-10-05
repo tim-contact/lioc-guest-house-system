@@ -26,6 +26,9 @@ export const PORTS = ['Colombo', 'Trincomalee', 'Galle', 'Hambantota'] as const;
 export interface OrderRow {
     id: number;
     vessel_name: string | null;
+    vessel_id?: string | null;
+    barge_id?: string | null;
+    barge_name?: string | null;
     customer_name: string | null;
     port: string | null;
     pic?: string | null;
@@ -99,6 +102,7 @@ interface OrderDashboardProps<T extends OrderRow> {
     pendingActions: RowAction<T>[];
     completedActions: RowAction<T>[];
     statusMarkers?: OrderStatusMarker[];
+    showOperationsDetails?: boolean;
 }
 
 export default function OrderDashboard<T extends OrderRow>({
@@ -108,6 +112,7 @@ export default function OrderDashboard<T extends OrderRow>({
     pendingActions,
     completedActions,
     statusMarkers = ['compliance', 'nomination'],
+    showOperationsDetails = false,
 }: OrderDashboardProps<T>) {
     const visiblePorts = ports.length > 0 ? ports : [...PORTS];
     const [selectedPort, setSelectedPort] = useState(visiblePorts[0]);
@@ -126,9 +131,10 @@ export default function OrderDashboard<T extends OrderRow>({
                 actions={pendingActions}
                 quantitySource="ordered"
                 statusMarkers={statusMarkers}
+                showOperationsDetails={showOperationsDetails}
             />
             <Section
-                title="Completed Orders (current month)"
+                title="Completed Orders (last 30 days)"
                 ports={visiblePorts}
                 selectedPort={activePort}
                 onPortChange={setSelectedPort}
@@ -136,6 +142,7 @@ export default function OrderDashboard<T extends OrderRow>({
                 actions={completedActions}
                 quantitySource="bdn"
                 statusMarkers={statusMarkers}
+                showOperationsDetails={showOperationsDetails}
             />
         </div>
     );
@@ -150,6 +157,7 @@ function Section<T extends OrderRow>({
     actions,
     quantitySource,
     statusMarkers,
+    showOperationsDetails,
 }: {
     title: string;
     ports: string[];
@@ -159,6 +167,7 @@ function Section<T extends OrderRow>({
     actions: RowAction<T>[];
     quantitySource: 'ordered' | 'bdn';
     statusMarkers: OrderStatusMarker[];
+    showOperationsDetails: boolean;
 }) {
     const rowsByPort = ports.map((port) => ({
         port,
@@ -206,6 +215,7 @@ function Section<T extends OrderRow>({
                                 actions={actions}
                                 quantitySource={quantitySource}
                                 statusMarkers={statusMarkers}
+                                showOperationsDetails={showOperationsDetails}
                             />
                         </TabsContent>
                     ))}
@@ -220,21 +230,30 @@ function PortTable<T extends OrderRow>({
     actions,
     quantitySource,
     statusMarkers,
+    showOperationsDetails,
 }: {
     rows: T[];
     actions: RowAction<T>[];
     quantitySource: 'ordered' | 'bdn';
     statusMarkers: OrderStatusMarker[];
+    showOperationsDetails: boolean;
 }) {
     const { sortKey, sortDir, handleSort, sorted } = useSortable(rows, 'eta');
     const hasActions = actions.length > 0;
+    const columns: Column[] = showOperationsDetails
+        ? [
+              ...COLUMNS.slice(0, 2),
+              { header: 'Barge', sortKey: 'barge_name' },
+              ...COLUMNS.slice(2),
+          ]
+        : COLUMNS;
 
     return (
         <TableFrame className="rounded-[14px] border-[#E3EAF2]">
             <Table>
                 <TableHeader className="bg-[#EDF3FA]">
                     <TableRow className="border-[#E7EDF4] hover:bg-[#EDF3FA]">
-                        {COLUMNS.map((column) => (
+                        {columns.map((column) => (
                             <SortableHead
                                 key={column.sortKey}
                                 label={column.header}
@@ -262,11 +281,29 @@ function PortTable<T extends OrderRow>({
                                 <VesselNameCell
                                     row={row}
                                     statusMarkers={statusMarkers}
+                                    showImo={showOperationsDetails}
                                 />
                             </TableCell>
                             <TableCell className="px-3 py-3 text-[#334155]">
-                                {row.customer_name ?? '-'}
+                                <div className="flex min-w-0 items-center gap-2">
+                                    {statusMarkers.includes('nomination') && (
+                                        <BooleanStatusIcon
+                                            checked={
+                                                row.nomination_received === true
+                                            }
+                                            kind="nomination"
+                                        />
+                                    )}
+                                    <span className="min-w-0 truncate">
+                                        {row.customer_name ?? '-'}
+                                    </span>
+                                </div>
                             </TableCell>
+                            {showOperationsDetails && (
+                                <TableCell className="px-3 py-3 text-[#334155]">
+                                    {row.barge_name ?? row.barge_id ?? '-'}
+                                </TableCell>
+                            )}
                             <TableCell className="px-3 py-3 text-[#334155]">
                                 {picLabel(row)}
                             </TableCell>
@@ -323,7 +360,7 @@ function PortTable<T extends OrderRow>({
                     {rows.length === 0 && (
                         <TableRow>
                             <TableCell
-                                colSpan={COLUMNS.length + (hasActions ? 1 : 0)}
+                                colSpan={columns.length + (hasActions ? 1 : 0)}
                                 className="px-3 py-8 text-center text-muted-foreground"
                             >
                                 No orders.
@@ -339,29 +376,28 @@ function PortTable<T extends OrderRow>({
 function VesselNameCell({
     row,
     statusMarkers,
+    showImo,
 }: {
     row: OrderRow;
     statusMarkers: OrderStatusMarker[];
+    showImo: boolean;
 }) {
     return (
         <div className="flex min-w-0 items-center gap-2">
-            {statusMarkers.length > 0 && (
-                <div className="flex shrink-0 items-center gap-1">
-                    {statusMarkers.includes('compliance') && (
-                        <BooleanStatusIcon
-                            checked={row.compliance_checked === true}
-                            kind="compliance"
-                        />
-                    )}
-                    {statusMarkers.includes('nomination') && (
-                        <BooleanStatusIcon
-                            checked={row.nomination_received === true}
-                            kind="nomination"
-                        />
-                    )}
-                </div>
+            {statusMarkers.includes('compliance') && (
+                <BooleanStatusIcon
+                    checked={row.compliance_checked === true}
+                    kind="compliance"
+                />
             )}
-            <span className="min-w-0 truncate">{row.vessel_name ?? '-'}</span>
+            <div className="min-w-0">
+                <span className="block truncate">{row.vessel_name ?? '-'}</span>
+                {showImo && row.vessel_id && (
+                    <span className="mt-0.5 block text-xs font-normal text-slate-500 tabular-nums">
+                        IMO {row.vessel_id}
+                    </span>
+                )}
+            </div>
         </div>
     );
 }
@@ -392,7 +428,7 @@ function BooleanStatusIcon({
 
     return (
         <span
-            className="inline-grid size-5 place-items-center"
+            className="inline-grid size-5 shrink-0 place-items-center"
             title={label}
             aria-label={label}
             role="img"

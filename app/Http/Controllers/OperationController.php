@@ -21,14 +21,15 @@ class OperationController extends Controller
             'product_type' => $order->product_type?->value,
             'delivery_mode' => $order->delivery_mode?->value,
             'barge_id' => $order->barge_id,
+            'barge_name' => $order->barge?->name,
             'vlsfo_bdn_qty' => $order->vlsfo_bdn_qty,
             'mgo_bdn_qty' => $order->mgo_bdn_qty,
             'hsfo_bdn_qty' => $order->hsfo_bdn_qty,
         ];
 
-        $pendingOrders = OrderService::pending()->map($mapOrder);
+        $pendingOrders = OrderService::pending()->load('barge')->map($mapOrder);
 
-        $completedOrders = OrderService::completedForCurrentMonth(keepOpenDisputes: true)->map($mapOrder);
+        $completedOrders = OrderService::completedWithin(30, keepOpenDisputes: true)->load('barge')->map($mapOrder);
 
         return Inertia::render('operations/dashboard', [
             'pendingOrders' => $pendingOrders,

@@ -101,7 +101,10 @@ export default function OperationsDashboard({
     const rowActions: RowAction<OpsEditRow>[] = [
         { label: 'Edit', variant: 'default', onClick: setEditing },
     ];
-    const orderedPorts = useMemo(() => sortPortsByBusinessOrder(ports), [ports]);
+    const orderedPorts = useMemo(
+        () => sortPortsByBusinessOrder(ports),
+        [ports],
+    );
 
     const visiblePorts = useMemo(
         () =>
@@ -146,7 +149,8 @@ export default function OperationsDashboard({
                         completedOrders={filteredCompletedOrders}
                         pendingActions={rowActions}
                         completedActions={[]}
-                        statusMarkers={['nomination']}
+                        statusMarkers={['compliance', 'nomination']}
+                        showOperationsDetails
                     />
                 </div>
             </main>
