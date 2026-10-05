@@ -2,6 +2,7 @@
 
 use App\Enums\UserType;
 use App\Models\Customer;
+use App\Models\Enquiry;
 use App\Models\Order;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
@@ -141,6 +142,81 @@ test('destroy deletes a customer', function () {
     $this->delete(route('customers.destroy', $customer))->assertRedirect();
 
     expect(Customer::find($customer->sap_id))->toBeNull();
+});
+
+test('master can replace a temporary sap id without losing orders or quotes', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Master]));
+    $customer = Customer::factory()->create(['sap_id' => 'TEMP-original', 'contact_person' => 'Jane']);
+    $createdAt = $customer->created_at;
+    $order = Order::factory()->create(['customer_id' => $customer->sap_id]);
+    $quote = Enquiry::factory()->create()->enquiryCustomers()->create([
+        'customer_id' => $customer->sap_id,
+        'vlsfo_initial_offer' => 500,
+    ]);
+
+    $this->put(route('customers.update', $customer), [
+        ...$customer->toArray(), 'sap_id' => 'SAP-REAL',
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect(Customer::find('TEMP-original'))->toBeNull();
+    $resolved = Customer::findOrFail('SAP-REAL');
+    expect($resolved->isTemporary())->toBeFalse();
+    expect($resolved->contact_person)->toBe('Jane');
+    expect($resolved->created_at->equalTo($createdAt))->toBeTrue();
+    expect($order->refresh()->customer_id)->toBe('SAP-REAL');
+    expect($order->customer->sap_id)->toBe('SAP-REAL');
+    expect($quote->refresh()->customer_id)->toBe('SAP-REAL');
+    expect($quote->vlsfo_initial_offer)->toBe('500.00');
+    expect($quote->customer->sap_id)->toBe('SAP-REAL');
+});
+
+test('temporary sap id cannot be replaced by an existing or another temporary id', function (string $sapId) {
+    $this->actingAs(User::factory()->create(['type' => UserType::Master]));
+    Customer::factory()->create(['sap_id' => 'SAP-EXISTING']);
+    $customer = Customer::factory()->create(['sap_id' => 'TEMP-original']);
+    $order = Order::factory()->create(['customer_id' => $customer->sap_id]);
+
+    $this->put(route('customers.update', $customer), [...$customer->toArray(), 'sap_id' => $sapId])
+        ->assertSessionHasErrors('sap_id');
+
+    expect($customer->refresh()->sap_id)->toBe('TEMP-original');
+    expect($order->refresh()->customer_id)->toBe('TEMP-original');
+})->with(['SAP-EXISTING', 'TEMP-another']);
+
+test('real sap ids remain immutable', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Master]));
+    $customer = Customer::factory()->create(['sap_id' => 'SAP-original']);
+
+    $this->put(route('customers.update', $customer), [...$customer->toArray(), 'sap_id' => 'SAP-changed'])
+        ->assertSessionHasErrors('sap_id');
+    expect($customer->refresh()->sap_id)->toBe('SAP-original');
+});
+
+test('temporary customers can be edited without changing their id', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Master]));
+    $customer = Customer::factory()->create(['sap_id' => 'TEMP-original']);
+
+    $this->put(route('customers.update', $customer), [...$customer->toArray(), 'name' => 'Updated'])
+        ->assertSessionHasNoErrors();
+    expect($customer->refresh()->name)->toBe('Updated');
+});
+
+test('sales cannot resolve temporary sap ids', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Sales]));
+    $customer = Customer::factory()->create(['sap_id' => 'TEMP-original']);
+
+    $this->put(route('customers.update', $customer), [...$customer->toArray(), 'sap_id' => 'SAP-real'])
+        ->assertForbidden();
+    expect($customer->refresh()->sap_id)->toBe('TEMP-original');
+});
+
+test('customers linked only to an enquiry cannot be deleted', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Master]));
+    $customer = Customer::factory()->create(['sap_id' => 'TEMP-original']);
+    Enquiry::factory()->create()->enquiryCustomers()->create(['customer_id' => $customer->sap_id]);
+
+    $this->delete(route('customers.destroy', $customer))->assertSessionHas('toast.type', 'error');
+    expect(Customer::find($customer->sap_id))->not->toBeNull();
 });
 
 test('destroy is refused with an error toast when an order references the customer', function () {

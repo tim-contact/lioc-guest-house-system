@@ -2,19 +2,44 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AccountType;
 use App\Enums\CreditTerms;
 use App\Enums\EnquiryCustomerStatus;
 use App\Enums\EnquiryStatus;
 use App\Enums\FuelGrade;
+use App\Models\Customer;
 use App\Models\Enquiry;
 use App\Models\EnquiryCustomer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class EnquiryCustomerController extends Controller
 {
+    public function storeTemporary(Request $request, Enquiry $enquiry): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'address' => ['required', 'string', 'max:500'],
+            'country' => ['required', 'string', 'max:255'],
+            'account_type' => ['required', Rule::enum(AccountType::class)],
+        ]);
+
+        DB::transaction(function () use ($enquiry, $validated): void {
+            $customer = Customer::create([
+                ...$validated,
+                'sap_id' => 'TEMP-'.Str::uuid(),
+                'credit_limit' => 0,
+            ]);
+
+            $enquiry->enquiryCustomers()->create(['customer_id' => $customer->sap_id]);
+        });
+
+        return $this->toast('Temporary customer created and added.');
+    }
+
     public function store(Request $request, Enquiry $enquiry): RedirectResponse
     {
         $validated = $request->validate([

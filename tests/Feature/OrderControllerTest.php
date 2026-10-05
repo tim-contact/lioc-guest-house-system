@@ -39,7 +39,7 @@ test('guests are redirected from the orders page', function () {
     $this->get(route('orders'))->assertRedirect(route('login'));
 });
 
-test('index renders pending and current month completed orders grouped by port', function () {
+test('index renders pending and last thirty days completed orders grouped by port', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     createOrder([
@@ -52,7 +52,7 @@ test('index renders pending and current month completed orders grouped by port',
     createOrder([
         'vessel_name' => 'MV Delivered Recently',
         'status' => OrderStatus::Delivered,
-        'invoice_date' => now()->startOfMonth(),
+        'invoice_date' => now(),
         'vlsfo_final_qty' => 375,
         'vlsfo_bdn_qty' => 360,
     ]);
@@ -60,7 +60,7 @@ test('index renders pending and current month completed orders grouped by port',
     createOrder([
         'vessel_name' => 'MV Delivered Previous Month',
         'status' => OrderStatus::Delivered,
-        'invoice_date' => now()->subMonth()->startOfMonth(),
+        'invoice_date' => now()->subDays(45),
     ]);
 
     createOrder([
@@ -83,6 +83,40 @@ test('index renders pending and current month completed orders grouped by port',
             ->where('completedOrders.0.vlsfo_final_qty', '375.000')
             ->where('completedOrders.0.vlsfo_bdn_qty', '360.000'));
 });
+
+test('sales and operations show rolling thirty day completed orders and retain open disputes', function (string $routeName) {
+    $this->travelTo(now()->setDate(2026, 10, 5)->setTime(12, 0));
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    foreach ([
+        ['MV Today', OrderStatus::Delivered, 0],
+        ['MV Previous Month Recent', OrderStatus::Delivered, 29],
+        ['MV Outside Window', OrderStatus::Delivered, 31],
+        ['MV Pending', OrderStatus::Pending, 0],
+        ['MV Cancelled', OrderStatus::Cancelled, 0],
+    ] as [$vesselName, $status, $daysAgo]) {
+        createOrder([
+            'vessel_name' => $vesselName,
+            'status' => $status,
+            'invoice_date' => now()->subDays($daysAgo),
+            'created_at' => now()->subMonths(2),
+        ]);
+    }
+
+    $disputed = createOrder([
+        'vessel_name' => 'MV Old Open Dispute',
+        'status' => OrderStatus::Delivered,
+        'invoice_date' => now()->subDays(45),
+    ]);
+    Dispute::factory()->create(['order_id' => $disputed->id, 'dispute_status' => DisputeStatus::Open]);
+
+    $this->get(route($routeName))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('pendingOrders', 1)
+            ->has('completedOrders', 3)
+            ->where('completedOrders', fn ($orders): bool => collect($orders)->pluck('vessel_name')->sort()->values()->all()
+                === ['MV Old Open Dispute', 'MV Previous Month Recent', 'MV Today']));
+})->with(['sales' => 'orders', 'operations' => 'operations']);
 
 test('old delivered orders stay on the completed list while a dispute is open', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));

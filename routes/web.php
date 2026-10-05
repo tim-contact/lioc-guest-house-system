@@ -87,6 +87,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::patch('enquiries/{enquiry}/details', [EnquiryController::class, 'updateDetails'])->name('enquiries.details.update');
         Route::patch('enquiries/{enquiry}/lost', [EnquiryController::class, 'markLost'])->name('enquiries.lost');
         Route::post('enquiries/{enquiry}/customers', [EnquiryCustomerController::class, 'store'])->name('enquiries.customers.store');
+        Route::post('enquiries/{enquiry}/temporary-customer', [EnquiryCustomerController::class, 'storeTemporary'])->name('enquiries.customers.store-temporary');
         Route::patch('enquiry-customers/{enquiryCustomer}', [EnquiryCustomerController::class, 'update'])->name('enquiry-customers.update');
         Route::patch('enquiry-customers/{enquiryCustomer}/status', [EnquiryCustomerController::class, 'updateStatus'])->name('enquiry-customers.update-status');
     });
