@@ -7,6 +7,68 @@ use App\Models\Customer;
 use App\Models\Enquiry;
 use App\Models\User;
 
+test('sales and privileged users can create and attach temporary customers', function (UserType $type) {
+    $this->actingAs(User::factory()->create(['type' => $type]));
+    $enquiry = Enquiry::factory()->create();
+
+    $this->post(route('enquiries.customers.store-temporary', $enquiry), [
+        'name' => 'New Shipping Ltd',
+        'address' => 'Harbour Road',
+        'country' => 'Sri Lanka',
+        'account_type' => 'fcbu',
+        'sap_id' => 'CLIENT-SUPPLIED',
+        'credit_limit' => 100000,
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    $customer = Customer::sole();
+    expect($customer->isTemporary())->toBeTrue();
+    expect($customer->credit_limit)->toEqual('0.00');
+    expect($customer->name)->toBe('New Shipping Ltd');
+    expect($enquiry->enquiryCustomers()->sole())
+        ->customer_id->toBe($customer->sap_id)
+        ->status->toBe(EnquiryCustomerStatus::Pending);
+})->with([UserType::Sales, UserType::Master, UserType::SuperAdmin]);
+
+test('temporary customer creation validates required details without inserting rows', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Sales]));
+    $enquiry = Enquiry::factory()->create();
+
+    $this->post(route('enquiries.customers.store-temporary', $enquiry), [])
+        ->assertSessionHasErrors(['name', 'address', 'country', 'account_type']);
+
+    expect(Customer::count())->toBe(0);
+    expect($enquiry->enquiryCustomers()->count())->toBe(0);
+});
+
+test('temporary ids are unique even for customers with the same name', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Sales]));
+    $enquiry = Enquiry::factory()->create();
+    $details = ['name' => 'Shipping Ltd', 'address' => 'Road', 'country' => 'Sri Lanka', 'account_type' => 'dbu'];
+
+    $this->post(route('enquiries.customers.store-temporary', $enquiry), $details)->assertSessionHasNoErrors();
+    $this->post(route('enquiries.customers.store-temporary', $enquiry), $details)->assertSessionHasNoErrors();
+
+    expect(Customer::count())->toBe(2);
+    expect($enquiry->enquiryCustomers()->pluck('customer_id')->unique()->count())->toBe(2);
+});
+
+test('other roles cannot create temporary customers', function (UserType $type) {
+    $this->actingAs(User::factory()->create(['type' => $type]));
+    $enquiry = Enquiry::factory()->create();
+
+    $this->post(route('enquiries.customers.store-temporary', $enquiry), [])
+        ->assertForbidden();
+
+    expect(Customer::count())->toBe(0);
+})->with([UserType::Operations, UserType::Finance, UserType::Surveyor]);
+
+test('guests cannot create temporary customers', function () {
+    $enquiry = Enquiry::factory()->create();
+    $this->post(route('enquiries.customers.store-temporary', $enquiry), [])
+        ->assertRedirect(route('login'));
+    expect(Customer::count())->toBe(0);
+});
+
 test('store adds a customer to an enquiry', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 

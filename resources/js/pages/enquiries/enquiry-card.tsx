@@ -9,11 +9,13 @@ import {
     Save,
     Ship,
     Trophy,
+    UserPlus,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { update } from '@/actions/App/Http/Controllers/EnquiryController';
 import {
     store as addCustomer,
+    storeTemporary,
     update as updateCustomer,
 } from '@/actions/App/Http/Controllers/EnquiryCustomerController';
 import Dot from '@/components/animata/background/dot';
@@ -381,6 +383,11 @@ function CustomerBlock({
                         searchPlaceholder="Search name or SAP ID"
                         emptyText="No customers available."
                     />
+                    {form.data.customer_id.startsWith('TEMP-') && (
+                        <Badge variant="secondary" className="mt-2">
+                            Temporary customer
+                        </Badge>
+                    )}
                 </div>
             </div>
 
@@ -599,6 +606,13 @@ export function EnquiryCard({
     qualityClaimOptions: EnumOption[];
 }) {
     const [addOpen, setAddOpen] = useState(false);
+    const [newCustomerOpen, setNewCustomerOpen] = useState(false);
+    const newCustomerForm = useForm({
+        name: '',
+        address: '',
+        country: '',
+        account_type: 'fcbu',
+    });
     const [picked, setPicked] = useState('');
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
@@ -1081,43 +1095,157 @@ export function EnquiryCard({
                         Add additional details & submit
                     </Button>
                 ) : (
-                    <Popover open={addOpen} onOpenChange={setAddOpen}>
-                        <PopoverTrigger asChild>
+                    <div className="flex flex-wrap gap-2">
+                        <Popover open={addOpen} onOpenChange={setAddOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1 border-slate-300 bg-white hover:bg-slate-50"
+                                >
+                                    + Add Customer
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="start" className="w-72">
+                                <div className="flex flex-col gap-2">
+                                    <SearchableCombobox
+                                        items={available.map((customer) => ({
+                                            value: customer.sap_id,
+                                            label: customer.name,
+                                            sublabel: customer.sap_id,
+                                        }))}
+                                        value={picked}
+                                        onChange={setPicked}
+                                        placeholder="Select customer"
+                                        searchPlaceholder="Search name or SAP ID"
+                                        emptyText="No more customers to add."
+                                    />
+                                    <Button
+                                        type="button"
+                                        onClick={submitAddCustomer}
+                                        disabled={!picked}
+                                    >
+                                        Add
+                                    </Button>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                setAddOpen(false);
+                                setNewCustomerOpen(true);
+                            }}
+                        >
+                            <UserPlus className="size-4" />
+                            New customer
+                        </Button>
+                    </div>
+                )}
+            </CardContent>
+
+            <Dialog open={newCustomerOpen} onOpenChange={setNewCustomerOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>New customer</DialogTitle>
+                        <DialogDescription>
+                            Temporary customer
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form
+                        className="grid gap-4"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            newCustomerForm.post(
+                                storeTemporary(enquiry.id).url,
+                                {
+                                    preserveScroll: true,
+                                    onSuccess: () => {
+                                        setNewCustomerOpen(false);
+                                        newCustomerForm.reset();
+                                        newCustomerForm.clearErrors();
+                                    },
+                                },
+                            );
+                        }}
+                    >
+                        {(['name', 'address', 'country'] as const).map(
+                            (field) => (
+                                <div key={field} className="grid gap-2">
+                                    <Label
+                                        htmlFor={`new-customer-${enquiry.id}-${field}`}
+                                    >
+                                        {field === 'name'
+                                            ? 'Customer name'
+                                            : field === 'address'
+                                              ? 'Address'
+                                              : 'Country'}
+                                    </Label>
+                                    <Input
+                                        id={`new-customer-${enquiry.id}-${field}`}
+                                        value={newCustomerForm.data[field]}
+                                        onChange={(event) =>
+                                            newCustomerForm.setData(
+                                                field,
+                                                event.target.value,
+                                            )
+                                        }
+                                        maxLength={
+                                            field === 'address' ? 500 : 255
+                                        }
+                                        required
+                                    />
+                                    {newCustomerForm.errors[field] && (
+                                        <p className="text-sm text-destructive">
+                                            {newCustomerForm.errors[field]}
+                                        </p>
+                                    )}
+                                </div>
+                            ),
+                        )}
+                        <div className="grid gap-2">
+                            <Label>Account type</Label>
+                            <NoneSelect
+                                value={newCustomerForm.data.account_type}
+                                onChange={(value) =>
+                                    newCustomerForm.setData(
+                                        'account_type',
+                                        value,
+                                    )
+                                }
+                                options={[
+                                    { value: 'fcbu', label: 'FCBU' },
+                                    { value: 'dbu', label: 'DBU' },
+                                ]}
+                            />
+                            {newCustomerForm.errors.account_type && (
+                                <p className="text-sm text-destructive">
+                                    {newCustomerForm.errors.account_type}
+                                </p>
+                            )}
+                        </div>
+                        <DialogFooter>
                             <Button
                                 type="button"
                                 variant="outline"
-                                size="sm"
-                                className="w-full border-slate-300 bg-white hover:bg-slate-50"
+                                onClick={() => setNewCustomerOpen(false)}
                             >
-                                + Add Customer
+                                Cancel
                             </Button>
-                        </PopoverTrigger>
-                        <PopoverContent align="start" className="w-72">
-                            <div className="flex flex-col gap-2">
-                                <SearchableCombobox
-                                    items={available.map((customer) => ({
-                                        value: customer.sap_id,
-                                        label: customer.name,
-                                        sublabel: customer.sap_id,
-                                    }))}
-                                    value={picked}
-                                    onChange={setPicked}
-                                    placeholder="Select customer"
-                                    searchPlaceholder="Search name or SAP ID"
-                                    emptyText="No more customers to add."
-                                />
-                                <Button
-                                    type="button"
-                                    onClick={submitAddCustomer}
-                                    disabled={!picked}
-                                >
-                                    Add
-                                </Button>
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-                )}
-            </CardContent>
+                            <Button
+                                type="submit"
+                                disabled={newCustomerForm.processing}
+                            >
+                                <UserPlus className="size-4" />
+                                Create customer
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
 
             <AdditionalDetailsDialog
                 samplingOptions={samplingOptions}

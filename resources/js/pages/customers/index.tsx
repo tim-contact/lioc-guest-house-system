@@ -1,5 +1,6 @@
 import type { CrudConfig } from '@/components/crud/crud-types';
 import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
+import { Badge } from '@/components/ui/badge';
 import type { ExportColumn } from '@/lib/export-xlsx';
 import { formatMoney } from '@/lib/utils';
 import { destroy, store, update } from '@/routes/customers';
@@ -64,7 +65,18 @@ const config: CrudConfig<Customer> = {
             cell: (customer) => customer.sap_id,
             className: 'font-medium',
         },
-        { header: 'Name', sortKey: 'name', cell: (customer) => customer.name },
+        {
+            header: 'Name',
+            sortKey: 'name',
+            cell: (customer) => (
+                <div className="flex flex-wrap items-center gap-2">
+                    {customer.name}
+                    {customer.sap_id.startsWith('TEMP-') && (
+                        <Badge variant="secondary">Temporary customer</Badge>
+                    )}
+                </div>
+            ),
+        },
         {
             header: 'Address',
             sortKey: 'address',
@@ -107,7 +119,13 @@ const config: CrudConfig<Customer> = {
         },
     ],
     fields: [
-        { name: 'sap_id', label: 'SAP ID', disabledOnEdit: true },
+        {
+            name: 'sap_id',
+            label: 'SAP ID',
+            disabledWhen: (data) =>
+                Boolean(data.original_sap_id) &&
+                !String(data.original_sap_id).startsWith('TEMP-'),
+        },
         { name: 'name', label: 'Name' },
         { name: 'address', label: 'Address' },
         { name: 'country', label: 'Country' },
@@ -127,6 +145,7 @@ const config: CrudConfig<Customer> = {
         { name: 'credit_limit', label: 'Credit limit', type: 'currency' },
     ],
     toFormData: (customer) => ({
+        original_sap_id: customer?.sap_id ?? '',
         sap_id: customer?.sap_id ?? '',
         name: customer?.name ?? '',
         address: customer?.address ?? '',

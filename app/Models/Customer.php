@@ -33,6 +33,11 @@ class Customer extends Model
 
     protected $keyType = 'string';
 
+    public function isTemporary(): bool
+    {
+        return str_starts_with($this->sap_id, 'TEMP-');
+    }
+
     /**
      * Get the attributes that should be cast.
      *

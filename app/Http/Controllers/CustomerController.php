@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Enums\AccountType;
 use App\Models\Customer;
+use App\Models\EnquiryCustomer;
 use App\Models\Order;
+use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -32,7 +35,27 @@ class CustomerController extends Controller
 
     public function update(Request $request, Customer $customer): RedirectResponse
     {
-        $customer->update($request->validate($this->rules($customer)));
+        $validated = $request->validate($this->rules($customer));
+
+        DB::transaction(function () use ($customer, $validated): void {
+            $customer = Customer::whereKey($customer->sap_id)->lockForUpdate()->firstOrFail();
+
+            if ($validated['sap_id'] === $customer->sap_id) {
+                $customer->update($validated);
+
+                return;
+            }
+
+            // Create the new parent first so immediate foreign keys remain valid.
+            $replacement = $customer->replicate();
+            $replacement->fill($validated);
+            $replacement->created_at = $customer->created_at;
+            $replacement->save();
+
+            Order::where('customer_id', $customer->sap_id)->update(['customer_id' => $replacement->sap_id]);
+            EnquiryCustomer::where('customer_id', $customer->sap_id)->update(['customer_id' => $replacement->sap_id]);
+            $customer->delete();
+        });
 
         return $this->toast('Customer saved.');
     }
@@ -41,6 +64,7 @@ class CustomerController extends Controller
     {
         return $this->deleteGuarded($customer, 'Customer', [
             'orders' => Order::where('customer_id', $customer->sap_id),
+            'enquiries' => EnquiryCustomer::where('customer_id', $customer->sap_id),
         ]);
     }
 
@@ -50,7 +74,20 @@ class CustomerController extends Controller
     private function rules(?Customer $customer = null): array
     {
         return [
-            'sap_id' => ['required', 'string', 'max:255', Rule::unique('customers', 'sap_id')->ignore($customer)],
+            'sap_id' => [
+                'required', 'string', 'max:255', Rule::unique('customers', 'sap_id')->ignore($customer),
+                function (string $attribute, mixed $value, Closure $fail) use ($customer): void {
+                    if ($customer !== null && $value === $customer->sap_id) {
+                        return;
+                    }
+
+                    if ($customer !== null && ! $customer->isTemporary()) {
+                        $fail('Only temporary SAP IDs can be replaced.');
+                    } elseif (str_starts_with(strtoupper((string) $value), 'TEMP-')) {
+                        $fail('Enter the actual SAP ID. Temporary IDs are generated automatically.');
+                    }
+                },
+            ],
             'name' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string', 'max:500'],
             'credit_limit' => ['required', 'numeric', 'min:0'],
