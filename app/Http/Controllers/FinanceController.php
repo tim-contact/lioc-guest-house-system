@@ -193,7 +193,7 @@ class FinanceController extends Controller
                 ->map(fn (Payment $payment): array => [
                     'id' => $payment->id,
                     'amount' => $payment->amount,
-                    'date' => $payment->date->toDateString(),
+                    'date' => $payment->date?->toDateString(),
                     'type' => $payment->type->value,
                 ]),
         ];

@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $enquiry_id
  * @property string $order_number
+ * @property string|null $historical_import_key
  * @property Carbon|null $order_date
  * @property string $customer_id
  * @property string|null $vessel_id
@@ -77,7 +78,7 @@ use Illuminate\Support\Carbon;
  * @property OrderStatus $status
  */
 #[Fillable([
-    'enquiry_id', 'order_number', 'order_date', 'customer_id', 'vessel_id', 'vessel_name',
+    'enquiry_id', 'order_number', 'order_date', 'historical_import_key', 'customer_id', 'vessel_id', 'vessel_name',
     'port_id', 'eta', 'etb', 'etd', 'ata', 'atb', 'atd', 'bunker_started_at', 'bunker_completed_at',
     'laycan_from', 'laycan_to', 'delivery_mode', 'delivery_location_id',
     'barging_cost', 'agent_fees', 'product_type', 'compliance_checked', 'nomination_received', 'barge_id', 'agent_id', 'agent_name', 'agent_pic_id', 'pic', 'mobile_no',
