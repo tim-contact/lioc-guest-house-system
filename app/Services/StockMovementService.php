@@ -43,6 +43,7 @@ class StockMovementService
         $deliveries = Bdn::with(['order.barge'])
             ->whereHas('order', fn ($query) => $query
                 ->where('port_id', $portId)
+                ->whereNull('historical_import_key')
                 ->whereIn('status', [OrderStatus::Delivered, OrderStatus::Closed]))
             ->whereDate('delivery_date', '<=', $end->toDateString())
             ->when($bargeStart !== null, fn ($query) => $query

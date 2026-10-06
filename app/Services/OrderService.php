@@ -122,7 +122,7 @@ class OrderService
     /**
      * Sum of each grade's BDN quantity times its rate, plus barging and agent fees.
      */
-    private static function invoiceValue(Order $order): float
+    public static function invoiceValue(Order $order): float
     {
         $fuelTotal = collect(FuelGrade::keys())->sum(
             fn (string $product): float => (float) $order->{"{$product}_bdn_qty"} * (float) $order->{"{$product}_rate"},

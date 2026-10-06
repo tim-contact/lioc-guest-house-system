@@ -27,7 +27,8 @@ class PaymentController extends Controller
                         ->whereRaw('LOWER(vessel_name) LIKE ?', [$searchPattern])
                         ->orWhereHas('customer', fn ($customer) => $customer->whereRaw('LOWER(name) LIKE ?', [$searchPattern])));
             }))
-            ->orderByDesc('date')
+            ->orderByRaw('date DESC NULLS LAST')
+            ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString()
             ->through(fn (Payment $payment): array => [
@@ -36,7 +37,7 @@ class PaymentController extends Controller
                 'customer_name' => $payment->order?->customer?->name,
                 'vessel_name' => $payment->order?->vessel_name,
                 'amount' => $payment->amount,
-                'date' => $payment->date->toDateString(),
+                'date' => $payment->date?->toDateString(),
                 'type' => $payment->type->value,
             ]);
 

@@ -14,7 +14,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $order_number
  * @property float $amount
- * @property Carbon $date
+ * @property Carbon|null $date
  * @property PaymentType $type
  */
 #[Fillable(['order_number', 'amount', 'date', 'type'])]
