@@ -1,6 +1,14 @@
 import { Anchor, CheckCircle2, Clock3, Ship } from 'lucide-react';
 import type { OrderRow } from '@/components/order-dashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { FUEL_GRADES } from '@/lib/domain';
 import type { FuelGradeKey } from '@/lib/domain';
 import { cn } from '@/lib/utils';
@@ -56,26 +64,7 @@ function CommandMetric({ label, value }: { label: string; value: string }) {
     );
 }
 
-function CompactVolumeRow({
-    label,
-    value,
-}: {
-    label: string;
-    value: string;
-}) {
-    return (
-        <div className="flex min-w-0 items-center justify-between gap-3 whitespace-nowrap rounded-md border border-[#E7EDF4] bg-white/72 px-2 py-1.5">
-            <span className="shrink-0 text-[0.64rem] leading-none font-semibold tracking-[0.035em] text-[#64748B] uppercase">
-                {label}
-            </span>
-            <span className="min-w-0 truncate text-right text-xs leading-tight font-semibold text-[#0F172A] tabular-nums">
-                {value}
-            </span>
-        </div>
-    );
-}
-
-function CompactStatusPanel({
+function CompactStatusRow({
     label,
     summary,
     tone,
@@ -86,43 +75,41 @@ function CompactStatusPanel({
 }) {
     const Icon = tone === 'pending' ? Clock3 : CheckCircle2;
     const toneClassName =
-        tone === 'pending'
-            ? 'border-[#FED7AA] bg-[#FFF7ED] text-[#C2410C]'
-            : 'border-[#99F6E4] bg-[#F0FDFA] text-[#0F766E]';
+        tone === 'pending' ? 'text-orange-700' : 'text-teal-700';
 
     return (
-        <div
+        <TableRow
             className={cn(
-                'min-w-0 rounded-lg border px-3 py-2.5',
-                toneClassName,
+                'border-slate-200/70',
+                tone === 'pending'
+                    ? 'bg-orange-50 hover:bg-orange-50'
+                    : 'bg-teal-50 hover:bg-teal-50',
             )}
         >
-            <div className="flex items-start justify-between gap-2">
-                <div className="flex shrink-0 items-center gap-1.5">
-                    <Icon className="size-3.5 shrink-0" />
-                    <span className="text-[0.68rem] leading-none font-bold tracking-[0.025em] uppercase">
-                        {label}
-                    </span>
+            <TableHead
+                scope="row"
+                className={cn(
+                    'h-auto px-1.5 py-1.5 text-[10px] font-bold',
+                    toneClassName,
+                )}
+            >
+                <div className="flex items-center gap-1">
+                    <Icon className="size-3 shrink-0" aria-hidden="true" />
+                    <span>{label}</span>
                 </div>
-                <div className="text-right">
-                    <p className="text-2xl leading-none font-bold tabular-nums">
-                        {summary.count}
-                    </p>
-                    <p className="mt-0.5 text-[0.62rem] leading-none font-semibold tracking-[0.06em] uppercase opacity-75">
-                        Orders
-                    </p>
-                </div>
-            </div>
-            <div className="mt-2 grid gap-1.5">
-                {FUEL_GRADES.map((product) => (
-                    <CompactVolumeRow
-                        key={product.key}
-                        label={product.label}
-                        value={formatVolume(summary.volumes[product.key])}
-                    />
-                ))}
-            </div>
-        </div>
+            </TableHead>
+            <TableCell className="px-1.5 py-1.5 text-right text-[11px] font-bold text-[#0F172A] tabular-nums">
+                {summary.count}
+            </TableCell>
+            {FUEL_GRADES.map((product) => (
+                <TableCell
+                    key={product.key}
+                    className="px-1.5 py-1.5 text-right text-[11px] font-semibold text-[#0F172A] tabular-nums"
+                >
+                    {formatVolume(summary.volumes[product.key])}
+                </TableCell>
+            ))}
+        </TableRow>
     );
 }
 
@@ -193,7 +180,7 @@ export function PortSummaryCards({
     }));
 
     return (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 pb-4">
             <Card className="relative overflow-hidden rounded-[18px] border border-[rgba(96,165,250,0.24)] bg-[linear-gradient(120deg,rgba(8,43,91,0.98),rgba(5,39,84,0.98),rgba(6,51,108,0.96))] py-0 text-white shadow-[0_14px_32px_rgba(15,45,90,0.16)]">
                 <div className="pointer-events-none absolute inset-0 [background-image:radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.8)_1px,transparent_1px)] [background-size:18px_18px] opacity-[0.08]" />
                 <CardContent className="relative grid gap-5 p-5 md:grid-cols-[minmax(150px,0.7fr)_minmax(0,2.3fr)_minmax(0,2.3fr)] md:items-center">
@@ -225,7 +212,7 @@ export function PortSummaryCards({
                 </CardContent>
             </Card>
 
-            <div className="grid auto-cols-[minmax(22rem,1fr)] grid-flow-col gap-4 overflow-x-auto pb-1">
+            <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-2">
                 {byPort.map((summary) => {
                     const hasActivity =
                         summary.pending.count > 0 ||
@@ -235,18 +222,18 @@ export function PortSummaryCards({
                         <Card
                             key={summary.label}
                             className={cn(
-                                'gap-3 rounded-[17px] border border-[#E3EAF2] bg-white py-4 shadow-[0_8px_24px_rgba(15,23,42,0.055),0_1px_2px_rgba(15,23,42,0.04)] transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-[rgba(37,99,235,0.25)] hover:shadow-[0_14px_30px_rgba(15,23,42,0.09)] motion-reduce:transition-none motion-reduce:hover:translate-y-0',
+                                'min-w-0 gap-2 rounded-[17px] border border-[#E3EAF2] bg-white py-3 shadow-[0_8px_24px_rgba(15,23,42,0.055),0_1px_2px_rgba(15,23,42,0.04)] transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-[rgba(37,99,235,0.25)] hover:shadow-[0_14px_30px_rgba(15,23,42,0.09)] motion-reduce:transition-none motion-reduce:hover:translate-y-0',
                                 hasActivity &&
                                     'border-t-[3px] border-t-[#2563EB]',
                             )}
                         >
-                            <CardHeader className="px-4">
+                            <CardHeader className="px-3">
                                 <div className="flex items-center justify-between gap-3">
-                                    <div className="flex min-w-0 items-center gap-2.5">
-                                        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#EEF2FF] text-[#2455E6]">
+                                    <div className="flex min-w-0 items-center gap-2">
+                                        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#EEF2FF] text-[#2455E6]">
                                             <Anchor className="size-4" />
                                         </span>
-                                        <CardTitle className="truncate text-lg font-bold text-[#0F172A]">
+                                        <CardTitle className="truncate text-base font-bold text-[#0F172A]">
                                             {summary.label}
                                         </CardTitle>
                                     </div>
@@ -266,19 +253,49 @@ export function PortSummaryCards({
                                     />
                                 </div>
                             </CardHeader>
-                            <CardContent className="flex flex-col gap-3 px-4">
-                                <div className="grid grid-cols-2 gap-2">
-                                    <CompactStatusPanel
-                                        label="Pending"
-                                        summary={summary.pending}
-                                        tone="pending"
-                                    />
-                                    <CompactStatusPanel
-                                        label="Completed"
-                                        summary={summary.completed}
-                                        tone="completed"
-                                    />
-                                </div>
+                            <CardContent className="min-w-0 px-3">
+                                <Table
+                                    className="table-auto"
+                                    aria-label={`${summary.label} order summary`}
+                                >
+                                    <TableHeader className="bg-slate-50">
+                                        <TableRow className="border-slate-200/70 bg-slate-50 hover:bg-slate-50">
+                                            <TableHead
+                                                scope="col"
+                                                className="h-7 px-1.5 text-[10px] text-slate-500"
+                                            >
+                                                Status
+                                            </TableHead>
+                                            <TableHead
+                                                scope="col"
+                                                className="h-7 px-1.5 text-right text-[10px] text-slate-500"
+                                            >
+                                                Orders
+                                            </TableHead>
+                                            {FUEL_GRADES.map((product) => (
+                                                <TableHead
+                                                    key={product.key}
+                                                    scope="col"
+                                                    className="h-7 px-1.5 text-right text-[10px] text-slate-500"
+                                                >
+                                                    {product.label}
+                                                </TableHead>
+                                            ))}
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        <CompactStatusRow
+                                            label="Pending"
+                                            summary={summary.pending}
+                                            tone="pending"
+                                        />
+                                        <CompactStatusRow
+                                            label="Completed"
+                                            summary={summary.completed}
+                                            tone="completed"
+                                        />
+                                    </TableBody>
+                                </Table>
                             </CardContent>
                         </Card>
                     );
