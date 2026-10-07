@@ -20,7 +20,7 @@ import { analytics } from '@/routes/reports';
 import { orders as bargeOrders } from '@/routes/reports/barges';
 
 type Filters = {
-    period: 'currentMonth' | 'last30Days' | 'pending' | 'all';
+    period: 'currentMonth' | 'lastMonth' | 'pending' | 'all';
 };
 
 type BargeOrder = {
@@ -111,7 +111,7 @@ export default function BargeOrders({
                                 <option value="currentMonth">
                                     Current month
                                 </option>
-                                <option value="last30Days">Last 30 days</option>
+                                <option value="lastMonth">Last month</option>
                                 <option value="pending">Pending orders</option>
                                 <option value="all">All history</option>
                             </select>

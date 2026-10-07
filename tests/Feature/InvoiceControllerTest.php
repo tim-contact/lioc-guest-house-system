@@ -37,7 +37,9 @@ test('index lists only orders that have been invoiced', function () {
             ->has('invoices.data', 1)
             ->where('invoices.data.0.customer_name', 'Blue Ocean Ltd')
             ->where('invoices.per_page', 25)
-            ->where('invoices.total', 1));
+            ->where('invoices.total', 1)
+            ->where('filters.sort', 'payment_due_date')
+            ->where('filters.dir', 'asc'));
 });
 
 test('index paginates invoices', function () {
@@ -68,6 +70,119 @@ test('index paginates invoices', function () {
             ->has('invoices.data', 1)
             ->where('invoices.current_page', 2)
             ->where('invoices.data.0.order_number', 'INV-026'));
+});
+
+test('index sorts invoices server-side by invoice value', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    foreach ([800, 200, 500] as $value) {
+        Order::factory()->create([
+            'invoice_date' => now(),
+            'invoice_value' => $value,
+        ]);
+    }
+
+    $this->get(route('invoices.index', ['sort' => 'invoice_value', 'dir' => 'asc']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('invoices/index')
+            ->has('invoices.data', 3)
+            ->where('invoices.data.0.invoice_value', '200.00')
+            ->where('invoices.data.1.invoice_value', '500.00')
+            ->where('invoices.data.2.invoice_value', '800.00')
+            ->where('filters.sort', 'invoice_value')
+            ->where('filters.dir', 'asc'));
+
+    $this->get(route('invoices.index', ['sort' => 'invoice_value', 'dir' => 'desc']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('invoices/index')
+            ->has('invoices.data', 3)
+            ->where('invoices.data.0.invoice_value', '800.00')
+            ->where('invoices.data.2.invoice_value', '200.00'));
+});
+
+test('index sorts invoices server-side by customer name', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    foreach (['Zulu Marine', 'alpha marine', 'Mike Marine'] as $name) {
+        $customer = Customer::factory()->create(['name' => $name]);
+
+        Order::factory()->create([
+            'customer_id' => $customer->sap_id,
+            'invoice_date' => now(),
+        ]);
+    }
+
+    $this->get(route('invoices.index', ['sort' => 'customer_name', 'dir' => 'asc']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('invoices/index')
+            ->has('invoices.data', 3)
+            ->where('invoices.data.0.customer_name', 'alpha marine')
+            ->where('invoices.data.1.customer_name', 'Mike Marine')
+            ->where('invoices.data.2.customer_name', 'Zulu Marine')
+            ->where('filters.sort', 'customer_name'));
+});
+
+test('index sorts invoices server-side by balance', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    Order::factory()->create([
+        'order_number' => 'INV-BAL-2',
+        'invoice_date' => now(),
+        'invoice_value' => 1000,
+        'amount_received' => 300,
+    ]);
+
+    Order::factory()->create([
+        'order_number' => 'INV-BAL-1',
+        'invoice_date' => now(),
+        'invoice_value' => 500,
+        'amount_received' => 100,
+    ]);
+
+    Order::factory()->create([
+        'order_number' => 'INV-BAL-3',
+        'invoice_date' => now(),
+        'invoice_value' => 700,
+        'amount_received' => 0,
+    ]);
+
+    $this->get(route('invoices.index', ['sort' => 'balance_amount', 'dir' => 'asc']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('invoices/index')
+            ->has('invoices.data', 3)
+            ->where('invoices.data.0.order_number', 'INV-BAL-1')
+            ->where('invoices.data.1.order_number', 'INV-BAL-2')
+            ->where('invoices.data.2.order_number', 'INV-BAL-3')
+            ->where('filters.sort', 'balance_amount'));
+});
+
+test('index falls back to nearest due date for an unknown sort key', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    Order::factory()->create([
+        'order_number' => 'INV-LATE',
+        'invoice_date' => now(),
+        'payment_due_date' => now()->addDays(5),
+    ]);
+
+    Order::factory()->create([
+        'order_number' => 'INV-SOON',
+        'invoice_date' => now(),
+        'payment_due_date' => now()->addDays(1),
+    ]);
+
+    $this->get(route('invoices.index', ['sort' => 'not_a_column', 'dir' => 'desc']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('invoices/index')
+            ->has('invoices.data', 2)
+            ->where('filters.sort', 'payment_due_date')
+            ->where('filters.dir', 'asc')
+            ->where('invoices.data.0.order_number', 'INV-SOON'));
 });
 
 test('guests cannot update an invoice', function () {

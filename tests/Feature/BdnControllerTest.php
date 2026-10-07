@@ -39,15 +39,130 @@ test('index lists bdns with their order, agent and barge details', function () {
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('bdns/index')
-            ->has('bdns', 1)
-            ->where('bdns.0.bdn_number', 'BDN-INDEX-1')
-            ->where('bdns.0.order_number', 'ORD-BDN-INDEX')
-            ->where('bdns.0.agent_name', 'Blue Agents')
-            ->where('bdns.0.barge_name', 'MT Bunker One')
+            ->has('bdns.data', 1)
+            ->where('bdns.data.0.bdn_number', 'BDN-INDEX-1')
+            ->where('bdns.data.0.order_number', 'ORD-BDN-INDEX')
+            ->where('bdns.data.0.agent_name', 'Blue Agents')
+            ->where('bdns.data.0.barge_name', 'MT Bunker One')
+            ->where('filters.vessel', '')
+            ->where('filters.sort', 'created_at')
+            ->where('filters.dir', 'desc')
             ->has('supplyLocationOptions')
             ->has('deliveryModeOptions')
             ->has('samplingLocationOptions')
             ->has('samplingMethodOptions'));
+});
+
+test('index filters bdns by vessel name', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $matchingOrder = Order::factory()->create(['vessel_name' => 'MT Azure Star']);
+    $otherOrder = Order::factory()->create(['vessel_name' => 'MT Northern Light']);
+    Bdn::factory()->create(['order_id' => $matchingOrder->id, 'bdn_number' => 'BDN-MATCH']);
+    Bdn::factory()->create(['order_id' => $otherOrder->id, 'bdn_number' => 'BDN-OTHER']);
+
+    $this->get(route('bdns.index', ['vessel' => 'azure']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('bdns/index')
+            ->has('bdns.data', 1)
+            ->where('bdns.data.0.bdn_number', 'BDN-MATCH')
+            ->where('filters.vessel', 'azure'));
+});
+
+test('index paginates bdns and honours per_page', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    Order::factory()->count(30)->create()->each(
+        fn (Order $order) => Bdn::factory()->create(['order_id' => $order->id]),
+    );
+
+    $this->get(route('bdns.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('bdns/index')
+            ->has('bdns.data', 25)
+            ->where('bdns.total', 30)
+            ->where('bdns.per_page', 25));
+
+    $this->get(route('bdns.index', ['per_page' => 10]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('bdns/index')
+            ->has('bdns.data', 10)
+            ->where('bdns.per_page', 10));
+});
+
+test('index sorts bdns server-side by bdn number', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    foreach (['BDN-SORT-C', 'BDN-SORT-A', 'BDN-SORT-B'] as $number) {
+        Bdn::factory()->create([
+            'order_id' => Order::factory()->create()->id,
+            'bdn_number' => $number,
+        ]);
+    }
+
+    $this->get(route('bdns.index', ['sort' => 'bdn_number', 'dir' => 'asc']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('bdns/index')
+            ->has('bdns.data', 3)
+            ->where('bdns.data.0.bdn_number', 'BDN-SORT-A')
+            ->where('bdns.data.1.bdn_number', 'BDN-SORT-B')
+            ->where('bdns.data.2.bdn_number', 'BDN-SORT-C')
+            ->where('filters.sort', 'bdn_number')
+            ->where('filters.dir', 'asc'));
+
+    $this->get(route('bdns.index', ['sort' => 'bdn_number', 'dir' => 'desc']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('bdns/index')
+            ->has('bdns.data', 3)
+            ->where('bdns.data.0.bdn_number', 'BDN-SORT-C')
+            ->where('bdns.data.2.bdn_number', 'BDN-SORT-A'));
+});
+
+test('index sorts bdns server-side by relation columns', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    foreach (['MT Zebra', 'mt alpha', 'MT Mike'] as $vessel) {
+        Bdn::factory()->create([
+            'order_id' => Order::factory()->create(['vessel_name' => $vessel])->id,
+        ]);
+    }
+
+    $this->get(route('bdns.index', ['sort' => 'vessel_name', 'dir' => 'asc']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('bdns/index')
+            ->has('bdns.data', 3)
+            ->where('bdns.data.0.vessel_name', 'mt alpha')
+            ->where('bdns.data.1.vessel_name', 'MT Mike')
+            ->where('bdns.data.2.vessel_name', 'MT Zebra')
+            ->where('filters.sort', 'vessel_name'));
+});
+
+test('index falls back to newest first for an unknown sort key', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    Bdn::factory()->create([
+        'order_id' => Order::factory()->create()->id,
+        'bdn_number' => 'BDN-OLD',
+    ]);
+    Bdn::factory()->create([
+        'order_id' => Order::factory()->create()->id,
+        'bdn_number' => 'BDN-NEW',
+    ]);
+
+    $this->get(route('bdns.index', ['sort' => 'not_a_column', 'dir' => 'asc']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('bdns/index')
+            ->has('bdns.data', 2)
+            ->where('filters.sort', 'created_at')
+            ->where('filters.dir', 'desc')
+            ->where('bdns.data.0.bdn_number', 'BDN-NEW'));
 });
 
 test('guests cannot save a bdn', function () {

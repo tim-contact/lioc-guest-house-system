@@ -47,6 +47,14 @@ class ReportAnalyticsController extends Controller
         $currentMonthEnquiryCount = $currentMonthEnquiries->count();
         $currentMonthOrderCount = $currentMonthOrders->count();
         $currentMonthCompletedCount = $currentMonthCompletedOrders->count();
+        $funnelEnquiries = $currentMonthEnquiries->keyBy('id');
+        $funnelOrders = $orders->filter(
+            fn (Order $order): bool => $funnelEnquiries->has($order->enquiry_id),
+        );
+        $funnelOrderCount = $funnelOrders->pluck('enquiry_id')->unique()->count();
+        $funnelCompletedCount = $funnelOrders->filter(
+            fn (Order $order): bool => in_array($order->status->value, $completedStatuses, true),
+        )->pluck('enquiry_id')->unique()->count();
 
         return Inertia::render('reports/analytics', [
             'summary' => [
@@ -68,13 +76,13 @@ class ReportAnalyticsController extends Controller
                 ],
                 [
                     'label' => 'Orders',
-                    'value' => $currentMonthOrderCount,
-                    'displayValue' => number_format($currentMonthOrderCount),
+                    'value' => $funnelOrderCount,
+                    'displayValue' => number_format($funnelOrderCount),
                 ],
                 [
                     'label' => 'Completed',
-                    'value' => $currentMonthCompletedCount,
-                    'displayValue' => number_format($currentMonthCompletedCount),
+                    'value' => $funnelCompletedCount,
+                    'displayValue' => number_format($funnelCompletedCount),
                 ],
             ],
             'portStatusMetrics' => $this->portStatusMetrics($orders, $disputes, $completedStatuses, currentMonthOnly: true),
@@ -149,14 +157,15 @@ class ReportAnalyticsController extends Controller
     public function bargeOrders(Request $request, Barge $barge): Response
     {
         $filters = $request->validate([
-            'period' => ['sometimes', Rule::in(['currentMonth', 'last30Days', 'pending', 'all'])],
+            'period' => ['sometimes', Rule::in(['currentMonth', 'lastMonth', 'pending', 'all'])],
             'per_page' => ['sometimes', 'integer', Rule::in([10, 25, 50, 100])],
         ]);
         $period = $filters['period'] ?? 'currentMonth';
         $today = CarbonImmutable::today();
-        $periodStart = $period === 'last30Days'
-            ? $today->subDays(29)
+        $periodStart = $period === 'lastMonth'
+            ? $today->startOfMonth()->subMonth()
             : $today->startOfMonth();
+        $periodEnd = $period === 'lastMonth' ? $today->startOfMonth()->subDay() : $today;
 
         $orders = Order::query();
         if ($period === 'pending') {
@@ -164,8 +173,8 @@ class ReportAnalyticsController extends Controller
                 ->where('barge_id', $barge->imo);
         } else {
             $orders->whereIn('status', [OrderStatus::Delivered->value, OrderStatus::Closed->value])
-                ->whereHas('bdn', function ($query) use ($period, $periodStart, $today, $barge): void {
-                    $query->whereDate('delivery_date', '<=', $today->toDateString())
+                ->whereHas('bdn', function ($query) use ($period, $periodStart, $periodEnd, $barge): void {
+                    $query->whereDate('delivery_date', '<=', $periodEnd->toDateString())
                         ->where(function ($assignment) use ($barge): void {
                             $assignment->where('barge_id', $barge->imo)
                                 ->orWhere(fn ($fallback) => $fallback->whereNull('barge_id')
@@ -529,7 +538,7 @@ class ReportAnalyticsController extends Controller
     /**
      * @param  Collection<int, Order>  $orders
      * @param  list<string>  $completedStatuses
-     * @return list<array{imo: string, label: string, ordersUrl: string|null, periods: array{currentMonth: array{completed: int, total: int}, last30Days: array{completed: int, total: int}, pending: array{pending: int, total: int}}}>
+     * @return list<array{imo: string, label: string, ordersUrl: string|null, periods: array{currentMonth: array{completed: int, total: int, products: array<string, float>}, lastMonth: array{completed: int, total: int, products: array<string, float>}, pending: array{pending: int, total: int, products: array<string, float>}}}>
      */
     private function bargeUtilization(Collection $orders, array $completedStatuses): array
     {
@@ -542,7 +551,7 @@ class ReportAnalyticsController extends Controller
                 $pending = $orders->filter(
                     fn (Order $order): bool => $order->status === OrderStatus::Pending
                         && $order->barge_id === $imo,
-                )->count();
+                );
 
                 return [
                     'imo' => $imo,
@@ -555,13 +564,17 @@ class ReportAnalyticsController extends Controller
                             $imo,
                             'currentMonth',
                         ),
-                        'last30Days' => $this->bargeUtilizationForPeriod(
+                        'lastMonth' => $this->bargeUtilizationForPeriod(
                             $orders,
                             $completedStatuses,
                             $imo,
-                            'last30Days',
+                            'lastMonth',
                         ),
-                        'pending' => ['pending' => $pending, 'total' => $pending],
+                        'pending' => [
+                            'pending' => $pending->count(),
+                            'total' => $pending->count(),
+                            'products' => $this->bargeProductVolumes($pending, pending: true),
+                        ],
                     ],
                 ];
             })
@@ -571,20 +584,33 @@ class ReportAnalyticsController extends Controller
     /**
      * @param  Collection<int, Order>  $orders
      * @param  list<string>  $completedStatuses
-     * @return array{completed: int, total: int}
+     * @return array{completed: int, total: int, products: array<string, float>}
      */
     private function bargeUtilizationForPeriod(Collection $orders, array $completedStatuses, string $imo, string $period): array
     {
         $completed = $orders
             ->filter(fn (Order $order): bool => in_array($order->status->value, $completedStatuses, true)
                 && ($order->bdn?->barge_id ?? $order->barge_id) === $imo
-                && $this->isOrderInUtilizationPeriod($order->bdn?->delivery_date, $period))
-            ->count();
+                && $this->isOrderInUtilizationPeriod($order->bdn?->delivery_date, $period));
 
         return [
-            'completed' => $completed,
-            'total' => $completed,
+            'completed' => $completed->count(),
+            'total' => $completed->count(),
+            'products' => $this->bargeProductVolumes($completed),
         ];
+    }
+
+    /**
+     * @param  Collection<int, Order>  $orders
+     * @return array<string, float>
+     */
+    private function bargeProductVolumes(Collection $orders, bool $pending = false): array
+    {
+        return collect(FuelGrade::keys())->mapWithKeys(fn (string $grade): array => [
+            $grade => round((float) $orders->sum(fn (Order $order): float => $pending
+                ? (float) ($order->{"{$grade}_final_qty"} ?? 0)
+                : (float) ($order->{"{$grade}_bdn_qty"} ?? $order->bdn?->{"{$grade}_metric_ton"} ?? 0)), 3),
+        ])->all();
     }
 
     private function isOrderInUtilizationPeriod(?CarbonInterface $date, string $period): bool
@@ -593,8 +619,11 @@ class ReportAnalyticsController extends Controller
             return false;
         }
 
-        if ($period === 'last30Days') {
-            return $date->greaterThanOrEqualTo(CarbonImmutable::today()->subDays(29));
+        if ($period === 'lastMonth') {
+            $monthStart = CarbonImmutable::today()->startOfMonth();
+
+            return $date->greaterThanOrEqualTo($monthStart->subMonth())
+                && $date->lessThan($monthStart);
         }
 
         return $date->isCurrentMonth();

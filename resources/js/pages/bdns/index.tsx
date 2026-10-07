@@ -1,5 +1,12 @@
+import { router } from '@inertiajs/react';
+import { Search, X } from 'lucide-react';
+import { useState } from 'react';
 import type { CrudConfig } from '@/components/crud/crud-types';
 import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
+import type { PaginationMeta } from '@/components/pagination-controls';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import type { SortDir } from '@/hooks/use-sortable';
 import { QUALITY_FIELDS, SEALS, TIMESHEET_FIELDS } from '@/lib/bdn-fields';
 import { FUEL_GRADES } from '@/lib/domain';
 import type { ExportColumn } from '@/lib/export-xlsx';
@@ -38,7 +45,14 @@ interface Bdn {
 }
 
 interface BdnsIndexProps {
-    bdns: Bdn[];
+    bdns: PaginationMeta & {
+        data: Bdn[];
+    };
+    filters: {
+        vessel: string;
+        sort: keyof Bdn & string;
+        dir: SortDir;
+    };
     deliveryModeOptions: EnumOption[];
     samplingLocationOptions: EnumOption[];
     samplingMethodOptions: EnumOption[];
@@ -59,10 +73,20 @@ function field(bdn: Bdn, key: string): string | number {
 
 export default function BdnsIndex({
     bdns,
+    filters,
     deliveryModeOptions,
     samplingLocationOptions,
     samplingMethodOptions,
 }: BdnsIndexProps) {
+    const rows = bdns.data;
+    const [vesselSearch, setVesselSearch] = useState(filters.vessel);
+    const sortKey = filters.sort;
+    const sortDir = filters.dir;
+
+    const handleSort = (key: keyof Bdn & string) => {
+        const nextDir = key === sortKey && sortDir === 'asc' ? 'desc' : 'asc';
+        visitBdns(vesselSearch, bdns.per_page, key, nextDir);
+    };
     const exportColumns: ExportColumn<Bdn>[] = [
         { header: 'BDN Number', value: (b) => b.bdn_number ?? '' },
         { header: 'Order Number', value: (b) => b.order_number ?? '' },
@@ -151,7 +175,52 @@ export default function BdnsIndex({
         canCreate: false,
         canEdit: false,
         canDelete: false,
+        dense: true,
         exportColumns,
+        toolbar: (
+            <form
+                className="flex max-w-xl flex-col gap-2 sm:flex-row sm:items-center"
+                onSubmit={(event) => {
+                    event.preventDefault();
+                    visitBdns(vesselSearch, bdns.per_page, sortKey, sortDir);
+                }}
+            >
+                <div className="relative min-w-0 flex-1">
+                    <Search
+                        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#64748B]"
+                        aria-hidden="true"
+                    />
+                    <Input
+                        aria-label="Search BDNs by vessel name"
+                        className="h-10 rounded-xl border-[#D8E2EE] bg-[#F8FAFD] pl-9 text-[#0F172A] placeholder:text-[#64748B]"
+                        onChange={(event) =>
+                            setVesselSearch(event.target.value)
+                        }
+                        placeholder="Search by vessel name"
+                        value={vesselSearch}
+                    />
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button type="submit" className="h-10 rounded-xl">
+                        Search
+                    </Button>
+                    {filters.vessel !== '' && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="h-10 rounded-xl border-[#D8E2EE]"
+                            onClick={() => {
+                                setVesselSearch('');
+                                visitBdns('', bdns.per_page, sortKey, sortDir);
+                            }}
+                        >
+                            <X />
+                            Clear
+                        </Button>
+                    )}
+                </div>
+            </form>
+        ),
         columns: [
             {
                 header: 'BDN Number',
@@ -226,7 +295,47 @@ export default function BdnsIndex({
         ],
     };
 
-    return <ResourceCrudPage rows={bdns} config={config} />;
+    return (
+        <ResourceCrudPage
+            rows={rows}
+            config={config}
+            pagination={bdns}
+            sort={{ key: sortKey, direction: sortDir }}
+            onSort={handleSort}
+        />
+    );
+}
+
+function visitBdns(
+    vessel: string,
+    perPage: number,
+    sortKey?: string,
+    dir?: SortDir,
+) {
+    const params: Record<string, string> = {};
+    const trimmedVessel = vessel.trim();
+
+    if (trimmedVessel !== '') {
+        params.vessel = trimmedVessel;
+    }
+
+    if (perPage !== 25) {
+        params.per_page = String(perPage);
+    }
+
+    if (sortKey && sortKey !== 'created_at') {
+        params.sort = sortKey;
+    }
+
+    if (dir && dir !== 'desc') {
+        params.dir = dir;
+    }
+
+    router.get('/bdns', params, {
+        preserveScroll: true,
+        preserveState: true,
+        replace: true,
+    });
 }
 
 BdnsIndex.layout = {

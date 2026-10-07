@@ -55,10 +55,17 @@ class HistoricalOrderImportService
     {
         $rows = $errors = $seen = $seenOrderNumbers = $seenBdnNumbers = [];
         $skipped = 0;
-        $customers = Customer::pluck('sap_id')->all();
-        $barges = Barge::pluck('imo')->all();
-        $ports = Port::all()->groupBy(fn (Port $port): string => $this->cleanName($port->name));
-        $locations = SupplyLocation::all()->groupBy(fn (SupplyLocation $location): string => $location->port_id.':'.$this->cleanName($location->name));
+        $customerRecords = Customer::all(['sap_id', 'name']);
+        $customers = $customerRecords->pluck('sap_id')->all();
+        $customersByName = $customerRecords->groupBy(fn (Customer $customer): string => $this->cleanName($customer->name));
+        $bargeRecords = Barge::all(['imo', 'name']);
+        $barges = $bargeRecords->pluck('imo')->all();
+        $bargesByName = $bargeRecords->groupBy(fn (Barge $barge): string => $this->cleanBargeName($barge->name));
+        $portRecords = Port::all();
+        $ports = $portRecords->groupBy(fn (Port $port): string => $this->cleanName($port->name));
+        $locationRecords = SupplyLocation::all();
+        $locations = $locationRecords->groupBy(fn (SupplyLocation $location): string => $location->port_id.':'.$this->cleanName($location->name));
+        $locationsByName = $locationRecords->groupBy(fn (SupplyLocation $location): string => $this->cleanName($location->name));
         $hasImportKeys = Schema::hasColumn('orders', 'historical_import_key');
 
         foreach ($source as $entry) {
@@ -69,11 +76,30 @@ class HistoricalOrderImportService
                     $data[$field] = null;
                 }
             }
-            foreach (['customer_sap_id', 'vessel_imo', 'barge_imo', 'bdn_number', 'order_number'] as $field) {
+            foreach (['customer_sap_id', 'vessel_imo', 'barge_imo', 'bdn_number', 'order_number', 'mobile_no'] as $field) {
                 $data[$field] = isset($data[$field]) ? (string) $data[$field] : null;
             }
             $mode = $this->cleanName((string) ($data['delivery_mode'] ?? ''));
             $data['delivery_mode'] = $mode === 'tank truck' ? 'truck' : $mode;
+            if ($data['customer_sap_id'] === null && filled($data['customer_name'] ?? null)) {
+                $matches = $customersByName->get($this->cleanName((string) $data['customer_name']));
+                if ($matches?->count() === 1) {
+                    $data['customer_sap_id'] = $matches->first()->sap_id;
+                }
+            }
+            if ($data['delivery_mode'] === 'barge' && $data['barge_imo'] === null && filled($data['barge_name'] ?? null)) {
+                $matches = $bargesByName->get($this->cleanBargeName((string) $data['barge_name']));
+                if ($matches?->count() === 1) {
+                    $data['barge_imo'] = $matches->first()->imo;
+                }
+            }
+            if (blank($data['port_name'] ?? null) && $data['delivery_mode'] === 'barge' && filled($data['supply_location_name'] ?? null)) {
+                $matches = $locationsByName->get($this->cleanName((string) $data['supply_location_name']));
+                $portIds = $matches?->pluck('port_id')->unique();
+                if ($portIds?->count() === 1) {
+                    $data['port_name'] = $portRecords->firstWhere('id', $portIds->first())?->name;
+                }
+            }
             $data['product_type'] = str_replace(' ', '_', $this->cleanName((string) ($data['product_type'] ?? '')));
             $terms = strtolower((string) ($data['credit_terms'] ?? ''));
             $data['credit_terms'] = is_numeric($terms) ? $terms.'_days' : $terms;
@@ -86,6 +112,8 @@ class HistoricalOrderImportService
                 'customer_sap_id' => ['required', 'string', Rule::in($customers)],
                 'vessel_name' => ['required', 'string', 'max:255'],
                 'vessel_imo' => ['nullable', 'string', 'max:255'],
+                'agent_name' => ['nullable', 'string', 'max:255'],
+                'mobile_no' => ['nullable', 'string', 'max:255'],
                 'port_name' => ['required', 'string', 'max:255'],
                 'supply_location_name' => ['exclude_unless:delivery_mode,barge', 'required', 'string', 'max:255'],
                 'delivery_mode' => ['required', Rule::enum(DeliveryMode::class)],
@@ -106,7 +134,10 @@ class HistoricalOrderImportService
             }
             $validator = Validator::make($data, $rules, [
                 'customer_sap_id.in' => 'Customer SAP ID '.($data['customer_sap_id'] ?? '(blank)').' was not found.',
+                'customer_sap_id.required' => 'Customer "'.($data['customer_name'] ?? '').'" could not be matched uniquely. Add a Customer SAP ID column.',
+                'barge_imo.required_if' => 'Barge "'.($data['barge_name'] ?? '').'" could not be matched uniquely. Add a Barge IMO column.',
                 'barge_imo.in' => 'Barge IMO '.($data['barge_imo'] ?? '(blank)').' was not found.',
+                'port_name.required' => 'Port could not be determined uniquely. Add a Port column for this row.',
             ]);
             if ($validator->fails()) {
                 foreach ($validator->errors()->all() as $message) {
@@ -142,6 +173,11 @@ class HistoricalOrderImportService
                 'barging_cost' => number_format((float) ($data['barging_cost_usd'] ?? 0), 2, '.', ''),
                 'agent_fees' => number_format((float) ($data['agent_fees_usd'] ?? 0), 2, '.', ''),
             ];
+            foreach (['agent_name', 'mobile_no'] as $field) {
+                if (filled($data[$field] ?? null)) {
+                    $order[$field] = $data[$field];
+                }
+            }
             $supplied = false;
             foreach (FuelGrade::keys() as $grade) {
                 $quantity = round((float) ($data[$grade.'_delivered_mt'] ?? 0), 3);
@@ -269,6 +305,11 @@ class HistoricalOrderImportService
     private function cleanName(string $value): string
     {
         return mb_strtolower(preg_replace('/\s+/', ' ', trim($value)) ?? '');
+    }
+
+    private function cleanBargeName(string $value): string
+    {
+        return preg_replace('/^mt\s+/', '', $this->cleanName($value)) ?? '';
     }
 
     /**

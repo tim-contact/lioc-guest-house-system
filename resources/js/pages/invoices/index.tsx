@@ -1,6 +1,8 @@
+import { router } from '@inertiajs/react';
 import type { CrudConfig } from '@/components/crud/crud-types';
 import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
 import type { PaginationMeta } from '@/components/pagination-controls';
+import type { SortDir } from '@/hooks/use-sortable';
 import type { ExportColumn } from '@/lib/export-xlsx';
 import { formatMoney, shortDate } from '@/lib/utils';
 import { update } from '@/routes/invoices';
@@ -21,6 +23,10 @@ interface Invoice {
 interface InvoicesIndexProps {
     invoices: PaginationMeta & {
         data: Invoice[];
+    };
+    filters: {
+        sort: keyof Invoice & string;
+        dir: SortDir;
     };
 }
 
@@ -122,14 +128,50 @@ const config: CrudConfig<Invoice> = {
     },
 };
 
-export default function InvoicesIndex({ invoices }: InvoicesIndexProps) {
+export default function InvoicesIndex({
+    invoices,
+    filters,
+}: InvoicesIndexProps) {
+    const sortKey = filters.sort;
+    const sortDir = filters.dir;
+
+    const handleSort = (key: keyof Invoice & string) => {
+        const nextDir = key === sortKey && sortDir === 'asc' ? 'desc' : 'asc';
+
+        visitInvoices(invoices.per_page, key, nextDir);
+    };
+
     return (
         <ResourceCrudPage
             rows={invoices.data}
             config={config}
             pagination={invoices}
+            sort={{ key: sortKey, direction: sortDir }}
+            onSort={handleSort}
         />
     );
+}
+
+function visitInvoices(perPage: number, sortKey: string, dir: SortDir) {
+    const params: Record<string, string> = {};
+
+    if (perPage !== 25) {
+        params.per_page = String(perPage);
+    }
+
+    if (sortKey !== 'payment_due_date') {
+        params.sort = sortKey;
+    }
+
+    if (dir !== 'asc') {
+        params.dir = dir;
+    }
+
+    router.get('/invoices', params, {
+        preserveScroll: true,
+        preserveState: true,
+        replace: true,
+    });
 }
 
 InvoicesIndex.layout = {

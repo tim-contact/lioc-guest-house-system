@@ -15,6 +15,7 @@ use App\Models\Order;
 use App\Models\Port;
 use App\Models\StockMovement;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
@@ -33,6 +34,9 @@ test('super admins can view report analytics', function () {
             ->has('summary')
             ->has('stockPosition.rows', 7)
             ->has('funnel', 3)
+            ->where('funnel.0.value', 0)
+            ->where('funnel.1.value', 0)
+            ->where('funnel.2.value', 0)
             ->has('portStatusMetrics')
             ->has('monthlyProductVolumes', 6)
             ->has('topCustomers')
@@ -98,7 +102,7 @@ test('barge drilldown uses completed BDN deliveries and agrees with utilization 
     }
 })->with([
     'current month' => ['currentMonth', 3],
-    'last thirty days' => ['last30Days', 5],
+    'last month' => ['lastMonth', 4],
     'all history' => ['all', 7],
 ]);
 
@@ -130,7 +134,7 @@ test('pending barge utilization and drilldown include all assigned pending order
             ->where('bargeUtilization.1.periods.pending.total', 1)
             ->where('bargeUtilization.2.periods.pending.total', 0)
             ->where('bargeUtilization.0.periods.currentMonth.total', 0)
-            ->where('bargeUtilization.0.periods.last30Days.total', 0));
+            ->where('bargeUtilization.0.periods.lastMonth.total', 0));
 
     $this->get(route('reports.barges.orders', ['barge' => $barge->imo, 'period' => 'pending']))
         ->assertOk()
@@ -145,6 +149,113 @@ test('pending barge utilization and drilldown include all assigned pending order
             ->where('orders.data.0.delivery_date', null)
             ->where('orders.data.0.products.mgo', '12.345'));
 });
+
+test('barge utilization product volumes follow delivery scopes and pending nominations', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    $barge = Barge::factory()->create(['imo' => '8923844']);
+    $other = Barge::factory()->create(['imo' => '9021291']);
+
+    foreach ([
+        [OrderStatus::Delivered, now(), $barge->imo, null, 2.345, 0],
+        [OrderStatus::Closed, now()->subDays(20), $barge->imo, 4.567, 5.678, 6.789],
+        [OrderStatus::Delivered, now()->subMonthsNoOverflow(2), $barge->imo, 100, 100, 100],
+        [OrderStatus::Delivered, now()->addDay(), $barge->imo, 100, 100, 100],
+        [OrderStatus::Cancelled, now(), $barge->imo, 100, 100, 100],
+        [OrderStatus::Delivered, now(), $other->imo, 100, 100, 100],
+    ] as [$status, $date, $bdnBarge, $mgo, $vlsfo, $hsfo]) {
+        $order = Order::factory()->create([
+            'barge_id' => $barge->imo,
+            'status' => $status,
+            'order_date' => now()->subDays(60),
+            'invoice_date' => now()->subDays(60),
+            'mgo_bdn_qty' => $mgo,
+            'vlsfo_bdn_qty' => $vlsfo,
+            'hsfo_bdn_qty' => $hsfo,
+            'mgo_final_qty' => 999,
+            'vlsfo_final_qty' => 999,
+            'hsfo_final_qty' => 999,
+        ]);
+        Bdn::factory()->create([
+            'order_id' => $order->id,
+            'barge_id' => $bdnBarge,
+            'delivery_date' => $date,
+            'mgo_metric_ton' => 1.234,
+            'vlsfo_metric_ton' => 99,
+            'hsfo_metric_ton' => 88,
+        ]);
+    }
+
+    foreach ([now()->subDays(60), now()->addDays(10)] as $date) {
+        Order::factory()->create([
+            'barge_id' => $barge->imo,
+            'status' => OrderStatus::Pending,
+            'order_date' => $date,
+            'mgo_final_qty' => 1.111,
+            'vlsfo_final_qty' => 2.222,
+            'hsfo_final_qty' => null,
+            'mgo_bdn_qty' => 999,
+            'vlsfo_bdn_qty' => 999,
+            'hsfo_bdn_qty' => 999,
+        ]);
+    }
+
+    $this->get(route('reports.analytics'))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('bargeUtilization.0.periods.currentMonth.products.mgo', 1.234)
+            ->where('bargeUtilization.0.periods.currentMonth.products.vlsfo', 2.345)
+            ->where('bargeUtilization.0.periods.currentMonth.products.hsfo', 0)
+            ->where('bargeUtilization.0.periods.lastMonth.products.mgo', 4.567)
+            ->where('bargeUtilization.0.periods.lastMonth.products.vlsfo', 5.678)
+            ->where('bargeUtilization.0.periods.lastMonth.products.hsfo', 6.789)
+            ->where('bargeUtilization.0.periods.pending.products.mgo', 2.222)
+            ->where('bargeUtilization.0.periods.pending.products.vlsfo', 4.444)
+            ->where('bargeUtilization.0.periods.pending.products.hsfo', 0)
+            ->where('bargeUtilization.2.periods.currentMonth.products.mgo', 0)
+            ->where('bargeUtilization.2.periods.lastMonth.products.vlsfo', 0)
+            ->where('bargeUtilization.2.periods.pending.products.hsfo', 0));
+});
+
+test('last month utilization and drilldown include exactly the previous calendar month', function (string $today) {
+    $this->travelTo(CarbonImmutable::parse($today));
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    $barge = Barge::factory()->create(['imo' => '8923844']);
+    $monthStart = now()->startOfMonth();
+    $previousStart = $monthStart->copy()->subMonth();
+
+    foreach ([
+        $previousStart->copy()->subDay(),
+        $previousStart,
+        $monthStart->copy()->subDay(),
+        $monthStart,
+    ] as $date) {
+        $order = Order::factory()->create([
+            'barge_id' => $barge->imo,
+            'status' => OrderStatus::Delivered,
+            'invoice_date' => now(),
+            'mgo_bdn_qty' => 10,
+            'vlsfo_bdn_qty' => 0,
+            'hsfo_bdn_qty' => 0,
+        ]);
+        Bdn::factory()->create([
+            'order_id' => $order->id,
+            'barge_id' => $barge->imo,
+            'delivery_date' => $date,
+        ]);
+    }
+
+    $this->get(route('reports.analytics'))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('bargeUtilization.0.periods.lastMonth.completed', 2)
+            ->where('bargeUtilization.0.periods.lastMonth.products.mgo', 20)
+            ->missing('bargeUtilization.0.periods.last30Days'));
+
+    $this->get(route('reports.barges.orders', ['barge' => $barge->imo, 'period' => 'lastMonth']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('filters.period', 'lastMonth')
+            ->where('summary.completed', 2)
+            ->where('orders.total', 2));
+})->with(['2026-01-31', '2026-03-31', '2024-03-31']);
 
 test('pending barge orders paginate and preserve their filter', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
@@ -319,11 +430,56 @@ test('barge utilization excludes pending orders and uses BDN dates instead of in
             ->where('bargeUtilization.0.ordersUrl', route('reports.barges.orders', $barge->imo))
             ->where('bargeUtilization.0.periods.currentMonth.completed', 1)
             ->where('bargeUtilization.0.periods.currentMonth.total', 1)
-            ->where('bargeUtilization.0.periods.last30Days.completed', 1)
-            ->where('bargeUtilization.0.periods.last30Days.total', 1)
+            ->where('bargeUtilization.0.periods.lastMonth.completed', 1)
+            ->where('bargeUtilization.0.periods.lastMonth.total', 1)
             ->missing('bargeUtilization.0.periods.currentMonth.pending')
             ->where('bargeUtilization.1.periods.currentMonth.total', 0)
             ->where('bargeUtilization.2.periods.currentMonth.total', 0));
+});
+
+test('enquiry funnel follows this months enquiries rather than independent order and invoice dates', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $enquiries = Enquiry::factory()->count(4)->create(['created_at' => now()->startOfMonth()]);
+    $previousEnquiry = Enquiry::factory()->create(['created_at' => now()->subMonth()]);
+
+    foreach ([OrderStatus::Pending, OrderStatus::Delivered, OrderStatus::Closed] as $index => $status) {
+        Order::factory()->create([
+            'enquiry_id' => $enquiries[$index]->id,
+            'status' => $status,
+            'order_date' => now()->subMonth(),
+            'invoice_date' => null,
+        ]);
+    }
+    Order::factory()->create([
+        'enquiry_id' => $previousEnquiry->id,
+        'status' => OrderStatus::Delivered,
+        'order_date' => now(),
+        'invoice_date' => now(),
+    ]);
+
+    $this->get(route('reports.analytics'))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('funnel.0.value', 8)
+            ->where('funnel.0.displayValue', '8')
+            ->where('funnel.1.value', 3)
+            ->where('funnel.1.displayValue', '3')
+            ->where('funnel.2.value', 2)
+            ->where('funnel.2.displayValue', '2')
+            ->where('summary.orders', 1)
+            ->where('summary.completed', 1));
+});
+
+test('enquiry funnel counts cancelled conversions without treating them as completed', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    $enquiry = Enquiry::factory()->create();
+    Order::factory()->create(['enquiry_id' => $enquiry->id, 'status' => OrderStatus::Cancelled]);
+
+    $this->get(route('reports.analytics'))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('funnel.0.value', 2)
+            ->where('funnel.1.value', 1)
+            ->where('funnel.2.value', 0));
 });
 
 test('report analytics includes enquiry to completed funnel counts', function () {
@@ -428,9 +584,9 @@ test('report analytics includes enquiry to completed funnel counts', function ()
             ->where('funnel.0.label', 'Enquiries')
             ->where('funnel.0.value', 8)
             ->where('funnel.1.label', 'Orders')
-            ->where('funnel.1.value', 3)
+            ->where('funnel.1.value', 4)
             ->where('funnel.2.label', 'Completed')
-            ->where('funnel.2.value', 1)
+            ->where('funnel.2.value', 3)
             ->where('portStatusMetrics.0.label', 'Colombo')
             ->where('portStatusMetrics.0.pendingDeliveries', 1)
             ->where('portStatusMetrics.0.completedDeliveries', 1)
