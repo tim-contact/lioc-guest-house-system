@@ -12,6 +12,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Services\OrderService;
 use App\Services\SurveyorAssignment;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -23,13 +24,25 @@ use Spatie\LaravelPdf\PdfBuilder;
 
 class BdnController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
         /** @var User $user */
         $user = request()->user();
         $assignment = SurveyorAssignment::resolve($user);
 
-        $query = Bdn::with(['order.customer', 'deliveryLocation', 'agent', 'barge'])->latest();
+        $perPage = (int) $request->input('per_page', 25);
+        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 25;
+        $vesselSearch = trim((string) $request->input('vessel', ''));
+
+        $sortKey = (string) $request->input('sort', 'created_at');
+        $direction = $request->input('dir') === 'asc' ? 'asc' : 'desc';
+        if (! in_array($sortKey, self::sortableColumns(), true)) {
+            $sortKey = 'created_at';
+            $direction = 'desc';
+        }
+
+        $query = Bdn::with(['order.customer', 'deliveryLocation', 'agent', 'barge'])
+            ->select('bdns.*');
 
         if ($user->type->value === 'surveyor') {
             if ($assignment['denied']) {
@@ -45,8 +58,14 @@ class BdnController extends Controller
             }
         }
 
-        $bdns = $query->get()
-            ->map(fn (Bdn $bdn): array => [
+        $query->when($vesselSearch !== '', fn ($query) => $query->whereHas('order', fn ($order) => $order
+            ->where('vessel_name', 'like', '%'.$vesselSearch.'%')));
+
+        self::applySort($query, $sortKey, $direction);
+
+        $bdns = $query->paginate($perPage)
+            ->withQueryString()
+            ->through(fn (Bdn $bdn): array => [
                 ...$bdn->toArray(),
                 'order_number' => $bdn->order?->order_number,
                 'customer_name' => $bdn->order?->customer?->name,
@@ -58,11 +77,68 @@ class BdnController extends Controller
 
         return Inertia::render('bdns/index', [
             'bdns' => $bdns,
+            'filters' => [
+                'vessel' => $vesselSearch,
+                'sort' => $sortKey,
+                'dir' => $direction,
+            ],
             'supplyLocationOptions' => $this->supplyLocationOptions(),
             'deliveryModeOptions' => $this->enumOptions(DeliveryMode::cases()),
             'samplingLocationOptions' => $this->enumOptions(Sampling::cases()),
             'samplingMethodOptions' => $this->enumOptions(SamplingMethod::cases()),
         ]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function sortableColumns(): array
+    {
+        return [
+            'bdn_number',
+            'order_number',
+            'customer_name',
+            'vessel_name',
+            'delivery_date',
+            'delivery_location',
+            'barge_name',
+            'agent_name',
+            'vlsfo_metric_ton',
+            'mgo_metric_ton',
+            'hsfo_metric_ton',
+            'sampling_method',
+            'created_at',
+        ];
+    }
+
+    /**
+     * Apply a user-chosen sort. Relation columns use left joins so their names
+     * can be ordered without switching to eager subqueries.
+     */
+    private static function applySort(Builder $query, string $sort, string $direction): void
+    {
+        match ($sort) {
+            'order_number', 'vessel_name' => $query
+                ->leftJoin('orders', 'orders.id', '=', 'bdns.order_id')
+                ->orderByRaw("LOWER(orders.{$sort}) {$direction} NULLS LAST"),
+            'customer_name' => $query
+                ->leftJoin('orders', 'orders.id', '=', 'bdns.order_id')
+                ->leftJoin('customers', 'orders.customer_id', '=', 'customers.sap_id')
+                ->orderByRaw("LOWER(customers.name) {$direction} NULLS LAST"),
+            'delivery_location' => $query
+                ->leftJoin('supply_locations', 'supply_locations.id', '=', 'bdns.delivery_location_id')
+                ->orderByRaw("LOWER(supply_locations.name) {$direction} NULLS LAST"),
+            'agent_name' => $query
+                ->leftJoin('agents', 'agents.id', '=', 'bdns.agent_id')
+                ->orderByRaw("LOWER(agents.name) {$direction} NULLS LAST"),
+            'barge_name' => $query
+                ->leftJoin('barges', 'barges.imo', '=', 'bdns.barge_id')
+                ->orderByRaw("LOWER(barges.name) {$direction} NULLS LAST"),
+            'bdn_number', 'sampling_method' => $query->orderByRaw("LOWER(bdns.{$sort}) {$direction} NULLS LAST"),
+            default => $query->orderByRaw("bdns.{$sort} {$direction} NULLS LAST"),
+        };
+
+        $query->orderBy('bdns.id', $direction);
     }
 
     public function ebdn(Order $order): PdfBuilder

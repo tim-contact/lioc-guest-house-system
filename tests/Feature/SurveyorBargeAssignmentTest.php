@@ -649,8 +649,8 @@ test('bdns are filtered for surveyors in index', function () {
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('bdns/index')
-            ->has('bdns', 1)
-            ->where('bdns.0.bdn_number', 'BDN-ALPHA'));
+            ->has('bdns.data', 1)
+            ->where('bdns.data.0.bdn_number', 'BDN-ALPHA'));
 });
 
 test('bdns are filtered by assigned delivery modes for surveyors in index', function () {
@@ -675,8 +675,8 @@ test('bdns are filtered by assigned delivery modes for surveyors in index', func
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('bdns/index')
-            ->has('bdns', 1)
-            ->where('bdns.0.bdn_number', 'BDN-TRUCK'));
+            ->has('bdns.data', 1)
+            ->where('bdns.data.0.bdn_number', 'BDN-TRUCK'));
 });
 
 test('privileged users see all bdns in index', function () {
@@ -696,5 +696,5 @@ test('privileged users see all bdns in index', function () {
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('bdns/index')
-            ->has('bdns', 2));
+            ->has('bdns.data', 2));
 });

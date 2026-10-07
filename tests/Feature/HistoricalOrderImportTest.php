@@ -59,6 +59,104 @@ function historicalWorkbook(string $directory, array $rows, string $sheet = 'Ord
     return $path;
 }
 
+/** @param array<int, mixed> $changes */
+function operationsWorkbook(string $directory, array $changes = [], bool $identifiers = true, bool $swapProducts = false): string
+{
+    $headers = ['NO', 'CUSTOMER VESSEL', 'CUSTOMER', 'PRODUCT', null, 'TOTAL', 'PRESENT ETA/ETB', 'TIME', 'DELIVERY LOCATION', 'MODE OF DELIVERY (Barge / TT/ PL)', 'PDT TYPE (Prod nature)', 'UNIT RATE (USD/MT)', null, 'LAYCAN', 'NOM QTY', 'AGENT NAME', 'MOBILE', 'IMO', 'DATE OF BOOKING', 'Credit period / Payment Terms (CIA not required)', 'Credit date exceed'];
+    $subheaders = array_fill(0, count($headers), null);
+    $subheaders[3] = $swapProducts ? 'LSFO' : 'MGO';
+    $subheaders[4] = $swapProducts ? 'MGO' : 'LSFO';
+    $subheaders[11] = 'MGO';
+    $subheaders[12] = 'LSFO';
+    $values = [1, 'MV Historical', 'Exact Shipping', $swapProducts ? 100 : 10.125, $swapProducts ? 10.125 : 100, 110.125, 46026, 0.5, 'JCT BERTH', 'Historic Barge', 'BONDED', 750, 500, null, 9999, 'Historical Agent', '0712345678', null, 46015, 30, null];
+    if ($identifiers) {
+        $headers[] = 'Port';
+        $headers[] = 'Customer SAP ID';
+        $values[] = 'Colombo';
+        $values[] = '00104221';
+    }
+    foreach ($changes as $column => $value) {
+        $values[$column] = $value;
+    }
+    $path = $directory.'/operations.xlsx';
+    $process = new Process(['node', '-e',
+        'const X=require("xlsx"); const w=X.utils.book_new(); const s=X.utils.aoa_to_sheet(JSON.parse(process.argv[2])); s["!merges"]=[{s:{r:0,c:3},e:{r:0,c:4}},{s:{r:0,c:11},e:{r:0,c:12}},{s:{r:2,c:0},e:{r:2,c:20}}]; X.utils.book_append_sheet(w,s,"Sheet1"); X.writeFile(w,process.argv[1]);',
+        $path, json_encode([$headers, $subheaders, ['Completed deliveries at Colombo / Galle / Hambantota'], $values], JSON_THROW_ON_ERROR),
+    ], base_path());
+    $process->mustRun();
+
+    return $path;
+}
+
+test('operations template maps merged product headers and confirmed dates', function (bool $swapProducts) {
+    $this->barge->update(['name' => 'MT Historic Barge']);
+    $path = operationsWorkbook($this->directory, swapProducts: $swapProducts);
+    $source = app(HistoricalOrderImportService::class)->read($path);
+    expect($source)->toHaveCount(1);
+    expect($source[0]['row'])->toBe(4);
+    expect($source[0]['values']['mgo_delivered_mt'])->toBe(10.125);
+    expect($source[0]['values']['vlsfo_delivered_mt'])->toBe(100);
+    expect($source[0]['values']['mgo_rate_usd_per_mt'])->toBe(750);
+    expect($source[0]['values']['vlsfo_rate_usd_per_mt'])->toBe(500);
+    $this->artisan('orders:import-history', ['file' => $path, '--fully-paid' => true])->assertSuccessful();
+    $order = Order::sole();
+    expect($order->order_date->toDateString())->toBe('2025-12-24');
+    expect($order->invoice_date->toDateString())->toBe('2026-01-04');
+    expect($order->vlsfo_final_qty)->toBe('100.000');
+    expect($order->mgo_final_qty)->toBe('10.125');
+    expect($order->invoice_value)->toBe('57593.75');
+    expect($order->agent_name)->toBe('Historical Agent');
+    expect($order->mobile_no)->toBe('0712345678');
+    expect($order->order_number)->toStartWith('HIST-ORD-');
+    expect($order->barge_id)->toBe($this->barge->imo);
+})->with([false, true]);
+
+test('operations template resolves only unique exact customer and location names', function () {
+    $this->customer->update(['name' => 'EXACT SHIPPING']);
+    $this->barge->update(['name' => 'MT Historic Barge']);
+    $path = operationsWorkbook($this->directory, identifiers: false);
+    $this->artisan('orders:import-history', ['file' => $path, '--fully-paid' => true])->assertSuccessful();
+    expect(Order::sole()->customer_id)->toBe($this->customer->sap_id);
+    expect(Order::sole()->port_id)->toBe($this->port->id);
+});
+
+test('operations template rejects ambiguous customer and supply location names', function () {
+    $this->customer->update(['name' => 'Exact Shipping']);
+    Customer::factory()->create(['name' => 'Exact Shipping']);
+    $this->barge->update(['name' => 'MT Historic Barge']);
+    $otherPort = Port::factory()->create(['name' => 'Galle']);
+    SupplyLocation::factory()->create(['port_id' => $otherPort->id, 'name' => 'JCT BERTH']);
+    $path = operationsWorkbook($this->directory, identifiers: false);
+    $this->artisan('orders:import-history', ['file' => $path, '--fully-paid' => true])
+        ->expectsOutputToContain('Add a Customer SAP ID column')
+        ->expectsOutputToContain('Add a Port column')->assertFailed();
+    expect(Order::count())->toBe(0);
+});
+
+test('operations template does not silently replace shortened customer names', function () {
+    $this->customer->update(['name' => 'Exact Shipping Ltd']);
+    $this->barge->update(['name' => 'MT Historic Barge']);
+    $path = operationsWorkbook($this->directory, identifiers: false);
+    $this->artisan('orders:import-history', ['file' => $path, '--fully-paid' => true])
+        ->expectsOutputToContain('Add a Customer SAP ID column')->assertFailed();
+    expect(Order::count())->toBe(0);
+});
+
+test('operations template resolves tt and pl without inventing barge or location', function (string $mode, string $expected) {
+    $path = operationsWorkbook($this->directory, [9 => $mode, 8 => 'Customer address']);
+    $this->artisan('orders:import-history', ['file' => $path, '--fully-paid' => true])->assertSuccessful();
+    expect(Order::sole()->delivery_mode->value)->toBe($expected);
+    expect(Order::sole()->delivery_location_id)->toBeNull();
+    expect(Order::sole()->barge_id)->toBeNull();
+})->with([['TT', 'truck'], ['PL', 'pipeline']]);
+
+test('operations template reports own bunker rows instead of silently importing or dropping them', function () {
+    $this->barge->update(['name' => 'MT Historic Barge']);
+    $path = operationsWorkbook($this->directory, [1 => 'OWN BUNKER', 18 => null, 19 => null, 11 => '-']);
+    $this->artisan('orders:import-history', ['file' => $path, '--fully-paid' => true])->assertFailed();
+    expect(Order::count())->toBe(0);
+});
+
 test('dry run reads real xlsx and changes no records', function () {
     $path = historicalWorkbook($this->directory, [$this->values]);
     $this->artisan('orders:import-history', ['file' => $path, '--fully-paid' => true, '--dry-run' => true])

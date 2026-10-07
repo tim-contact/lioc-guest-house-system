@@ -35,6 +35,8 @@ test('index lists payments with their order and customer', function () {
             ->where('payments.total', 1)
             ->where('canManagePayments', false)
             ->where('filters.search', '')
+            ->where('filters.sort', 'date')
+            ->where('filters.dir', 'desc')
             ->has('paymentTypeOptions'));
 });
 
@@ -116,6 +118,81 @@ test('index paginates payments', function () {
             ->has('payments.data', 1)
             ->where('payments.current_page', 2)
             ->where('payments.data.0.order_number', 'ORD-PAY-026'));
+});
+
+test('index sorts payments server-side by amount', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Finance]));
+
+    foreach ([800, 200, 500] as $amount) {
+        Payment::factory()->create([
+            'order_number' => Order::factory()->create()->order_number,
+            'amount' => $amount,
+        ]);
+    }
+
+    $this->get(route('payments.index', ['sort' => 'amount', 'dir' => 'asc']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('payments/index')
+            ->has('payments.data', 3)
+            ->where('payments.data.0.amount', '200.00')
+            ->where('payments.data.1.amount', '500.00')
+            ->where('payments.data.2.amount', '800.00')
+            ->where('filters.sort', 'amount')
+            ->where('filters.dir', 'asc'));
+
+    $this->get(route('payments.index', ['sort' => 'amount', 'dir' => 'desc']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('payments/index')
+            ->has('payments.data', 3)
+            ->where('payments.data.0.amount', '800.00')
+            ->where('payments.data.2.amount', '200.00'));
+});
+
+test('index sorts payments server-side by vessel name', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Finance]));
+
+    foreach (['MT Zebra', 'mt alpha', 'MT Mike'] as $vessel) {
+        Payment::factory()->create([
+            'order_number' => Order::factory()->create(['vessel_name' => $vessel])->order_number,
+        ]);
+    }
+
+    $this->get(route('payments.index', ['sort' => 'vessel_name', 'dir' => 'asc']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('payments/index')
+            ->has('payments.data', 3)
+            ->where('payments.data.0.vessel_name', 'mt alpha')
+            ->where('payments.data.1.vessel_name', 'MT Mike')
+            ->where('payments.data.2.vessel_name', 'MT Zebra')
+            ->where('filters.sort', 'vessel_name'));
+});
+
+test('index falls back to newest payment first for an unknown sort key', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Finance]));
+
+    $olderOrder = Order::factory()->create(['order_number' => 'ORD-SORT-OLD']);
+    Payment::factory()->create([
+        'order_number' => $olderOrder->order_number,
+        'date' => now()->subDays(5),
+    ]);
+
+    $newerOrder = Order::factory()->create(['order_number' => 'ORD-SORT-NEW']);
+    Payment::factory()->create([
+        'order_number' => $newerOrder->order_number,
+        'date' => now()->subDays(1),
+    ]);
+
+    $this->get(route('payments.index', ['sort' => 'not_a_column', 'dir' => 'asc']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('payments/index')
+            ->has('payments.data', 2)
+            ->where('filters.sort', 'date')
+            ->where('filters.dir', 'desc')
+            ->where('payments.data.0.order_number', 'ORD-SORT-NEW'));
 });
 
 test('guests cannot update a payment', function () {

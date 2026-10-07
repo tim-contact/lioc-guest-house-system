@@ -74,6 +74,8 @@ export interface CrudConfig<T> {
     canEdit?: boolean;
     /** Defaults to true. Set false to hide the per-row Delete button and dialog. */
     canDelete?: boolean;
+    /** Render a denser table (tighter row padding and smaller text) to fit more rows on screen. */
+    dense?: boolean;
     routes?: {
         store?: () => RouteDefinition<'post'>;
         update?: (

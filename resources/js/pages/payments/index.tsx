@@ -5,6 +5,7 @@ import type { CrudConfig } from '@/components/crud/crud-types';
 import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
 import type { PaginationMeta } from '@/components/pagination-controls';
 import { Input } from '@/components/ui/input';
+import type { SortDir } from '@/hooks/use-sortable';
 import type { ExportColumn } from '@/lib/export-xlsx';
 import { formatMoney, optionLabel, shortDate } from '@/lib/utils';
 import type { EnumOption } from '@/types';
@@ -27,6 +28,8 @@ interface PaymentsIndexProps {
     canManagePayments: boolean;
     filters: {
         search: string;
+        sort: keyof Payment & string;
+        dir: SortDir;
     };
 }
 
@@ -37,31 +40,51 @@ export default function PaymentsIndex({
 }: PaymentsIndexProps) {
     const rows = payments.data;
     const [search, setSearch] = useState(filters.search);
+    const sortKey = filters.sort;
+    const sortDir = filters.dir;
+    const filtersRef = useRef(filters);
     const didMount = useRef(false);
+
+    useEffect(() => {
+        filtersRef.current = filters;
+    }, [filters]);
+
+    const handleSort = (key: keyof Payment & string) => {
+        const nextDir = key === sortKey && sortDir === 'asc' ? 'desc' : 'asc';
+
+        router.get(
+            '/payments',
+            paymentsParams(search, payments.per_page, key, nextDir),
+            {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            },
+        );
+    };
 
     useEffect(() => {
         if (!didMount.current) {
             didMount.current = true;
+
             return;
         }
 
         const timeout = window.setTimeout(() => {
-            const query = search.trim();
-            const params: Record<string, string | number> = {};
-
-            if (query) {
-                params.search = query;
-            }
-
-            if (payments.per_page !== 25) {
-                params.per_page = payments.per_page;
-            }
-
-            router.get('/payments', params, {
-                preserveScroll: true,
-                preserveState: true,
-                replace: true,
-            });
+            router.get(
+                '/payments',
+                paymentsParams(
+                    search,
+                    payments.per_page,
+                    filtersRef.current.sort,
+                    filtersRef.current.dir,
+                ),
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    replace: true,
+                },
+            );
         }, 300);
 
         return () => window.clearTimeout(timeout);
@@ -151,8 +174,42 @@ export default function PaymentsIndex({
     };
 
     return (
-        <ResourceCrudPage rows={rows} config={config} pagination={payments} />
+        <ResourceCrudPage
+            rows={rows}
+            config={config}
+            pagination={payments}
+            sort={{ key: sortKey, direction: sortDir }}
+            onSort={handleSort}
+        />
     );
+}
+
+function paymentsParams(
+    searchText: string,
+    perPage: number,
+    sortKey: string,
+    dir: SortDir,
+): Record<string, string | number> {
+    const params: Record<string, string | number> = {};
+    const query = searchText.trim();
+
+    if (query !== '') {
+        params.search = query;
+    }
+
+    if (perPage !== 25) {
+        params.per_page = perPage;
+    }
+
+    if (sortKey !== 'date') {
+        params.sort = sortKey;
+    }
+
+    if (dir !== 'desc') {
+        params.dir = dir;
+    }
+
+    return params;
 }
 
 PaymentsIndex.layout = {
