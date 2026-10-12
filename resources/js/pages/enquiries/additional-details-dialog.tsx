@@ -119,18 +119,11 @@ export function AdditionalDetailsDialog({
                     <div className="grid gap-1">
                         <Label>Agent</Label>
                         <SearchableCombobox
-                            items={[
-                                {
-                                    value: '',
-                                    label: 'To be appointed by LIOC',
-                                    sublabel: 'Default',
-                                },
-                                ...agents.map((agent) => ({
-                                    value: String(agent.id),
-                                    label: agent.name,
-                                    sublabel: agent.address ?? '',
-                                })),
-                            ]}
+                            items={agents.map((agent) => ({
+                                value: String(agent.id),
+                                label: agent.name,
+                                sublabel: agent.address ?? '',
+                            }))}
                             value={form.data.agent_id}
                             onChange={(value) =>
                                 form.setData('agent_id', value)
