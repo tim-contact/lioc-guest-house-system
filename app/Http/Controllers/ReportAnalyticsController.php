@@ -230,10 +230,10 @@ class ReportAnalyticsController extends Controller
     private function isCurrentMonthVolumeOrder(Order $order, array $completedStatuses): bool
     {
         if ($order->status === OrderStatus::Pending) {
-            return $order->order_date?->isCurrentMonth() === true;
+            return $order->eta?->isCurrentMonth() === true;
         }
 
-        return $order->invoice_date?->isCurrentMonth() === true
+        return $order->bdn?->delivery_date?->isCurrentMonth() === true
             && in_array($order->status->value, $completedStatuses, true);
     }
 

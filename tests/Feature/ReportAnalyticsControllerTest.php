@@ -468,6 +468,68 @@ test('analytics completed card uses BDN delivery month for delivered and closed 
             ->where('summary.completionRate', 30));
 });
 
+test('analytics total volume uses pending ETA and completed BDN delivery dates', function () {
+    $this->travelTo(now()->setDate(2026, 10, 12)->startOfDay());
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $quantities = [
+        'vlsfo_final_qty' => 0,
+        'mgo_final_qty' => 0,
+        'hsfo_final_qty' => 0,
+        'vlsfo_bdn_qty' => null,
+        'mgo_bdn_qty' => null,
+        'hsfo_bdn_qty' => null,
+    ];
+
+    Order::factory()->create([
+        ...$quantities,
+        'status' => OrderStatus::Pending,
+        'order_date' => now()->subMonth(),
+        'eta' => now(),
+        'vlsfo_final_qty' => 10,
+    ]);
+    Order::factory()->create([
+        ...$quantities,
+        'status' => OrderStatus::Pending,
+        'order_date' => now(),
+        'eta' => now()->subMonth(),
+        'vlsfo_final_qty' => 100,
+    ]);
+
+    $delivered = Order::factory()->create([
+        ...$quantities,
+        'status' => OrderStatus::Delivered,
+        'invoice_date' => now()->subMonth(),
+        'vlsfo_bdn_qty' => 20,
+    ]);
+    $delivered->bdn()->create(['delivery_date' => now()->toDateString()]);
+
+    $closed = Order::factory()->create([
+        ...$quantities,
+        'status' => OrderStatus::Closed,
+        'invoice_date' => now(),
+        'vlsfo_bdn_qty' => 200,
+    ]);
+    $closed->bdn()->create(['delivery_date' => now()->subMonth()->toDateString()]);
+
+    Order::factory()->create([
+        ...$quantities,
+        'status' => OrderStatus::Delivered,
+        'invoice_date' => now(),
+        'vlsfo_bdn_qty' => 300,
+    ]);
+    Order::factory()->create([
+        ...$quantities,
+        'status' => OrderStatus::Cancelled,
+        'eta' => now(),
+        'vlsfo_final_qty' => 400,
+    ]);
+
+    $this->get(route('reports.analytics'))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('summary.currentMonthVolume', 30));
+});
+
 test('enquiry funnel follows this months enquiries rather than independent order and invoice dates', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
@@ -534,6 +596,7 @@ test('report analytics includes enquiry to completed funnel counts', function ()
         'port_id' => $port->id,
         'status' => OrderStatus::Pending,
         'order_date' => now()->startOfMonth(),
+        'eta' => now()->startOfMonth(),
         'vlsfo_final_qty' => 100,
         'mgo_final_qty' => 50,
         'hsfo_final_qty' => 0,

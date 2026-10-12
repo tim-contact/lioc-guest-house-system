@@ -292,7 +292,7 @@ test('validation errors prevent the whole workbook from importing', function (ar
     [['vlsfo_rate_usd_per_mt' => '520 + 570']],
     [['vlsfo_rate_usd_per_mt' => 0]],
     [['delivery_date' => '2024-01-01']],
-    [['currency' => 'LKR']],
+    [['currency' => 'USD']],
     [['invoice_value_usd' => 1]],
     [['settled_amount_usd' => 1]],
 ]);

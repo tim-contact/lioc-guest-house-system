@@ -319,7 +319,7 @@ export function DisputeEditDialog({
                 <FormSection title="Resolution">
                     <LabeledField
                         id="dispute-value"
-                        label="Dispute Value (LKR)"
+                        label="Dispute Value (USD)"
                         type="currency"
                         value={form.data.dispute_value}
                         onChange={(value) =>
