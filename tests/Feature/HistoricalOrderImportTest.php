@@ -60,7 +60,7 @@ function historicalWorkbook(string $directory, array $rows, string $sheet = 'Ord
 }
 
 /** @param array<int, mixed> $changes */
-function operationsWorkbook(string $directory, array $changes = [], bool $identifiers = true, bool $swapProducts = false): string
+function operationsWorkbook(string $directory, array $changes = [], bool $identifiers = true, bool $swapProducts = false, bool $alternateHeaders = false): string
 {
     $headers = ['NO', 'CUSTOMER VESSEL', 'CUSTOMER', 'PRODUCT', null, 'TOTAL', 'PRESENT ETA/ETB', 'TIME', 'DELIVERY LOCATION', 'MODE OF DELIVERY (Barge / TT/ PL)', 'PDT TYPE (Prod nature)', 'UNIT RATE (USD/MT)', null, 'LAYCAN', 'NOM QTY', 'AGENT NAME', 'MOBILE', 'IMO', 'DATE OF BOOKING', 'Credit period / Payment Terms (CIA not required)', 'Credit date exceed'];
     $subheaders = array_fill(0, count($headers), null);
@@ -75,6 +75,14 @@ function operationsWorkbook(string $directory, array $changes = [], bool $identi
         $values[] = 'Colombo';
         $values[] = '00104221';
     }
+    if ($alternateHeaders) {
+        $headers[3] = 'PRODUCT QTY (MT)';
+        $headers[9] = 'DELIVERY MODE (Barge / TT)';
+        $headers[10] = 'PDT TYPE';
+        if ($identifiers) {
+            $headers[22] = 'CUSTOMER CODE';
+        }
+    }
     foreach ($changes as $column => $value) {
         $values[$column] = $value;
     }
@@ -88,9 +96,9 @@ function operationsWorkbook(string $directory, array $changes = [], bool $identi
     return $path;
 }
 
-test('operations template maps merged product headers and confirmed dates', function (bool $swapProducts) {
+test('operations template maps merged product headers and confirmed dates', function (bool $swapProducts, bool $alternateHeaders) {
     $this->barge->update(['name' => 'MT Historic Barge']);
-    $path = operationsWorkbook($this->directory, swapProducts: $swapProducts);
+    $path = operationsWorkbook($this->directory, swapProducts: $swapProducts, alternateHeaders: $alternateHeaders);
     $source = app(HistoricalOrderImportService::class)->read($path);
     expect($source)->toHaveCount(1);
     expect($source[0]['row'])->toBe(4);
@@ -109,7 +117,7 @@ test('operations template maps merged product headers and confirmed dates', func
     expect($order->mobile_no)->toBe('0712345678');
     expect($order->order_number)->toStartWith('HIST-ORD-');
     expect($order->barge_id)->toBe($this->barge->imo);
-})->with([false, true]);
+})->with([false, true])->with([false, true]);
 
 test('operations template resolves only unique exact customer and location names', function () {
     $this->customer->update(['name' => 'EXACT SHIPPING']);
@@ -148,7 +156,7 @@ test('operations template resolves tt and pl without inventing barge or location
     expect(Order::sole()->delivery_mode->value)->toBe($expected);
     expect(Order::sole()->delivery_location_id)->toBeNull();
     expect(Order::sole()->barge_id)->toBeNull();
-})->with([['TT', 'truck'], ['PL', 'pipeline']]);
+})->with([['TT', 'truck'], ['PL', 'pipeline'], ['TRUCKS', 'truck'], ['PIPE LINE', 'pipeline']]);
 
 test('operations template reports own bunker rows instead of silently importing or dropping them', function () {
     $this->barge->update(['name' => 'MT Historic Barge']);

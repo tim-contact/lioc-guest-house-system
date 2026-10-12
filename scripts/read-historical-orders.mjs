@@ -8,6 +8,16 @@ const cleanHeader = (value) =>
 const empty = (value) =>
     value === null || value === undefined || String(value).trim() === '';
 
+function operationsHeaderLabel(value) {
+    const label = cleanHeader(value);
+    return (
+        {
+            'product qty (mt)': 'product',
+            'customer code': 'customer sap id',
+        }[label] ?? label
+    );
+}
+
 function dateValue(value, workbook, row, field) {
     if (typeof value !== 'number') return value;
     const date = XLSX.SSF.parse_date_code(value, {
@@ -19,7 +29,7 @@ function dateValue(value, workbook, row, field) {
 
 function operationsHeaderIndex(cells) {
     return cells.slice(0, 20).findIndex((row) => {
-        const labels = row.map(cleanHeader);
+        const labels = row.map(operationsHeaderLabel);
         return [
             'customer vessel',
             'customer',
@@ -40,7 +50,7 @@ function readOperations(sheet, cells, headerIndex, workbook) {
             }
         }
     }
-    const labels = headers.map(cleanHeader);
+    const labels = headers.map(operationsHeaderLabel);
     const subheaders = (cells[headerIndex + 1] ?? []).map(cleanHeader);
     const columns = {};
     const singleColumns = {
@@ -63,7 +73,11 @@ function readOperations(sheet, cells, headerIndex, workbook) {
     };
     for (const [column, label] of labels.entries()) {
         let field = singleColumns[label];
-        if (label.startsWith('mode of delivery')) field = 'delivery_mode';
+        if (
+            label.startsWith('mode of delivery') ||
+            label.startsWith('delivery mode')
+        )
+            field = 'delivery_mode';
         if (label.startsWith('pdt type')) field = 'product_type';
         if (label.startsWith('credit period / payment terms'))
             field = 'credit_terms';
@@ -127,9 +141,9 @@ function readOperations(sheet, cells, headerIndex, workbook) {
             ]),
         );
         const mode = cleanHeader(row.delivery_mode);
-        if (['tt', 'truck', 'tank truck'].includes(mode))
+        if (['tt', 'truck', 'trucks', 'tank truck'].includes(mode))
             row.delivery_mode = 'truck';
-        else if (['pl', 'pipeline'].includes(mode))
+        else if (['pl', 'pipeline', 'pipe line'].includes(mode))
             row.delivery_mode = 'pipeline';
         else if (mode && mode !== 'barge') {
             row.delivery_mode = 'barge';

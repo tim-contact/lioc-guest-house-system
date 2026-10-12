@@ -37,6 +37,63 @@ test('operations users can view the stock movement report', function () {
             ->has('report.barges', 0));
 });
 
+test('barge reports expose individual delivery orders without changing daily balances', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Operations]));
+    $port = Port::factory()->create();
+    $barge = Barge::factory()->create();
+    StockMovement::factory()->create([
+        'port_id' => $port->id,
+        'barge_id' => $barge->imo,
+        'movement_date' => '2026-08-01',
+        'movement_scope' => StockMovementScope::Barge,
+        'movement_type' => StockMovementType::Loading,
+        'mgo_qty' => 100,
+        'vlsfo_qty' => 200,
+        'hsfo_qty' => 0,
+    ]);
+    foreach ([['ORD-ROW-1', 10.125], ['ORD-ROW-2', 20.250]] as [$number, $quantity]) {
+        $order = Order::factory()->create([
+            'port_id' => $port->id,
+            'barge_id' => $barge->imo,
+            'order_number' => $number,
+            'vessel_name' => 'MV Same Vessel',
+            'status' => OrderStatus::Delivered,
+            'mgo_bdn_qty' => $quantity,
+            'vlsfo_bdn_qty' => null,
+            'hsfo_bdn_qty' => 0,
+        ]);
+        Bdn::factory()->create([
+            'order_id' => $order->id,
+            'barge_id' => $barge->imo,
+            'delivery_date' => '2026-08-01',
+            'mgo_metric_ton' => 999,
+            'vlsfo_metric_ton' => 5,
+            'hsfo_metric_ton' => 999,
+        ]);
+    }
+
+    $this->get(route('stock-movements.index', [
+        'port_id' => $port->id,
+        'date_from' => '2026-08-01',
+        'date_to' => '2026-08-01',
+    ]))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('report.barges', 1)
+            ->has('report.barges.0.delivery_orders', 2)
+            ->where('report.barges.0.delivery_orders.0.order_number', 'ORD-ROW-1')
+            ->where('report.barges.0.delivery_orders.1.order_number', 'ORD-ROW-2')
+            ->where('report.barges.0.delivery_orders.0.vessel_name', 'MV Same Vessel')
+            ->where('report.barges.0.delivery_orders.1.vessel_name', 'MV Same Vessel')
+            ->where('report.barges.0.delivery_orders.0.quantities.mgo', 10.125)
+            ->where('report.barges.0.delivery_orders.1.quantities.mgo', 20.25)
+            ->where('report.barges.0.delivery_orders.0.quantities.vlsfo', 5)
+            ->where('report.barges.0.delivery_orders.0.quantities.hsfo', 0)
+            ->where('report.barges.0.deliveries.mgo', 30.375)
+            ->where('report.barges.0.closing.mgo', 69.625)
+            ->where('report.barges.0.closing.vlsfo', 190)
+            ->where('report.totals.barge_closing.mgo', 69.625));
+});
+
 test('stock movement form only exposes operational movement types', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::Operations]));
 

@@ -110,6 +110,10 @@ class StockMovementService
                 $bargeOpening = $this->sumManualMovements($bargeMovements, $day, StockMovementScope::Barge, [StockMovementType::Opening], $bargeId);
                 $bargeLoading = $this->sumManualMovements($bargeMovements, $day, StockMovementScope::Barge, [StockMovementType::Loading], $bargeId);
                 $bargeDeliveries = $this->sumDeliveries($deliveries, $day, $bargeId);
+                $dayDeliveries = $deliveries
+                    ->filter(fn (Bdn $bdn): bool => $bdn->delivery_date?->isSameDay($day) === true
+                        && ($bdn->barge_id ?? $bdn->order?->barge_id) === $bargeId)
+                    ->sortBy('id');
 
                 foreach ($products as $product) {
                     $bargeBalances[$bargeId][$product] += $bargeOpening[$product]
@@ -121,14 +125,20 @@ class StockMovementService
                     'date' => $day->toDateString(),
                     'barge_id' => $bargeId,
                     'barge_name' => $bargeNames[$bargeId] ?? $bargeId,
-                    'vessel_names' => $deliveries
-                        ->filter(fn (Bdn $bdn): bool => $bdn->delivery_date?->isSameDay($day) === true
-                            && ($bdn->barge_id ?? $bdn->order?->barge_id) === $bargeId)
+                    'vessel_names' => $dayDeliveries
                         ->map(fn (Bdn $bdn): ?string => $bdn->order?->vessel_name)
                         ->filter(fn (?string $name): bool => filled($name))
                         ->unique()
                         ->values()
                         ->all(),
+                    'delivery_orders' => $dayDeliveries->map(fn (Bdn $bdn): array => [
+                        'id' => $bdn->id,
+                        'order_number' => $bdn->order?->order_number,
+                        'vessel_name' => $bdn->order?->vessel_name,
+                        'quantities' => collect($products)->mapWithKeys(fn (string $product): array => [
+                            $product => (float) ($bdn->order?->{"{$product}_bdn_qty"} ?? $bdn->{"{$product}_metric_ton"} ?? 0),
+                        ])->all(),
+                    ])->values()->all(),
                     'opening' => $opening,
                     'opening_entries' => $bargeOpening,
                     'loadings' => $bargeLoading,

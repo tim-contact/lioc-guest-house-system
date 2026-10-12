@@ -55,6 +55,12 @@ interface BargeRow {
     barge_id: string;
     barge_name: string;
     vessel_names: string[];
+    delivery_orders: {
+        id: number;
+        order_number: string | null;
+        vessel_name: string | null;
+        quantities: ProductTotals;
+    }[];
     opening: ProductTotals;
     opening_entries: ProductTotals;
     loadings: ProductTotals;
@@ -1146,8 +1152,67 @@ function BargeReportFilter({
     );
 }
 
+interface BargeMovementRow extends BargeRow {
+    key: string;
+    order_number: string;
+    vessel_name: string | null;
+}
+
+function bargeMovementRows(
+    rows: BargeRow[],
+    bargeId: string,
+): BargeMovementRow[] {
+    return rows
+        .filter((row) => String(row.barge_id) === bargeId)
+        .flatMap((row) => {
+            const movements: BargeMovementRow[] = [];
+            let balance = addTotals(row.opening, row.opening_entries);
+            const hasLoading = PRODUCTS.some(
+                (product) => row.loadings[product.key] !== 0,
+            );
+
+            if (hasLoading || row.delivery_orders.length === 0) {
+                const closing = addTotals(balance, row.loadings);
+                movements.push({
+                    ...row,
+                    key: `${row.date}-${row.barge_id}-loading`,
+                    order_number: hasLoading
+                        ? 'Terminal loading'
+                        : 'Opening balance',
+                    vessel_name: null,
+                    opening: balance,
+                    opening_entries: zeroTotals(),
+                    deliveries: zeroTotals(),
+                    closing,
+                });
+                balance = closing;
+            }
+
+            row.delivery_orders.forEach((delivery, index) => {
+                const closing =
+                    index === row.delivery_orders.length - 1
+                        ? row.closing
+                        : subtractTotals(balance, delivery.quantities);
+                movements.push({
+                    ...row,
+                    key: `${row.date}-${row.barge_id}-${delivery.id}`,
+                    order_number: delivery.order_number ?? '-',
+                    vessel_name: delivery.vessel_name,
+                    opening: balance,
+                    opening_entries: zeroTotals(),
+                    loadings: zeroTotals(),
+                    deliveries: delivery.quantities,
+                    closing,
+                });
+                balance = closing;
+            });
+
+            return movements;
+        });
+}
+
 function BargeTable({ rows, bargeId }: { rows: BargeRow[]; bargeId: string }) {
-    const filteredRows = rows.filter((row) => String(row.barge_id) === bargeId);
+    const filteredRows = bargeMovementRows(rows, bargeId);
 
     return (
         <TableFrame>
@@ -1155,6 +1220,7 @@ function BargeTable({ rows, bargeId }: { rows: BargeRow[]; bargeId: string }) {
                 <TableHeader>
                     <TableRow>
                         <TableHead rowSpan={2}>Date</TableHead>
+                        <TableHead rowSpan={2}>Order / Movement</TableHead>
                         <TableHead rowSpan={2}>Vessel</TableHead>
                         {PRODUCTS.map((product) => (
                             <TableHead
@@ -1183,16 +1249,15 @@ function BargeTable({ rows, bargeId }: { rows: BargeRow[]; bargeId: string }) {
                 </TableHeader>
                 <TableBody>
                     {filteredRows.map((row) => (
-                        <TableRow key={`${row.date}-${row.barge_id}`}>
+                        <TableRow key={row.key}>
                             <TableCell className="font-semibold whitespace-nowrap text-[#172033]">
                                 {row.date}
                             </TableCell>
+                            <TableCell className="text-xs font-semibold whitespace-nowrap text-[#172033]">
+                                {row.order_number}
+                            </TableCell>
                             <TableCell className="max-w-64 min-w-40 text-sm whitespace-normal text-slate-900">
-                                {row.vessel_names.length > 0
-                                    ? row.vessel_names.map((name) => (
-                                          <div key={name}>{name}</div>
-                                      ))
-                                    : '—'}
+                                {row.vessel_name ?? '—'}
                             </TableCell>
                             {PRODUCTS.map((product) => (
                                 <BargeProductCells
@@ -1203,7 +1268,7 @@ function BargeTable({ rows, bargeId }: { rows: BargeRow[]; bargeId: string }) {
                             ))}
                         </TableRow>
                     ))}
-                    {filteredRows.length === 0 && <EmptyRow colSpan={11} />}
+                    {filteredRows.length === 0 && <EmptyRow colSpan={12} />}
                 </TableBody>
             </Table>
         </TableFrame>
