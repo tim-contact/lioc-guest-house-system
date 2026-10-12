@@ -465,7 +465,8 @@ test('analytics completed card uses BDN delivery month for delivered and closed 
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('summary.orders', 10)
             ->where('summary.completed', 3)
-            ->where('summary.completionRate', 30));
+            ->missing('summary.conversionRate')
+            ->missing('summary.completionRate'));
 });
 
 test('analytics total volume uses pending ETA and completed BDN delivery dates', function () {
@@ -670,8 +671,6 @@ test('report analytics includes enquiry to completed funnel counts', function ()
             ->where('summary.enquiries', 8)
             ->where('summary.orders', 3)
             ->where('summary.completed', 1)
-            ->where('summary.conversionRate', 37.5)
-            ->where('summary.completionRate', 33.3)
             ->where('summary.currentMonthVolume', 375)
             ->where('monthlyProductVolumes.5.vlsfo', 300)
             ->where('monthlyProductVolumes.5.hsfo', 25)
