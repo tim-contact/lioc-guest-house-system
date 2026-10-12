@@ -72,12 +72,15 @@ test('operations includes assigned barge names and vessel IMOs for pending and c
     $barge = Barge::factory()->create(['name' => 'MT Assigned Barge']);
 
     foreach ([OrderStatus::Pending, OrderStatus::Delivered] as $status) {
-        Order::factory()->create([
+        $order = Order::factory()->create([
             'status' => $status,
             'invoice_date' => now(),
             'barge_id' => $barge->imo,
             'vessel_id' => '1234567',
         ]);
+        if ($status === OrderStatus::Delivered) {
+            $order->bdn()->create(['delivery_date' => now()->toDateString()]);
+        }
     }
 
     $this->get(route('operations'))->assertOk()
@@ -95,13 +98,14 @@ test('index exposes last thirty days completed orders with their port and final 
 
     $port = Port::factory()->create(['name' => 'Galle']);
 
-    Order::factory()->create([
+    $order = Order::factory()->create([
         'port_id' => $port->id,
         'status' => OrderStatus::Delivered,
         'invoice_date' => now(),
         'vlsfo_final_qty' => 812.5,
         'vlsfo_bdn_qty' => 799.75,
     ]);
+    $order->bdn()->create(['delivery_date' => now()->toDateString()]);
 
     $this->get(route('operations'))
         ->assertOk()

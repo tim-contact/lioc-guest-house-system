@@ -29,7 +29,7 @@ class OperationController extends Controller
 
         $pendingOrders = OrderService::pending()->load('barge')->map($mapOrder);
 
-        $completedOrders = OrderService::completedWithin(30, keepOpenDisputes: true)->load('barge')->map($mapOrder);
+        $completedOrders = OrderService::completedWithin(30, keepOpenDisputes: true, useBdnDeliveryDate: true)->load('barge')->map($mapOrder);
 
         return Inertia::render('operations/dashboard', [
             'pendingOrders' => $pendingOrders,
