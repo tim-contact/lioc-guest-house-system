@@ -1,4 +1,4 @@
-import { ChevronDown, Pencil } from 'lucide-react';
+import { ChevronDown, Download, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { SortableHead } from '@/components/sortable-head';
 import { TableFrame } from '@/components/table-frame';
@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSortable } from '@/hooks/use-sortable';
 import { FUEL_GRADES } from '@/lib/domain';
 import { shortDate } from '@/lib/utils';
+import { ebdn } from '@/routes/bdns';
 
 export const PORTS = ['Colombo', 'Trincomalee', 'Galle', 'Hambantota'] as const;
 
@@ -52,6 +53,8 @@ export interface OrderRow {
     compliance_checked?: boolean;
     nomination_received?: boolean;
     eta: string | null;
+    delivery_date?: string | null;
+    has_bdn?: boolean;
     laycan_from: string | null;
     status: string;
 }
@@ -238,15 +241,26 @@ function PortTable<T extends OrderRow>({
     statusMarkers: OrderStatusMarker[];
     showOperationsDetails: boolean;
 }) {
-    const { sortKey, sortDir, handleSort, sorted } = useSortable(rows, 'eta');
-    const hasActions = actions.length > 0;
+    const dateKey = quantitySource === 'bdn' ? 'delivery_date' : 'eta';
+    const { sortKey, sortDir, handleSort, sorted } = useSortable(rows, dateKey);
+    const hasActions =
+        actions.length > 0 ||
+        (quantitySource === 'bdn' && rows.some((row) => row.has_bdn));
+    const baseColumns: Column[] = COLUMNS.map((column) =>
+        column.sortKey === 'eta'
+            ? {
+                  header: quantitySource === 'bdn' ? 'Delivery date' : 'ETA',
+                  sortKey: dateKey,
+              }
+            : column,
+    );
     const columns: Column[] = showOperationsDetails
         ? [
-              ...COLUMNS.slice(0, 2),
+              ...baseColumns.slice(0, 2),
               { header: 'Barge', sortKey: 'barge_name' },
-              ...COLUMNS.slice(2),
+              ...baseColumns.slice(2),
           ]
-        : COLUMNS;
+        : baseColumns;
 
     return (
         <TableFrame className="rounded-[14px] border-[#E3EAF2]">
@@ -323,11 +337,41 @@ function PortTable<T extends OrderRow>({
                                 </TableCell>
                             ))}
                             <TableCell className="px-3 py-3 text-[#334155] tabular-nums">
-                                {shortDate(row.eta ?? row.laycan_from)}
+                                {shortDate(
+                                    quantitySource === 'bdn'
+                                        ? (row.delivery_date ?? null)
+                                        : (row.eta ?? row.laycan_from),
+                                )}
                             </TableCell>
                             {hasActions && (
                                 <TableCell className="px-3 py-3 text-right">
                                     <div className="flex justify-end gap-2">
+                                        {quantitySource === 'bdn' &&
+                                            row.has_bdn && (
+                                                <Button
+                                                    asChild
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="size-8 shrink-0"
+                                                >
+                                                    <a
+                                                        href={
+                                                            ebdn(row.id, {
+                                                                query: {
+                                                                    download: true,
+                                                                },
+                                                            }).url
+                                                        }
+                                                        title="Download eBDN"
+                                                        aria-label="Download eBDN"
+                                                    >
+                                                        <Download
+                                                            className="size-4"
+                                                            aria-hidden="true"
+                                                        />
+                                                    </a>
+                                                </Button>
+                                            )}
                                         {actions.map((action, index) => (
                                             <Button
                                                 key={index}

@@ -7,6 +7,7 @@ use App\Enums\FuelGrade;
 use App\Enums\OrderStatus;
 use App\Enums\Sampling;
 use App\Enums\SamplingMethod;
+use App\Enums\UserType;
 use App\Models\Bdn;
 use App\Models\Order;
 use App\Models\User;
@@ -143,7 +144,14 @@ class BdnController extends Controller
 
     public function ebdn(Order $order): PdfBuilder
     {
-        SurveyorAssignment::authorizeOrder(request()->user(), $order);
+        $user = request()->user();
+
+        if (in_array($user->type, [UserType::Sales, UserType::Operations], true)) {
+            abort_unless(in_array($order->status, OrderStatus::completedStatuses(), true), 403);
+            abort_unless($order->bdn()->exists(), 404);
+        } else {
+            SurveyorAssignment::authorizeOrder($user, $order);
+        }
 
         $order->load(['port', 'bdn.deliveryLocation', 'bdn.agent', 'bdn.barge']);
         $bdn = $order->bdn;
@@ -158,7 +166,8 @@ class BdnController extends Controller
         ])
             ->format('a4')
             ->margins(20, 12, 20, 12)
-            ->name("eBDN-{$order->order_number}.pdf");
+            ->name("eBDN-{$order->order_number}.pdf")
+            ->when(request()->boolean('download'), fn (PdfBuilder $pdf): PdfBuilder => $pdf->download());
     }
 
     /**

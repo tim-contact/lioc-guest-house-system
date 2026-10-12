@@ -25,7 +25,7 @@ class OrderService
      */
     public static function pending(?int $dueWithinDays = null): Collection
     {
-        return Order::with(['customer', 'port', 'deliveryLocation'])
+        return Order::with(['customer', 'port', 'deliveryLocation', 'bdn'])
             ->whereIn('status', OrderStatus::pendingStatuses())
             ->when($dueWithinDays !== null, fn ($query) => $query->where(
                 fn ($due) => $due->whereNull('eta')
@@ -46,7 +46,7 @@ class OrderService
      */
     public static function completedWithin(int $days = 30, bool $keepOpenDisputes = false): Collection
     {
-        return Order::with(['customer', 'port', 'deliveryLocation'])
+        return Order::with(['customer', 'port', 'deliveryLocation', 'bdn'])
             ->whereIn('status', OrderStatus::completedStatuses())
             ->where(fn ($query) => $query
                 ->where('invoice_date', '>=', Carbon::now()->subDays($days))
@@ -71,7 +71,7 @@ class OrderService
     {
         $month = Carbon::today();
 
-        return Order::with(['customer', 'port', 'deliveryLocation'])
+        return Order::with(['customer', 'port', 'deliveryLocation', 'bdn'])
             ->whereIn('status', OrderStatus::completedStatuses())
             ->where(fn ($query) => $query
                 ->whereBetween('invoice_date', [
@@ -166,6 +166,8 @@ class OrderService
             'pic' => $order->pic,
             'mobile_no' => $order->mobile_no,
             'eta' => $order->eta,
+            'delivery_date' => $order->bdn?->delivery_date?->toDateString(),
+            'has_bdn' => $order->bdn !== null,
             'etb' => $order->etb,
             'etd' => $order->etd,
             'ata' => $order->ata,

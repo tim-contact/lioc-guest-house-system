@@ -517,6 +517,30 @@ test('guests are redirected from the ebdn download', function () {
     $this->get(route('bdns.ebdn', $order))->assertRedirect(route('login'));
 });
 
+test('sales and operations can download an existing completed order ebdn', function (UserType $role) {
+    $this->actingAs(User::factory()->create(['type' => $role]));
+    Pdf::fake();
+    $order = Order::factory()->create(['status' => OrderStatus::Delivered]);
+    $order->bdn()->create(['delivery_date' => now()->toDateString()]);
+
+    $this->get(route('bdns.ebdn', ['order' => $order, 'download' => true]))->assertOk();
+
+    Pdf::assertRespondedWithPdf(fn (PdfBuilder $pdf): bool => $pdf->viewName === 'pdf.bdn'
+        && $pdf->isDownload()
+        && $pdf->downloadName === "eBDN-{$order->order_number}.pdf");
+})->with([UserType::Sales, UserType::Operations]);
+
+test('sales and operations cannot download pending or missing bdns', function (UserType $role) {
+    $this->actingAs(User::factory()->create(['type' => $role]));
+    Pdf::fake();
+    $pending = Order::factory()->create(['status' => OrderStatus::Pending]);
+    $pending->bdn()->create(['delivery_date' => now()->toDateString()]);
+    $missing = Order::factory()->create(['status' => OrderStatus::Delivered]);
+
+    $this->get(route('bdns.ebdn', $pending))->assertForbidden();
+    $this->get(route('bdns.ebdn', $missing))->assertNotFound();
+})->with([UserType::Sales, UserType::Operations]);
+
 test('ebdn responds with a pdf for the order even with no bdn yet', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
     Pdf::fake();

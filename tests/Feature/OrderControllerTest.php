@@ -118,6 +118,36 @@ test('sales and operations show rolling thirty day completed orders and retain o
                 === ['MV Old Open Dispute', 'MV Previous Month Recent', 'MV Today']));
 })->with(['sales' => 'orders', 'operations' => 'operations']);
 
+test('sales and operations expose BDN delivery dates without substituting ETA', function (string $routeName) {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $delivered = Order::factory()->create([
+        'status' => OrderStatus::Delivered,
+        'invoice_date' => now(),
+        'eta' => now()->subDays(5),
+    ]);
+    $delivered->bdn()->create([
+        'delivery_date' => now()->subDays(2)->toDateString(),
+    ]);
+    $missingDate = Order::factory()->create(['status' => OrderStatus::Delivered, 'invoice_date' => now()]);
+    $pending = Order::factory()->create(['status' => OrderStatus::Pending, 'eta' => now()->addDay()->startOfSecond()]);
+
+    $this->get(route($routeName))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('completedOrders', 2)
+            ->where('completedOrders', function ($orders) use ($delivered, $missingDate): bool {
+                $rows = collect($orders)->keyBy('id');
+
+                return $rows[$delivered->id]['delivery_date'] === now()->subDays(2)->toDateString()
+                    && $rows[$delivered->id]['has_bdn'] === true
+                    && $rows[$missingDate->id]['delivery_date'] === null
+                    && $rows[$missingDate->id]['has_bdn'] === false;
+            })
+            ->where('pendingOrders.0.id', $pending->id)
+            ->where('pendingOrders.0.delivery_date', null)
+            ->where('pendingOrders.0.eta', $pending->eta->toJSON()));
+})->with(['sales' => 'orders', 'operations' => 'operations']);
+
 test('old delivered orders stay on the completed list while a dispute is open', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
