@@ -107,8 +107,11 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::patch('surveyor/{order}/complete', [SurveyingController::class, 'complete'])->name('surveyor.complete');
         Route::put('surveyor/{order}/bdn', [BdnController::class, 'update'])->name('surveyor.bdn.update');
         Route::get('bdns', [BdnController::class, 'index'])->name('bdns.index');
-        Route::get('bdns/{order}/ebdn', [BdnController::class, 'ebdn'])->name('bdns.ebdn');
     });
+
+    Route::get('bdns/{order}/ebdn', [BdnController::class, 'ebdn'])
+        ->middleware('role:super_admin,master,surveyor,sales,operations')
+        ->name('bdns.ebdn');
 
     // --- Finance section: super_admin, master, finance ---
     Route::middleware('role:super_admin,master,finance')->group(function () {
