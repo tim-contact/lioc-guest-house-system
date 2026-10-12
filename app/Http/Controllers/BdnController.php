@@ -147,7 +147,7 @@ class BdnController extends Controller
         $user = request()->user();
 
         if (in_array($user->type, [UserType::Sales, UserType::Operations], true)) {
-            abort_unless(in_array($order->status, OrderStatus::completedStatuses(), true), 403);
+            abort_unless(in_array($order->status, [OrderStatus::Delivered, OrderStatus::Closed], true), 403);
             abort_unless($order->bdn()->exists(), 404);
         } else {
             SurveyorAssignment::authorizeOrder($user, $order);
