@@ -9,7 +9,6 @@ import {
     Clock3,
     FileText,
     Ship,
-    TrendingUp,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
@@ -125,8 +124,6 @@ type Summary = {
     enquiries: number;
     orders: number;
     completed: number;
-    conversionRate: number;
-    completionRate: number;
     currentMonthVolume: number;
     invoiceValue: number;
     amountReceived: number;
@@ -318,13 +315,8 @@ function KpiCard({
 }
 
 function AnalyticsKpiGrid({ summary }: { summary: Summary }) {
-    const orderSupport =
-        summary.enquiries > 0
-            ? `${summary.conversionRate}% of enquiries`
-            : undefined;
-
     return (
-        <section className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        <section className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
             <KpiCard
                 icon={FileText}
                 label="Enquiries Received"
@@ -334,14 +326,12 @@ function AnalyticsKpiGrid({ summary }: { summary: Summary }) {
             <KpiCard
                 icon={Ship}
                 label="Orders Confirmed"
-                support={orderSupport}
                 tone="bg-indigo-50 text-indigo-600"
                 value={compactNumber.format(summary.orders)}
             />
             <KpiCard
                 icon={CheckCircle2}
                 label="Completed Orders"
-                support={`${summary.completionRate}% completion`}
                 tone="bg-teal-50 text-teal-600"
                 value={compactNumber.format(summary.completed)}
             />
@@ -357,12 +347,6 @@ function AnalyticsKpiGrid({ summary }: { summary: Summary }) {
                 label="Outstandings"
                 tone="bg-amber-50 text-amber-600"
                 value={money.format(summary.outstanding)}
-            />
-            <KpiCard
-                icon={TrendingUp}
-                label="Conversion Rate"
-                tone="bg-emerald-50 text-emerald-600"
-                value={`${summary.conversionRate}%`}
             />
         </section>
     );

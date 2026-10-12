@@ -61,8 +61,6 @@ class ReportAnalyticsController extends Controller
                 'enquiries' => $currentMonthEnquiryCount,
                 'orders' => $currentMonthOrderCount,
                 'completed' => $currentMonthCompletedCount,
-                'conversionRate' => $this->rate($currentMonthOrderCount, $currentMonthEnquiryCount),
-                'completionRate' => $this->rate($currentMonthCompletedCount, $currentMonthOrderCount),
                 'currentMonthVolume' => $this->totalProductVolume($currentMonthVolumeOrders),
                 'invoiceValue' => round((float) $orders->sum('invoice_value'), 2),
                 'amountReceived' => round((float) $orders->sum('amount_received'), 2),
@@ -213,15 +211,6 @@ class ReportAnalyticsController extends Controller
                     ])->all(),
                 ]),
         ]);
-    }
-
-    private function rate(int $part, int $total): float
-    {
-        if ($total === 0) {
-            return 0;
-        }
-
-        return round(($part / $total) * 100, 1);
     }
 
     /**
