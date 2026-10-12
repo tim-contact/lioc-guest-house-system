@@ -437,6 +437,37 @@ test('barge utilization excludes pending orders and uses BDN dates instead of in
             ->where('bargeUtilization.2.periods.currentMonth.total', 0));
 });
 
+test('analytics completed card uses BDN delivery month for delivered and closed orders', function () {
+    $this->travelTo(now()->setDate(2026, 10, 12)->startOfDay());
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    foreach ([
+        [OrderStatus::Delivered, '2026-10-01', '2026-09-30'],
+        [OrderStatus::Closed, '2026-10-31', null],
+        [OrderStatus::Delivered, '2026-10-12', null],
+        [OrderStatus::Delivered, '2026-09-30', '2026-10-12'],
+        [OrderStatus::Closed, '2026-11-01', '2026-10-12'],
+        [OrderStatus::Delivered, '2025-10-12', '2026-10-12'],
+        [OrderStatus::Delivered, null, '2026-10-12'],
+        [OrderStatus::Pending, '2026-10-12', '2026-10-12'],
+        [OrderStatus::Cancelled, '2026-10-12', '2026-10-12'],
+    ] as [$status, $deliveryDate, $invoiceDate]) {
+        $order = Order::factory()->create([
+            'status' => $status,
+            'invoice_date' => $invoiceDate,
+            'order_date' => now(),
+        ]);
+        $order->bdn()->create(['delivery_date' => $deliveryDate]);
+    }
+    Order::factory()->create(['status' => OrderStatus::Delivered, 'invoice_date' => now(), 'order_date' => now()]);
+
+    $this->get(route('reports.analytics'))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('summary.orders', 10)
+            ->where('summary.completed', 3)
+            ->where('summary.completionRate', 30));
+});
+
 test('enquiry funnel follows this months enquiries rather than independent order and invoice dates', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
@@ -451,12 +482,13 @@ test('enquiry funnel follows this months enquiries rather than independent order
             'invoice_date' => null,
         ]);
     }
-    Order::factory()->create([
+    $completedOrder = Order::factory()->create([
         'enquiry_id' => $previousEnquiry->id,
         'status' => OrderStatus::Delivered,
         'order_date' => now(),
         'invoice_date' => now(),
     ]);
+    $completedOrder->bdn()->create(['delivery_date' => now()->toDateString()]);
 
     $this->get(route('reports.analytics'))->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
@@ -528,6 +560,7 @@ test('report analytics includes enquiry to completed funnel counts', function ()
         'invoice_value' => 2000,
         'amount_received' => 2000,
     ]);
+    $deliveredOrder->bdn()->create(['delivery_date' => now()->startOfMonth()->toDateString()]);
     $closedOrder = Order::factory()->create([
         'enquiry_id' => $enquiries[2]->id,
         'customer_id' => $customer->sap_id,

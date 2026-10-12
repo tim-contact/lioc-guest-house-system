@@ -247,7 +247,7 @@ class ReportAnalyticsController extends Controller
      */
     private function isCurrentMonthCompletedOrder(Order $order, array $completedStatuses): bool
     {
-        return $order->invoice_date?->isCurrentMonth() === true
+        return $order->bdn?->delivery_date?->isCurrentMonth() === true
             && in_array($order->status->value, $completedStatuses, true);
     }
 

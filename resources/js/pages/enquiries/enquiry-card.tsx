@@ -831,6 +831,11 @@ export function EnquiryCard({
                         </Badge>
                     </div>
                 </div>
+                {enquiry.sanctions_screening_status === 'not_listed' && (
+                    <p className="mt-2 text-xs font-medium text-teal-700">
+                        Not mentioned in the OFAC sanction list
+                    </p>
+                )}
             </CardHeader>
 
             <CardContent className="relative z-[1] flex flex-col gap-5">
