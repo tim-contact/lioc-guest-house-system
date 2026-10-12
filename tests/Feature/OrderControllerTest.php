@@ -93,6 +93,8 @@ test('sales and operations show rolling thirty day completed orders and retain o
         ['MV Today', OrderStatus::Delivered, 0],
         ['MV Previous Month Recent', OrderStatus::Delivered, 29],
         ['MV Boundary', OrderStatus::Delivered, 30],
+        ['MV Closed Recent', OrderStatus::Closed, 10],
+        ['MV Closed Outside Window', OrderStatus::Closed, 31],
         ['MV Outside Window', OrderStatus::Delivered, 31],
         ['MV Future Delivery', OrderStatus::Delivered, -1],
         ['MV Pending', OrderStatus::Pending, 0],
@@ -115,6 +117,13 @@ test('sales and operations show rolling thirty day completed orders and retain o
     Dispute::factory()->create(['order_id' => $disputed->id, 'dispute_status' => DisputeStatus::Open]);
     $disputed->bdn()->create(['delivery_date' => now()->subDays(45)->toDateString()]);
 
+    $closedDisputed = createOrder([
+        'vessel_name' => 'MV Closed Old Open Dispute',
+        'status' => OrderStatus::Closed,
+    ]);
+    $closedDisputed->bdn()->create(['delivery_date' => now()->subDays(45)->toDateString()]);
+    Dispute::factory()->create(['order_id' => $closedDisputed->id, 'dispute_status' => DisputeStatus::Open]);
+
     createOrder(['vessel_name' => 'MV No BDN', 'status' => OrderStatus::Delivered, 'invoice_date' => now()]);
     $undated = createOrder(['vessel_name' => 'MV Undated BDN', 'status' => OrderStatus::Delivered, 'invoice_date' => now()]);
     $undated->bdn()->create(['delivery_date' => null]);
@@ -122,9 +131,9 @@ test('sales and operations show rolling thirty day completed orders and retain o
     $this->get(route($routeName))->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->has('pendingOrders', 1)
-            ->has('completedOrders', 4)
+            ->has('completedOrders', 6)
             ->where('completedOrders', fn ($orders): bool => collect($orders)->pluck('vessel_name')->sort()->values()->all()
-                === ['MV Boundary', 'MV Old Open Dispute', 'MV Previous Month Recent', 'MV Today']));
+                === ['MV Boundary', 'MV Closed Old Open Dispute', 'MV Closed Recent', 'MV Old Open Dispute', 'MV Previous Month Recent', 'MV Today']));
 })->with(['sales' => 'orders', 'operations' => 'operations']);
 
 test('sales and operations expose BDN delivery dates without substituting ETA', function (string $routeName) {

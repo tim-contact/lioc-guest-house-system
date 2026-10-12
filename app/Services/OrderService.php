@@ -39,6 +39,7 @@ class OrderService
     /**
      * Orders completed within the last $days, same loading and ordering.
      * Sales and operations opt into BDN delivery dates; other callers retain invoice dates.
+     * BDN-based history also includes settled (closed) deliveries.
      *
      * With $keepOpenDisputes, orders carrying an unresolved dispute stay on the
      * list however old they are, so the dispute remains reachable.
@@ -48,7 +49,9 @@ class OrderService
     public static function completedWithin(int $days = 30, bool $keepOpenDisputes = false, bool $useBdnDeliveryDate = false): Collection
     {
         return Order::with(['customer', 'port', 'deliveryLocation', 'bdn'])
-            ->whereIn('status', OrderStatus::completedStatuses())
+            ->whereIn('status', $useBdnDeliveryDate
+                ? [OrderStatus::Delivered, OrderStatus::Closed]
+                : OrderStatus::completedStatuses())
             ->where(fn ($query) => $query
                 ->when(
                     $useBdnDeliveryDate,
