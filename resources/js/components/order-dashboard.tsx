@@ -1,4 +1,4 @@
-import { ChevronDown, Download, Pencil } from 'lucide-react';
+import { ChevronDown, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { SortableHead } from '@/components/sortable-head';
 import { TableFrame } from '@/components/table-frame';
@@ -351,24 +351,14 @@ function PortTable<T extends OrderRow>({
                                                 <Button
                                                     asChild
                                                     variant="outline"
-                                                    size="icon"
-                                                    className="size-8 shrink-0"
+                                                    size="sm"
                                                 >
                                                     <a
-                                                        href={
-                                                            ebdn(row.id, {
-                                                                query: {
-                                                                    download: true,
-                                                                },
-                                                            }).url
-                                                        }
-                                                        title="Download eBDN"
-                                                        aria-label="Download eBDN"
+                                                        href={ebdn(row.id).url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
                                                     >
-                                                        <Download
-                                                            className="size-4"
-                                                            aria-hidden="true"
-                                                        />
+                                                        eBDN
                                                     </a>
                                                 </Button>
                                             )}
