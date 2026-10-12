@@ -53,11 +53,11 @@ function summarise(rows: OrderRow[]): Summary {
 
 function CommandMetric({ label, value }: { label: string; value: string }) {
     return (
-        <div className="min-w-0">
-            <p className="truncate text-xs font-semibold tracking-[0.035em] text-slate-200/82 uppercase">
+        <div className="min-w-0 border-l border-white/20 pl-3">
+            <p className="text-xs leading-tight font-semibold tracking-[0.035em] text-slate-200/82 uppercase">
                 {label}
             </p>
-            <p className="mt-1 text-[clamp(1.5rem,2vw,2rem)] leading-tight font-bold text-white tabular-nums">
+            <p className="mt-1.5 text-xl leading-tight font-bold whitespace-nowrap text-white tabular-nums">
                 {value}
             </p>
         </div>
@@ -141,7 +141,7 @@ function CommandSummaryStats({
                     {label}
                 </span>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-x-5 gap-y-4 xl:grid-cols-4">
                 <CommandMetric label="Orders" value={String(summary.count)} />
                 {FUEL_GRADES.map((product) => (
                     <CommandMetric
