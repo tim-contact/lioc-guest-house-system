@@ -38,18 +38,25 @@ class OrderService
 
     /**
      * Orders completed within the last $days, same loading and ordering.
+     * Sales and operations opt into BDN delivery dates; other callers retain invoice dates.
      *
      * With $keepOpenDisputes, orders carrying an unresolved dispute stay on the
      * list however old they are, so the dispute remains reachable.
      *
      * @return Collection<int, Order>
      */
-    public static function completedWithin(int $days = 30, bool $keepOpenDisputes = false): Collection
+    public static function completedWithin(int $days = 30, bool $keepOpenDisputes = false, bool $useBdnDeliveryDate = false): Collection
     {
         return Order::with(['customer', 'port', 'deliveryLocation', 'bdn'])
             ->whereIn('status', OrderStatus::completedStatuses())
             ->where(fn ($query) => $query
-                ->where('invoice_date', '>=', Carbon::now()->subDays($days))
+                ->when(
+                    $useBdnDeliveryDate,
+                    fn ($completed) => $completed->whereHas('bdn', fn ($bdn) => $bdn
+                        ->whereDate('delivery_date', '>=', Carbon::today()->subDays($days))
+                        ->whereDate('delivery_date', '<=', Carbon::today())),
+                    fn ($completed) => $completed->where('invoice_date', '>=', Carbon::now()->subDays($days)),
+                )
                 ->when($keepOpenDisputes, fn ($disputed) => $disputed->orWhereHas(
                     'disputes',
                     fn ($dispute) => $dispute->where('dispute_status', DisputeStatus::Open),

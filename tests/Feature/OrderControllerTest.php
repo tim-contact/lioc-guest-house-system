@@ -49,13 +49,14 @@ test('index renders pending and last thirty days completed orders grouped by por
         'status' => OrderStatus::Pending,
     ]);
 
-    createOrder([
+    $recent = createOrder([
         'vessel_name' => 'MV Delivered Recently',
         'status' => OrderStatus::Delivered,
         'invoice_date' => now(),
         'vlsfo_final_qty' => 375,
         'vlsfo_bdn_qty' => 360,
     ]);
+    $recent->bdn()->create(['delivery_date' => now()->toDateString()]);
 
     createOrder([
         'vessel_name' => 'MV Delivered Previous Month',
@@ -91,16 +92,19 @@ test('sales and operations show rolling thirty day completed orders and retain o
     foreach ([
         ['MV Today', OrderStatus::Delivered, 0],
         ['MV Previous Month Recent', OrderStatus::Delivered, 29],
+        ['MV Boundary', OrderStatus::Delivered, 30],
         ['MV Outside Window', OrderStatus::Delivered, 31],
+        ['MV Future Delivery', OrderStatus::Delivered, -1],
         ['MV Pending', OrderStatus::Pending, 0],
         ['MV Cancelled', OrderStatus::Cancelled, 0],
     ] as [$vesselName, $status, $daysAgo]) {
-        createOrder([
+        $order = createOrder([
             'vessel_name' => $vesselName,
             'status' => $status,
-            'invoice_date' => now()->subDays($daysAgo),
+            'invoice_date' => $daysAgo <= 30 ? now()->subDays(90) : now(),
             'created_at' => now()->subMonths(2),
         ]);
+        $order->bdn()->create(['delivery_date' => now()->subDays($daysAgo)->toDateString()]);
     }
 
     $disputed = createOrder([
@@ -109,13 +113,18 @@ test('sales and operations show rolling thirty day completed orders and retain o
         'invoice_date' => now()->subDays(45),
     ]);
     Dispute::factory()->create(['order_id' => $disputed->id, 'dispute_status' => DisputeStatus::Open]);
+    $disputed->bdn()->create(['delivery_date' => now()->subDays(45)->toDateString()]);
+
+    createOrder(['vessel_name' => 'MV No BDN', 'status' => OrderStatus::Delivered, 'invoice_date' => now()]);
+    $undated = createOrder(['vessel_name' => 'MV Undated BDN', 'status' => OrderStatus::Delivered, 'invoice_date' => now()]);
+    $undated->bdn()->create(['delivery_date' => null]);
 
     $this->get(route($routeName))->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->has('pendingOrders', 1)
-            ->has('completedOrders', 3)
+            ->has('completedOrders', 4)
             ->where('completedOrders', fn ($orders): bool => collect($orders)->pluck('vessel_name')->sort()->values()->all()
-                === ['MV Old Open Dispute', 'MV Previous Month Recent', 'MV Today']));
+                === ['MV Boundary', 'MV Old Open Dispute', 'MV Previous Month Recent', 'MV Today']));
 })->with(['sales' => 'orders', 'operations' => 'operations']);
 
 test('sales and operations expose BDN delivery dates without substituting ETA', function (string $routeName) {
@@ -130,6 +139,7 @@ test('sales and operations expose BDN delivery dates without substituting ETA', 
         'delivery_date' => now()->subDays(2)->toDateString(),
     ]);
     $missingDate = Order::factory()->create(['status' => OrderStatus::Delivered, 'invoice_date' => now()]);
+    Dispute::factory()->create(['order_id' => $missingDate->id, 'dispute_status' => DisputeStatus::Open]);
     $pending = Order::factory()->create(['status' => OrderStatus::Pending, 'eta' => now()->addDay()->startOfSecond()]);
 
     $this->get(route($routeName))->assertOk()
