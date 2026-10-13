@@ -64,6 +64,10 @@ interface BargeRow {
     opening: ProductTotals;
     opening_entries: ProductTotals;
     loadings: ProductTotals;
+    loading_movements: {
+        id: number;
+        quantities: ProductTotals;
+    }[];
     deliveries: ProductTotals;
     closing: ProductTotals;
 }
@@ -1167,25 +1171,38 @@ function bargeMovementRows(
         .flatMap((row) => {
             const movements: BargeMovementRow[] = [];
             let balance = addTotals(row.opening, row.opening_entries);
-            const hasLoading = PRODUCTS.some(
-                (product) => row.loadings[product.key] !== 0,
-            );
 
-            if (hasLoading || row.delivery_orders.length === 0) {
-                const closing = addTotals(balance, row.loadings);
+            row.loading_movements.forEach((loading) => {
+                const closing = addTotals(balance, loading.quantities);
                 movements.push({
                     ...row,
-                    key: `${row.date}-${row.barge_id}-loading`,
-                    order_number: hasLoading
-                        ? 'Terminal loading'
-                        : 'Opening balance',
+                    key: `${row.date}-${row.barge_id}-loading-${loading.id}`,
+                    order_number: `Terminal loading #${loading.id}`,
                     vessel_name: null,
                     opening: balance,
                     opening_entries: zeroTotals(),
+                    loadings: loading.quantities,
                     deliveries: zeroTotals(),
                     closing,
                 });
                 balance = closing;
+            });
+
+            if (
+                row.loading_movements.length === 0 &&
+                row.delivery_orders.length === 0
+            ) {
+                movements.push({
+                    ...row,
+                    key: `${row.date}-${row.barge_id}-opening`,
+                    order_number: 'Opening balance',
+                    vessel_name: null,
+                    opening: balance,
+                    opening_entries: zeroTotals(),
+                    loadings: zeroTotals(),
+                    deliveries: zeroTotals(),
+                    closing: balance,
+                });
             }
 
             row.delivery_orders.forEach((delivery, index) => {

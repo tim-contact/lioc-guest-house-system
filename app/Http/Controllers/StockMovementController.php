@@ -128,7 +128,7 @@ class StockMovementController extends Controller
                 'barge_name' => $movement->barge?->name,
                 'movement_scope' => $movement->movement_scope->value,
                 'movement_type' => $movement->movement_type->value,
-                'movement_type_label' => $movement->movement_type->label(),
+                'movement_type_label' => $this->movementTypeLabel($movement),
                 'counterparty_name' => $movement->counterparty_name,
                 'mgo_qty' => $movement->mgo_qty,
                 'vlsfo_qty' => $movement->vlsfo_qty,
@@ -136,6 +136,17 @@ class StockMovementController extends Controller
                 'notes' => $movement->notes,
             ])
             ->all();
+    }
+
+    private function movementTypeLabel(StockMovement $movement): string
+    {
+        if ($movement->movement_type === StockMovementType::Loading) {
+            return $movement->movement_scope === StockMovementScope::Terminal
+                ? 'Import'
+                : 'Loading';
+        }
+
+        return $movement->movement_type->label();
     }
 
     /**

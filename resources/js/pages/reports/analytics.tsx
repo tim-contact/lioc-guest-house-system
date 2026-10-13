@@ -338,7 +338,7 @@ function AnalyticsKpiGrid({ summary }: { summary: Summary }) {
             <KpiCard
                 icon={BarChart3}
                 label="Total Volume"
-                support="Pending ETA + deliveries this month"
+                support="Completed deliveries this month"
                 tone="bg-cyan-50 text-cyan-600"
                 value={`${volume.format(summary.currentMonthVolume)} MT`}
             />

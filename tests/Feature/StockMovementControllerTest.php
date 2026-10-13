@@ -111,6 +111,37 @@ test('stock movement form only exposes operational movement types', function () 
             ->where('movementTypeOptions.1.value', StockMovementType::RebondTransfer->value));
 });
 
+test('recent movements distinguish terminal imports from barge loadings', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Operations]));
+
+    $port = Port::factory()->create();
+    $barge = Barge::factory()->create();
+
+    StockMovement::factory()->create([
+        'movement_date' => '2026-08-01',
+        'port_id' => $port->id,
+        'barge_id' => null,
+        'movement_scope' => StockMovementScope::Terminal,
+        'movement_type' => StockMovementType::Loading,
+    ]);
+    StockMovement::factory()->create([
+        'movement_date' => '2026-08-01',
+        'port_id' => $port->id,
+        'barge_id' => $barge->imo,
+        'movement_scope' => StockMovementScope::Barge,
+        'movement_type' => StockMovementType::Loading,
+    ]);
+
+    $this->get(route('stock-movements.index', [
+        'port_id' => $port->id,
+        'date_from' => '2026-08-01',
+        'date_to' => '2026-08-01',
+    ]))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('recentMovements.0.movement_type_label', 'Loading')
+            ->where('recentMovements.1.movement_type_label', 'Import'));
+});
+
 test('manual stock movements can be recorded', function () {
     $user = User::factory()->create(['type' => UserType::Operations]);
     $this->actingAs($user);
@@ -308,6 +339,57 @@ test('report subtracts barge loading from terminal and delivery from barge stock
             ->where('report.barges.0.deliveries.vlsfo', 80)
             ->where('report.barges.0.closing.mgo', 25)
             ->where('report.barges.0.closing.vlsfo', 600));
+});
+
+test('barge report exposes each loading and delivery separately', function () {
+    $port = Port::factory()->create();
+    $barge = Barge::factory()->create();
+
+    $loadings = collect([
+        ['mgo_qty' => 10, 'vlsfo_qty' => 100],
+        ['mgo_qty' => 20, 'vlsfo_qty' => 200],
+    ])->map(fn (array $quantities): StockMovement => StockMovement::factory()->create([
+        'movement_date' => '2026-08-01',
+        'port_id' => $port->id,
+        'barge_id' => $barge->imo,
+        'movement_scope' => StockMovementScope::Barge,
+        'movement_type' => StockMovementType::Loading,
+        ...$quantities,
+        'hsfo_qty' => 0,
+    ]));
+
+    foreach ([5, 7] as $quantity) {
+        $order = Order::factory()->create([
+            'port_id' => $port->id,
+            'barge_id' => $barge->imo,
+            'status' => OrderStatus::Delivered,
+            'mgo_bdn_qty' => $quantity,
+            'vlsfo_bdn_qty' => 0,
+            'hsfo_bdn_qty' => 0,
+        ]);
+
+        Bdn::factory()->create([
+            'order_id' => $order->id,
+            'delivery_date' => '2026-08-01',
+            'barge_id' => $barge->imo,
+        ]);
+    }
+
+    $report = app(StockMovementService::class)->report(
+        $port->id,
+        CarbonImmutable::parse('2026-08-01'),
+        CarbonImmutable::parse('2026-08-01'),
+    );
+    $row = $report['barges'][0];
+
+    expect($row['loading_movements'])->toHaveCount(2)
+        ->and(collect($row['loading_movements'])->pluck('id')->all())->toBe($loadings->pluck('id')->all())
+        ->and($row['loading_movements'][0]['quantities'])->toMatchArray(['mgo' => 10.0, 'vlsfo' => 100.0, 'hsfo' => 0.0])
+        ->and($row['loading_movements'][1]['quantities'])->toMatchArray(['mgo' => 20.0, 'vlsfo' => 200.0, 'hsfo' => 0.0])
+        ->and($row['delivery_orders'])->toHaveCount(2)
+        ->and($row['loadings']['mgo'])->toBe(30.0)
+        ->and($row['deliveries']['mgo'])->toBe(12.0)
+        ->and($row['closing']['mgo'])->toBe(18.0);
 });
 
 test('report subtracts re-bond sales from terminal stock', function () {

@@ -14,7 +14,7 @@ enum StockMovementType: string
     {
         return match ($this) {
             self::Opening => 'Opening Stock',
-            self::Loading => 'Loading / Import',
+            self::Loading => 'Loading',
             self::RebondTransfer => 'Re-bond Sale',
             self::DeadStock => 'Dead Stock',
             self::Adjustment => 'Adjustment',
