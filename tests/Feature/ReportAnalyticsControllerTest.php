@@ -48,6 +48,18 @@ test('super admins can view report analytics', function () {
             ->has('cyLyProductSales.0.months', 12));
 });
 
+test('analytics summary includes the total customer credit limit', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    Customer::factory()->create(['credit_limit' => 125000.25]);
+    Customer::factory()->create(['credit_limit' => 74999.75]);
+
+    $this->get(route('reports.analytics'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('summary.totalCreditLimit', 200000));
+});
+
 test('barge drilldown uses completed BDN deliveries and agrees with utilization counts', function (string $period, int $total) {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
     $barge = Barge::factory()->create(['imo' => '8923844']);

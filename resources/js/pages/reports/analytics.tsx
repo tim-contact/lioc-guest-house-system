@@ -7,6 +7,7 @@ import {
     BarChart3,
     CheckCircle2,
     Clock3,
+    CreditCard,
     FileText,
     Ship,
 } from 'lucide-react';
@@ -22,7 +23,8 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { cn, productColor } from '@/lib/utils';
-import { disputes } from '@/routes';
+import { disputes, finance, orders } from '@/routes';
+import { index as customersIndex } from '@/routes/customers';
 
 type FunnelStage = {
     label: string;
@@ -122,6 +124,7 @@ type PendingDisputesByPort = {
 
 type Summary = {
     enquiries: number;
+    totalCreditLimit: number;
     orders: number;
     completed: number;
     currentMonthVolume: number;
@@ -272,6 +275,7 @@ function KpiCard({
     tone,
     className,
     support,
+    href,
 }: {
     label: string;
     value: string;
@@ -279,11 +283,14 @@ function KpiCard({
     tone: string;
     className?: string;
     support?: string;
+    href?: string;
 }) {
-    return (
+    const card = (
         <Card
             className={cn(
                 'overflow-hidden rounded-2xl border border-[#E3EAF2] bg-white py-0 shadow-sm',
+                href &&
+                    'transition-colors hover:border-slate-300 hover:bg-slate-50/70',
                 className,
             )}
         >
@@ -312,28 +319,36 @@ function KpiCard({
             </CardContent>
         </Card>
     );
+
+    return href ? (
+        <Link
+            href={href}
+            aria-label={`View ${label}`}
+            className="block rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+        >
+            {card}
+        </Link>
+    ) : (
+        card
+    );
 }
 
 function AnalyticsKpiGrid({ summary }: { summary: Summary }) {
     return (
         <section className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
             <KpiCard
-                icon={FileText}
-                label="Enquiries Received"
-                tone="bg-blue-50 text-blue-600"
-                value={compactNumber.format(summary.enquiries)}
-            />
-            <KpiCard
                 icon={Ship}
                 label="Orders Confirmed"
                 tone="bg-indigo-50 text-indigo-600"
                 value={compactNumber.format(summary.orders)}
+                href={`${orders().url}#pending-orders`}
             />
             <KpiCard
                 icon={CheckCircle2}
                 label="Completed Orders"
                 tone="bg-teal-50 text-teal-600"
                 value={compactNumber.format(summary.completed)}
+                href={`${orders().url}#completed-orders`}
             />
             <KpiCard
                 icon={BarChart3}
@@ -347,6 +362,14 @@ function AnalyticsKpiGrid({ summary }: { summary: Summary }) {
                 label="Outstandings"
                 tone="bg-amber-50 text-amber-600"
                 value={money.format(summary.outstanding)}
+                href={finance().url}
+            />
+            <KpiCard
+                icon={CreditCard}
+                label="Total Credit Limit"
+                tone="bg-emerald-50 text-emerald-600"
+                value={money.format(summary.totalCreditLimit)}
+                href={customersIndex().url}
             />
         </section>
     );
@@ -609,6 +632,7 @@ function MonthlyVolumeStackedBarCard({
                                                                 month[
                                                                     product.key
                                                                 ];
+
                                                             if (value <= 0) {
                                                                 return null;
                                                             }
@@ -1064,8 +1088,9 @@ function BargeUtilizationCard({ data }: { data: BargeUtilizationMetric[] }) {
                                     aria-disabled={!barge.ordersUrl}
                                     tabIndex={barge.ordersUrl ? undefined : -1}
                                     onClick={(event) => {
-                                        if (!barge.ordersUrl)
+                                        if (!barge.ordersUrl) {
                                             event.preventDefault();
+                                        }
                                     }}
                                     className={cn(
                                         'grid gap-1.5 rounded-lg border border-[#E3EAF2] bg-white px-2.5 py-2 transition-colors focus-visible:outline-2 focus-visible:outline-blue-600',

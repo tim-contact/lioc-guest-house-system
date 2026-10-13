@@ -90,7 +90,12 @@ export function ResourceCrudPage<T>({
                 </div>
 
                 <TableFrame>
-                    <Table className={cn(dense && 'text-[13px]')}>
+                    <Table
+                        className={cn(
+                            config.tableClassName,
+                            dense && 'text-[13px]',
+                        )}
+                    >
                         <TableHeader>
                             <TableRow>
                                 {config.columns.map((column) =>
@@ -105,6 +110,7 @@ export function ResourceCrudPage<T>({
                                             className={cn(
                                                 column.align === 'right' &&
                                                     'text-right',
+                                                column.headerClassName,
                                                 dense && 'h-8',
                                             )}
                                         />
@@ -114,6 +120,7 @@ export function ResourceCrudPage<T>({
                                             className={cn(
                                                 column.align === 'right' &&
                                                     'text-right',
+                                                column.headerClassName,
                                                 dense && 'h-8',
                                             )}
                                         >

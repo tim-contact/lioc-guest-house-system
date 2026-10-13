@@ -1,5 +1,5 @@
 import { ChevronDown, Pencil } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SortableHead } from '@/components/sortable-head';
 import { TableFrame } from '@/components/table-frame';
 import { Button } from '@/components/ui/button';
@@ -123,9 +123,26 @@ export default function OrderDashboard<T extends OrderRow>({
         ? selectedPort
         : visiblePorts[0];
 
+    useEffect(() => {
+        const targetId = window.location.hash.slice(1);
+
+        if (!['pending-orders', 'completed-orders'].includes(targetId)) {
+            return;
+        }
+
+        const frameId = window.requestAnimationFrame(() => {
+            document.getElementById(targetId)?.scrollIntoView({
+                block: 'start',
+            });
+        });
+
+        return () => window.cancelAnimationFrame(frameId);
+    }, []);
+
     return (
         <div className="flex flex-col gap-4">
             <Section
+                id="pending-orders"
                 title="Pending Orders"
                 ports={visiblePorts}
                 selectedPort={activePort}
@@ -137,6 +154,7 @@ export default function OrderDashboard<T extends OrderRow>({
                 showOperationsDetails={showOperationsDetails}
             />
             <Section
+                id="completed-orders"
                 title="Completed Orders (last 30 days)"
                 ports={visiblePorts}
                 selectedPort={activePort}
@@ -152,6 +170,7 @@ export default function OrderDashboard<T extends OrderRow>({
 }
 
 function Section<T extends OrderRow>({
+    id,
     title,
     ports,
     selectedPort,
@@ -162,6 +181,7 @@ function Section<T extends OrderRow>({
     statusMarkers,
     showOperationsDetails,
 }: {
+    id: string;
     title: string;
     ports: string[];
     selectedPort: string;
@@ -179,8 +199,9 @@ function Section<T extends OrderRow>({
 
     return (
         <Collapsible
+            id={id}
             defaultOpen
-            className="overflow-hidden rounded-[17px] border border-[#E3EAF2] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]"
+            className="scroll-mt-24 overflow-hidden rounded-[17px] border border-[#E3EAF2] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]"
         >
             <CollapsibleTrigger className="group flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-[#F8FAFD] focus-visible:ring-2 focus-visible:ring-[#3155E7]/40 focus-visible:outline-none">
                 <ChevronDown className="size-5 shrink-0 text-[#64748B] transition-transform group-data-[state=closed]:-rotate-90" />
