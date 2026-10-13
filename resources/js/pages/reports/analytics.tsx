@@ -714,7 +714,7 @@ function PortOrdersBarCard({ data }: { data: PortStatusMetric[] }) {
                     className={`flex items-center gap-2 ${analyticsCardTitleClassName}`}
                 >
                     <Anchor className="size-5 text-[#0077b6]" />
-                    Orders by Port
+                    Confirmed Orders by Port
                 </CardTitle>
                 <CardDescription>
                     Pending and completed orders across all ports and each port.
