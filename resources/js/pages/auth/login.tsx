@@ -33,7 +33,7 @@ export default function Login({ status }: Props) {
             <Head title="Log in" />
 
             <main
-                className="relative min-h-svh w-full overflow-x-clip bg-cover bg-center bg-no-repeat px-4 py-4 text-white sm:px-6 sm:py-5 lg:bg-[center_center] lg:px-10"
+                className="relative min-h-svh w-full overflow-x-clip bg-cover bg-center bg-no-repeat px-4 py-3 text-white sm:px-6 lg:bg-[center_center] lg:px-10"
                 style={{
                     backgroundImage:
                         "linear-gradient(90deg, rgba(3, 16, 29, 0.32) 0%, rgba(3, 16, 29, 0.12) 45%, rgba(3, 16, 29, 0.42) 100%), url('/images/tanker_background.png')",
@@ -41,11 +41,11 @@ export default function Login({ status }: Props) {
             >
                 <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-[48%] bg-[linear-gradient(90deg,rgba(3,16,29,0.62),rgba(3,16,29,0.18),rgba(3,16,29,0))] lg:block" />
 
-                <div className="relative z-10 grid min-h-[calc(100svh-2.5rem)] items-center gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(360px,520px)]">
+                <div className="relative z-10 grid min-h-[calc(100svh-1.5rem)] items-center gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(360px,520px)]">
                     <section className="hidden max-w-[560px] pl-4 lg:block xl:pl-12">
                         <img
                             alt="BOSS"
-                                className="max-h-[60px] sm:max-h-[80px] md:max-h-[100px] w-[min(62vw,190px)] sm:w-[min(62vw,250px)] md:w-[min(62vw,320px)] object-contain"
+                            className="max-h-[140px] w-[min(72vw,360px)] object-contain"
                             src="/images/boss_logo.png"
                         />
                         <h1 className="text-[clamp(2.4rem,3.2vw,4rem)] leading-[1.05] font-bold tracking-normal text-white">
@@ -53,25 +53,25 @@ export default function Login({ status }: Props) {
                             <br />
                             bunkering operation.
                         </h1>
-                        <div className="mt-6 h-[3px] w-12 rounded-full bg-[#f36f21]" />
-                        <p className="mt-6 text-lg font-medium text-white/82">
+                        <div className="mt-4 h-[3px] w-12 rounded-full bg-[#f36f21]" />
+                        <p className="mt-4 text-lg font-medium text-white/82">
                             Secure. Connected. In control.
                         </p>
                     </section>
 
                     <section className="mx-auto w-full max-w-[520px] lg:mr-[6vw]">
-                        <div className="rounded-[22px] border border-[#f36f21]/22 bg-[linear-gradient(145deg,#fff8ef,#f2f1ef_56%,#e4edf4)] px-5 py-5 shadow-[0_28px_70px_rgba(0,10,24,0.38),inset_0_1px_0_rgba(255,255,255,0.72)] sm:px-8 sm:py-7">
+                        <div className="rounded-[22px] border border-[#f36f21]/22 bg-[linear-gradient(145deg,#fff8ef,#f2f1ef_56%,#e4edf4)] px-5 py-4 shadow-[0_28px_70px_rgba(0,10,24,0.38),inset_0_1px_0_rgba(255,255,255,0.72)] sm:px-7 sm:py-5">
                             <div className="flex flex-col items-center text-center">
                                 <img
                                     alt="BOSS"
-                                    className="max-h-[60px] w-[min(62vw,190px)] object-contain"
+                                    className="max-h-[96px] w-[min(72vw,240px)] object-contain sm:max-h-[105px] sm:w-[260px]"
                                     src="/images/boss_logo.png"
                                 />
-                                <p className="mt-3 text-xs font-semibold tracking-[0.08em] text-[#31536a] uppercase">
+                                <p className="mt-1 text-xs font-semibold tracking-[0.08em] text-[#31536a] uppercase">
                                     Bunker Operations and Sales System
                                 </p>
-                                <div className="mt-3 h-[3px] w-12 rounded-full bg-[#f36f21]" />
-                                <h2 className="mt-5 text-2xl font-bold tracking-normal text-[#031628] sm:text-[1.75rem]">
+                                <div className="mt-2 h-[3px] w-12 rounded-full bg-[#f36f21]" />
+                                <h2 className="mt-3 text-2xl font-bold tracking-normal text-[#031628] sm:text-[1.625rem]">
                                     Welcome back
                                 </h2>
                                 <p className="mt-1.5 text-sm text-[#31536a] sm:text-[0.95rem]">
@@ -83,10 +83,10 @@ export default function Login({ status }: Props) {
                                 action={store.url()}
                                 method="post"
                                 resetOnSuccess={['password']}
-                                className="mt-6 flex flex-col gap-4"
+                                className="mt-4 flex flex-col gap-3"
                             >
                                 {({ processing, errors }) => (
-                                    <div className="grid gap-4">
+                                    <div className="grid gap-3">
                                         <div className="grid gap-1.5">
                                             <Label
                                                 htmlFor="email"
@@ -241,11 +241,11 @@ export default function Login({ status }: Props) {
                                 </div>
                             )}
 
-                            <div className="mt-6 border-t border-[#c9d4dc] pt-4">
+                            <div className="mt-4 border-t border-[#c9d4dc] pt-3">
                                 <div className="flex items-center justify-center gap-3">
                                     <img
                                         alt="Lanka IOC"
-                                        className="size-11 object-contain"
+                                        className="size-9 object-contain"
                                         src="/images/lanka-ioc-logo.png"
                                     />
                                     <p className="text-sm font-medium text-[#62808a]">
@@ -258,7 +258,7 @@ export default function Login({ status }: Props) {
                                         </span>
                                     </p>
                                 </div>
-                                <div className="mt-3 flex items-center justify-center gap-2 text-xs font-medium text-[#486a80]">
+                                <div className="mt-2 flex items-center justify-center gap-2 text-xs font-medium text-[#486a80]">
                                     <ShieldCheck
                                         aria-hidden="true"
                                         className="size-4 text-[#f36f21]"
@@ -268,8 +268,15 @@ export default function Login({ status }: Props) {
                             </div>
                         </div>
 
-                        <p className="mt-3 text-center text-xs font-medium text-white/72">
-                            © {currentYear} Lanka IOC PLC. All rights reserved.
+                        <p className="mt-2 text-center text-xs font-medium text-white/72">
+                            <span className="whitespace-nowrap">
+                                © {currentYear} Lanka IOC PLC. All rights
+                                reserved.
+                            </span>
+                            <span className="mx-2 text-white/40">|</span>
+                            <span className="font-semibold whitespace-nowrap text-white/82">
+                                Developed by Lanka IOC IT
+                            </span>
                         </p>
                     </section>
                 </div>

@@ -110,6 +110,19 @@ class StockMovementService
                 $bargeOpening = $this->sumManualMovements($bargeMovements, $day, StockMovementScope::Barge, [StockMovementType::Opening], $bargeId);
                 $bargeLoading = $this->sumManualMovements($bargeMovements, $day, StockMovementScope::Barge, [StockMovementType::Loading], $bargeId);
                 $bargeDeliveries = $this->sumDeliveries($deliveries, $day, $bargeId);
+                $dayLoadingMovements = $bargeMovements
+                    ->filter(fn (StockMovement $movement): bool => $movement->movement_date->isSameDay($day)
+                        && $movement->movement_scope === StockMovementScope::Barge
+                        && $movement->movement_type === StockMovementType::Loading
+                        && $movement->barge_id === $bargeId)
+                    ->sortBy('id')
+                    ->map(fn (StockMovement $movement): array => [
+                        'id' => $movement->id,
+                        'quantities' => collect($products)->mapWithKeys(fn (string $product): array => [
+                            $product => (float) $movement->{"{$product}_qty"},
+                        ])->all(),
+                    ])
+                    ->values();
                 $dayDeliveries = $deliveries
                     ->filter(fn (Bdn $bdn): bool => $bdn->delivery_date?->isSameDay($day) === true
                         && ($bdn->barge_id ?? $bdn->order?->barge_id) === $bargeId)
@@ -142,6 +155,7 @@ class StockMovementService
                     'opening' => $opening,
                     'opening_entries' => $bargeOpening,
                     'loadings' => $bargeLoading,
+                    'loading_movements' => $dayLoadingMovements->all(),
                     'deliveries' => $bargeDeliveries,
                     'closing' => $bargeBalances[$bargeId],
                 ];
