@@ -523,7 +523,7 @@ test('analytics completed card uses BDN delivery month for delivered and closed 
             ->missing('summary.completionRate'));
 });
 
-test('analytics total volume uses completed BDN deliveries only', function () {
+test('analytics total volume combines current month deliveries and pending ETAs', function () {
     $this->travelTo(now()->setDate(2026, 10, 12)->startOfDay());
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
@@ -549,6 +549,14 @@ test('analytics total volume uses completed BDN deliveries only', function () {
         'order_date' => now(),
         'eta' => now()->subMonth(),
         'vlsfo_final_qty' => 100,
+    ]);
+    Order::factory()->create([
+        ...$quantities,
+        'status' => OrderStatus::Pending,
+        'eta' => now(),
+        'vlsfo_final_qty' => null,
+        'vlsfo_quantity_high' => 15,
+        'vlsfo_quantity_low' => 12,
     ]);
 
     $delivered = Order::factory()->create([
@@ -590,7 +598,7 @@ test('analytics total volume uses completed BDN deliveries only', function () {
 
     $this->get(route('reports.analytics'))->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('summary.currentMonthVolume', 50));
+            ->where('summary.currentMonthVolume', 75));
 });
 
 test('enquiry funnel follows this months enquiries rather than independent order and invoice dates', function () {
@@ -733,7 +741,7 @@ test('report analytics includes enquiry to completed funnel counts', function ()
             ->where('summary.enquiries', 8)
             ->where('summary.orders', 3)
             ->where('summary.completed', 1)
-            ->where('summary.currentMonthVolume', 225)
+            ->where('summary.currentMonthVolume', 375)
             ->where('monthlyProductVolumes.5.vlsfo', 300)
             ->where('monthlyProductVolumes.5.hsfo', 25)
             ->where('monthlyProductVolumes.5.mgo', 50)

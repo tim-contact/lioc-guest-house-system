@@ -26,6 +26,12 @@ interface CustomersIndexProps {
     customers: Customer[];
 }
 
+const splitInvoiceEmails = (value: string | null): string[] =>
+    value
+        ?.split(';')
+        .map((email) => email.trim())
+        .filter(Boolean) ?? [];
+
 const customerColumns: ExportColumn<Customer>[] = [
     { header: 'SAP ID', value: (customer) => customer.sap_id },
     { header: 'Name', value: (customer) => customer.name },
@@ -45,7 +51,7 @@ const customerColumns: ExportColumn<Customer>[] = [
     },
     { header: 'Mail ID', value: (customer) => customer.mail_id ?? '' },
     {
-        header: 'Mails IDs for Invoice',
+        header: 'Invoice email',
         value: (customer) => customer.invoice_mail_ids ?? '',
     },
     { header: 'Credit Limit', value: (customer) => customer.credit_limit },
@@ -59,7 +65,7 @@ const config: CrudConfig<Customer> = {
     pk: (customer) => customer.sap_id,
     defaultSortKey: 'name',
     tableClassName:
-        'min-w-[1080px] [&_th]:px-4 [&_tbody_td]:px-4 [&_tbody_td]:py-3.5',
+        'min-w-[1180px] [&_th]:px-4 [&_tbody_td]:px-4 [&_tbody_td]:py-3.5',
     exportColumns: customerColumns,
     editTitle: (customer) => customer.name,
     deleteLabel: (customer) => `${customer.name} (${customer.sap_id})`,
@@ -169,16 +175,42 @@ const config: CrudConfig<Customer> = {
                             {customer.mail_id ?? '—'}
                         </span>
                     </p>
-                    {customer.invoice_mail_ids && (
-                        <p
-                            className="mt-1 truncate pl-5 text-xs text-slate-500"
-                            title={customer.invoice_mail_ids}
-                        >
-                            Invoice: {customer.invoice_mail_ids}
-                        </p>
-                    )}
                 </div>
             ),
+            className: 'px-4 py-3.5 align-top',
+            headerClassName: 'px-4',
+        },
+        {
+            header: 'Invoice email',
+            sortKey: 'invoice_mail_ids',
+            cell: (customer) => {
+                const invoiceEmails = splitInvoiceEmails(
+                    customer.invoice_mail_ids,
+                );
+
+                return (
+                    <div className="flex max-w-72 min-w-56 items-start gap-1.5 text-slate-700">
+                        <Mail
+                            className="mt-0.5 size-3.5 shrink-0 text-slate-400"
+                            aria-hidden="true"
+                        />
+                        {invoiceEmails.length > 0 ? (
+                            <div className="min-w-0 space-y-1">
+                                {invoiceEmails.map((email, index) => (
+                                    <div
+                                        key={`${email}-${index}`}
+                                        className="[overflow-wrap:anywhere] break-words"
+                                    >
+                                        {email}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <span>—</span>
+                        )}
+                    </div>
+                );
+            },
             className: 'px-4 py-3.5 align-top',
             headerClassName: 'px-4',
         },
@@ -218,7 +250,7 @@ const config: CrudConfig<Customer> = {
         { name: 'contact_person', label: 'Contact Person' },
         { name: 'contact_phone', label: 'Contact Phone' },
         { name: 'mail_id', label: 'Mail ID', type: 'email' },
-        { name: 'invoice_mail_ids', label: 'Mails IDs for Invoice' },
+        { name: 'invoice_mail_ids', label: 'Invoice email addresses' },
         { name: 'credit_limit', label: 'Credit limit', type: 'currency' },
     ],
     toFormData: (customer) => ({

@@ -29,8 +29,12 @@ class ReportAnalyticsController extends Controller
         $orders = Order::with(['customer', 'port', 'bdn'])->get();
         $disputes = Dispute::with(['order.customer', 'order.port'])->get();
         $completedStatuses = [OrderStatus::Delivered->value, OrderStatus::Closed->value];
-        $currentMonthVolumeOrders = $orders->filter(
+        $currentMonthDeliveredVolumeOrders = $orders->filter(
             fn (Order $order): bool => $this->isCurrentMonthVolumeOrder($order, $completedStatuses),
+        );
+        $currentMonthPendingVolumeOrders = $orders->filter(
+            fn (Order $order): bool => $order->status === OrderStatus::Pending
+                && $order->eta?->isCurrentMonth() === true,
         );
         $currentMonthEnquiries = $enquiries->filter(
             fn (Enquiry $enquiry): bool => $enquiry->created_at?->isCurrentMonth() === true,
@@ -63,7 +67,11 @@ class ReportAnalyticsController extends Controller
                 'totalCreditLimit' => round((float) Customer::query()->sum('credit_limit'), 2),
                 'orders' => $currentMonthOrderCount,
                 'completed' => $currentMonthCompletedCount,
-                'currentMonthVolume' => $this->totalProductVolume($currentMonthVolumeOrders),
+                'currentMonthVolume' => round(
+                    $this->totalProductVolume($currentMonthDeliveredVolumeOrders)
+                    + $this->totalPendingProductVolume($currentMonthPendingVolumeOrders),
+                    3,
+                ),
                 'invoiceValue' => round((float) $orders->sum('invoice_value'), 2),
                 'amountReceived' => round((float) $orders->sum('amount_received'), 2),
                 'outstanding' => round((float) $orders->sum(fn (Order $order): float => max($order->balance_amount, 0)), 2),
@@ -246,6 +254,18 @@ class ReportAnalyticsController extends Controller
         return round((float) $orders->sum(function (Order $order): float {
             return collect(FuelGrade::keys())->sum(
                 fn (string $grade): float => $this->productVolume($order, $grade),
+            );
+        }), 3);
+    }
+
+    /**
+     * @param  Collection<int, Order>  $orders
+     */
+    private function totalPendingProductVolume(Collection $orders): float
+    {
+        return round((float) $orders->sum(function (Order $order): float {
+            return collect(FuelGrade::keys())->sum(
+                fn (string $grade): float => $this->pendingProductVolume($order, $grade),
             );
         }), 3);
     }
