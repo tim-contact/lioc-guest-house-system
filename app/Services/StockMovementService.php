@@ -70,6 +70,35 @@ class StockMovementService
             $dailyRebondSales = $this->sumManualMovements($movements, $day, StockMovementScope::Terminal, [StockMovementType::RebondTransfer]);
             $dailyDeadStock = $this->sumManualMovements($movements, $day, StockMovementScope::Terminal, [StockMovementType::DeadStock]);
             $dailyBargeLoadings = $this->sumManualMovements($movements, $day, StockMovementScope::Barge, [StockMovementType::Loading]);
+            $dayTerminalMovements = $movements
+                ->filter(fn (StockMovement $movement): bool => $movement->movement_date->isSameDay($day)
+                    && (($movement->movement_scope === StockMovementScope::Terminal
+                        && in_array($movement->movement_type, [StockMovementType::Loading, StockMovementType::RebondTransfer], true))
+                        || ($movement->movement_scope === StockMovementScope::Barge
+                            && $movement->movement_type === StockMovementType::Loading)))
+                ->sortBy('id')
+                ->map(function (StockMovement $movement) use ($products): array {
+                    $isImport = $movement->movement_scope === StockMovementScope::Terminal
+                        && $movement->movement_type === StockMovementType::Loading;
+                    $isRebondSale = $movement->movement_type === StockMovementType::RebondTransfer;
+
+                    return [
+                        'id' => $movement->id,
+                        'label' => match (true) {
+                            $isImport => 'Import',
+                            $isRebondSale => 'Re-bond sale',
+                            default => 'Load barge',
+                        },
+                        'party' => $movement->movement_scope === StockMovementScope::Barge
+                            ? ($movement->barge?->name ?? $movement->barge_id)
+                            : $movement->counterparty_name,
+                        'direction' => $isImport ? 1 : -1,
+                        'quantities' => collect($products)->mapWithKeys(fn (string $product): array => [
+                            $product => (float) $movement->{"{$product}_qty"},
+                        ])->all(),
+                    ];
+                })
+                ->values();
 
             foreach ($products as $product) {
                 $terminalBalance[$product] += $dailyTerminalOpening[$product]
@@ -87,6 +116,7 @@ class StockMovementService
                 'imports' => $dailyImports,
                 'rebond_sales' => $dailyRebondSales,
                 'loadings' => $dailyImports,
+                'movement_entries' => $dayTerminalMovements->all(),
                 'dead_stock_opening' => $deadStockOpening,
                 'dead_stock' => $dailyDeadStock,
                 'dead_stock_closing' => $deadStockBalance,

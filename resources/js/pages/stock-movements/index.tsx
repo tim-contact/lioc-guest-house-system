@@ -43,6 +43,13 @@ interface TerminalRow {
     imports?: ProductTotals;
     rebond_sales?: ProductTotals;
     loadings: ProductTotals;
+    movement_entries: {
+        id: number;
+        label: string;
+        party: string | null;
+        direction: 1 | -1;
+        quantities: ProductTotals;
+    }[];
     dead_stock_opening: ProductTotals;
     dead_stock: ProductTotals;
     dead_stock_closing: ProductTotals;
@@ -70,21 +77,6 @@ interface BargeRow {
     }[];
     deliveries: ProductTotals;
     closing: ProductTotals;
-}
-
-interface RecentMovement {
-    id: number;
-    movement_date: string;
-    port_name: string | null;
-    barge_name: string | null;
-    movement_scope: string;
-    movement_type: string;
-    movement_type_label: string;
-    counterparty_name: string | null;
-    mgo_qty: string | number | null;
-    vlsfo_qty: string | number | null;
-    hsfo_qty: string | number | null;
-    notes: string | null;
 }
 
 interface TrackedBargeStock {
@@ -119,7 +111,6 @@ interface StockMovementsIndexProps {
         tracked_barges: TrackedBargeStock[];
         balance_on_hand: ProductTotals;
     };
-    recentMovements: RecentMovement[];
 }
 
 interface MovementFormData {
@@ -171,6 +162,16 @@ function formatQty(value: string | number | null | undefined): string {
     }
 
     return parsed.toLocaleString(undefined, { maximumFractionDigits: 3 });
+}
+
+function formatReportDate(value: string): string {
+    const [year, month, day] = value.split('-');
+
+    if (!year || !month || !day) {
+        return value;
+    }
+
+    return `${day}-${month}-${year}`;
 }
 
 function addTotals(first: ProductTotals, second: ProductTotals): ProductTotals {
@@ -245,7 +246,6 @@ export default function StockMovementsIndex({
     filters,
     report,
     stockOverview,
-    recentMovements,
 }: StockMovementsIndexProps) {
     const movementForm = useForm<MovementFormData>({
         movement_date: filters.date_from,
@@ -737,12 +737,10 @@ export default function StockMovementsIndex({
                         <TabsContent value="history" className="mt-0">
                             <ReportSection
                                 icon={<FileClock className="size-5" />}
-                                title="Recent Manual Entries"
-                                subtitle="Latest imports, terminal-to-barge loadings and re-bond sales"
+                                title="Terminal Stock Movement"
+                                subtitle="Imports add stock; re-bond sales and barge loadings reduce stock"
                             >
-                                <RecentMovementsTable
-                                    movements={recentMovements}
-                                />
+                                <TerminalTable rows={report.terminal} />
                             </ReportSection>
                         </TabsContent>
                     </Tabs>
@@ -1156,6 +1154,166 @@ function BargeReportFilter({
     );
 }
 
+interface TerminalMovementRow {
+    key: string;
+    date: string;
+    label: string;
+    party: string | null;
+    opening: ProductTotals;
+    movement: ProductTotals;
+    closing: ProductTotals;
+}
+
+function signedTotals(totals: ProductTotals, direction: 1 | -1): ProductTotals {
+    return PRODUCTS.reduce(
+        (signed, product) => ({
+            ...signed,
+            [product.key]: Number(totals[product.key] ?? 0) * direction,
+        }),
+        zeroTotals(),
+    );
+}
+
+function terminalMovementRows(rows: TerminalRow[]): TerminalMovementRow[] {
+    const movementRows = rows.flatMap((row) => {
+        let balance = addTotals(row.opening, row.opening_entries);
+
+        return row.movement_entries.map((entry) => {
+            const movement = signedTotals(entry.quantities, entry.direction);
+            const opening = balance;
+            const closing = addTotals(opening, movement);
+            balance = closing;
+
+            return {
+                key: `${row.date}-terminal-${entry.id}`,
+                date: row.date,
+                label: entry.label,
+                party: entry.party,
+                opening,
+                movement,
+                closing,
+            };
+        });
+    });
+
+    if (movementRows.length > 0 || rows.length === 0) {
+        return movementRows;
+    }
+
+    const latestRow = rows.at(-1)!;
+    const balance = addTotals(latestRow.opening, latestRow.opening_entries);
+
+    return [
+        {
+            key: `${latestRow.date}-terminal-opening`,
+            date: latestRow.date,
+            label: 'Opening balance',
+            party: null,
+            opening: balance,
+            movement: zeroTotals(),
+            closing: latestRow.closing,
+        },
+    ];
+}
+
+function TerminalTable({ rows }: { rows: TerminalRow[] }) {
+    const movementRows = terminalMovementRows(rows);
+
+    return (
+        <TableFrame>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead rowSpan={2}>Date</TableHead>
+                        <TableHead rowSpan={2}>Movement</TableHead>
+                        <TableHead rowSpan={2}>Company / Barge</TableHead>
+                        {PRODUCTS.map((product) => (
+                            <TableHead
+                                key={product.key}
+                                colSpan={3}
+                                className="border-l text-center"
+                            >
+                                {product.label} (MT)
+                            </TableHead>
+                        ))}
+                    </TableRow>
+                    <TableRow>
+                        {PRODUCTS.map((product) =>
+                            ['Opening', 'Movement', 'Closing'].map(
+                                (label, index) => (
+                                    <TableHead
+                                        key={`${product.key}-${label}`}
+                                        className={`text-right ${index === 0 ? 'border-l' : ''}`}
+                                    >
+                                        {label}
+                                    </TableHead>
+                                ),
+                            ),
+                        )}
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {movementRows.map((row) => (
+                        <TableRow key={row.key}>
+                            <TableCell className="font-semibold whitespace-nowrap text-[#172033]">
+                                {formatReportDate(row.date)}
+                            </TableCell>
+                            <TableCell className="text-xs font-semibold whitespace-nowrap text-[#172033]">
+                                {row.label}
+                            </TableCell>
+                            <TableCell className="min-w-40 text-sm text-slate-700">
+                                {row.party ?? '—'}
+                            </TableCell>
+                            {PRODUCTS.map((product) => (
+                                <TerminalProductCells
+                                    key={product.key}
+                                    row={row}
+                                    product={product.key}
+                                />
+                            ))}
+                        </TableRow>
+                    ))}
+                    {movementRows.length === 0 && <EmptyRow colSpan={12} />}
+                </TableBody>
+            </Table>
+        </TableFrame>
+    );
+}
+
+function TerminalProductCells({
+    row,
+    product,
+}: {
+    row: TerminalMovementRow;
+    product: ProductKey;
+}) {
+    const movement = row.movement[product];
+
+    return (
+        <>
+            <ProductTableCell
+                value={row.opening[product]}
+                className="border-l"
+            />
+            <TableCell
+                className={`text-right text-xs font-semibold whitespace-nowrap tabular-nums ${
+                    movement < 0 ? 'text-red-700' : 'text-blue-600'
+                }`}
+            >
+                {movement === 0 ? (
+                    <span className="text-slate-500">{reportQty(0)}</span>
+                ) : (
+                    <>
+                        {movement > 0 ? '+' : '-'}
+                        {reportQty(Math.abs(movement))}
+                    </>
+                )}
+            </TableCell>
+            <ProductTableCell value={row.closing[product]} />
+        </>
+    );
+}
+
 interface BargeMovementRow extends BargeRow {
     key: string;
     order_number: string;
@@ -1268,7 +1426,7 @@ function BargeTable({ rows, bargeId }: { rows: BargeRow[]; bargeId: string }) {
                     {filteredRows.map((row) => (
                         <TableRow key={row.key}>
                             <TableCell className="font-semibold whitespace-nowrap text-[#172033]">
-                                {row.date}
+                                {formatReportDate(row.date)}
                             </TableCell>
                             <TableCell className="text-xs font-semibold whitespace-nowrap text-[#172033]">
                                 {row.order_number}
@@ -1357,55 +1515,6 @@ function ProductTableCell({
         >
             {reportQty(value)}
         </TableCell>
-    );
-}
-
-function RecentMovementsTable({ movements }: { movements: RecentMovement[] }) {
-    return (
-        <TableFrame>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Scope</TableHead>
-                        <TableHead>Barge / Company</TableHead>
-                        <ProductHeads />
-                        <TableHead>Notes</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {movements.map((movement) => (
-                        <TableRow key={movement.id}>
-                            <TableCell>{movement.movement_date}</TableCell>
-                            <TableCell className="font-semibold">
-                                {movement.movement_type_label}
-                            </TableCell>
-                            <TableCell className="capitalize">
-                                {movement.movement_scope}
-                            </TableCell>
-                            <TableCell>
-                                {movement.barge_name ??
-                                    movement.counterparty_name ??
-                                    '-'}
-                            </TableCell>
-                            {PRODUCTS.map((product) => (
-                                <TableCell
-                                    key={product.key}
-                                    className="text-right text-xs font-semibold tabular-nums"
-                                >
-                                    {formatQty(movement[`${product.key}_qty`])}
-                                </TableCell>
-                            ))}
-                            <TableCell className="max-w-60 truncate text-[#64748B]">
-                                {movement.notes ?? '-'}
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                    {movements.length === 0 && <EmptyRow colSpan={8} />}
-                </TableBody>
-            </Table>
-        </TableFrame>
     );
 }
 

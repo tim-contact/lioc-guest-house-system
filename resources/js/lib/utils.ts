@@ -244,7 +244,7 @@ export function portIconPath(
 }
 
 export const PRODUCT_COLORS = {
-    VLSFO: '#2a9d8f',
+    VLSFO: '#11A668',
     MGO: '#e76f51',
     HSFO: '#5f0f40',
 } as const;

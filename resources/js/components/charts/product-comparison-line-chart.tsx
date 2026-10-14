@@ -332,6 +332,7 @@ function LineChartSvg({
     const fadeMaskId = `${chartId}-fade`;
     const plotHeight = height - (showBrush ? 8 : 48);
     const plotWidth = plotAreaWidth;
+    const currentEndPoint = currentPoints.findLast((point) => point.y !== null);
     const activePoint =
         selectedIndex === null ? null : currentPoints[selectedIndex];
     const activeRows =
@@ -483,17 +484,33 @@ function LineChartSvg({
                         />
                     )}
                     {visibleSeries.currentYear && (
-                        <path
-                            d={smoothLinePath(currentPoints)}
-                            fill="none"
-                            opacity={seriesOpacity(
-                                'currentYear',
-                                highlightedSeries,
+                        <>
+                            <path
+                                d={smoothLinePath(currentPoints)}
+                                fill="none"
+                                opacity={seriesOpacity(
+                                    'currentYear',
+                                    highlightedSeries,
+                                )}
+                                stroke={`url(#${currentGradientId})`}
+                                strokeLinecap="round"
+                                strokeWidth={showBrush ? 3 : 5}
+                            />
+                            {currentEndPoint && currentEndPoint.y !== null && (
+                                <circle
+                                    cx={currentEndPoint.x}
+                                    cy={currentEndPoint.y}
+                                    fill={currentColor}
+                                    opacity={seriesOpacity(
+                                        'currentYear',
+                                        highlightedSeries,
+                                    )}
+                                    r={showBrush ? 3.5 : 6}
+                                    stroke="#FFFFFF"
+                                    strokeWidth={showBrush ? 1.5 : 2.5}
+                                />
                             )}
-                            stroke={`url(#${currentGradientId})`}
-                            strokeLinecap="round"
-                            strokeWidth={showBrush ? 2 : 3.5}
-                        />
+                        </>
                     )}
                 </g>
                 {showAxes &&

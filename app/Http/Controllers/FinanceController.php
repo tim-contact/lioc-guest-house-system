@@ -138,6 +138,7 @@ class FinanceController extends Controller
             'paid_in_full',
             'amount_received',
             'amount_remaining',
+            'payment_status',
             'payment_receipt_date',
             'status',
         ];
@@ -156,6 +157,11 @@ class FinanceController extends Controller
             'agent_fees' => $query->orderBy("orders.{$sort}", $direction),
             'paid_in_full' => $query->orderByRaw('(orders.invoice_value > 0 AND COALESCE(orders.invoice_value, 0) - COALESCE(orders.amount_received, 0) <= 0) '.$direction),
             'amount_remaining' => $query->orderByRaw("(COALESCE(orders.invoice_value, 0) - COALESCE(orders.amount_received, 0)) {$direction}"),
+            'payment_status' => $query->orderByRaw("CASE
+                WHEN COALESCE(orders.invoice_value, 0) - COALESCE(orders.amount_received, 0) <= 0 THEN 3
+                WHEN COALESCE(orders.amount_received, 0) > 0 THEN 2
+                ELSE 1
+            END {$direction}"),
             default => $query->orderBy("orders.{$sort}", $direction),
         };
     }

@@ -51,6 +51,7 @@ class EnquiryController extends Controller
                 'sanctions_screening_status' => $enquiry->sanctions_screening_status,
                 'sanctions_screened_at' => $enquiry->sanctions_screened_at,
                 'sanctions_screening_error' => $enquiry->sanctions_screening_error,
+                'compliance_checked' => $enquiry->compliance_checked,
                 'port_id' => $enquiry->port_id,
                 'port' => $enquiry->port?->name,
                 'laycan_from' => $enquiry->laycan_from,
@@ -133,6 +134,24 @@ class EnquiryController extends Controller
         ]));
 
         return $this->toast('Enquiry saved.');
+    }
+
+    public function updateCompliance(Request $request, Enquiry $enquiry): RedirectResponse
+    {
+        $validated = $request->validate([
+            'compliance_checked' => ['required', 'boolean'],
+        ]);
+
+        DB::transaction(function () use ($enquiry, $validated): void {
+            $enquiry->update($validated);
+            $enquiry->order()->update($validated);
+        });
+
+        return $this->toast(
+            $validated['compliance_checked']
+                ? 'Compliance marked as checked.'
+                : 'Compliance check cleared.',
+        );
     }
 
     public function edit(Request $request): Response
@@ -366,6 +385,7 @@ class EnquiryController extends Controller
             'delivery_location_id' => $enquiry->supply_location_id,
             'barging_cost' => $enquiry->barging_cost,
             'product_type' => collect($products)->map(fn (string $p) => $enquiry->{"{$p}_product_type"})->first(fn ($v) => $v !== null),
+            'compliance_checked' => $enquiry->compliance_checked,
             'agent_id' => $enquiry->agent_id,
             'status' => OrderStatus::Pending,
             ...$productAttributes,

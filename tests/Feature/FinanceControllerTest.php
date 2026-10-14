@@ -225,6 +225,44 @@ test('finance dashboard sorts the full paginated result set by customer name', f
             ->where('completedOrders.data.0.customer_name', 'Zulu Marine'));
 });
 
+test('finance dashboard sorts by payment status in both directions', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    createFinanceOrder([
+        'order_number' => 'ORD-FIN-NOT-PAID',
+        'invoice_value' => 1000,
+        'amount_received' => 0,
+    ]);
+    createFinanceOrder([
+        'order_number' => 'ORD-FIN-PARTIALLY-PAID',
+        'invoice_value' => 1000,
+        'amount_received' => 400,
+    ]);
+    createFinanceOrder([
+        'order_number' => 'ORD-FIN-PAID',
+        'invoice_value' => 1000,
+        'amount_received' => 1000,
+    ]);
+
+    $this->get(route('finance', ['sort' => 'payment_status', 'dir' => 'desc']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('completedOrders.data.0.order_number', 'ORD-FIN-PAID')
+            ->where('completedOrders.data.1.order_number', 'ORD-FIN-PARTIALLY-PAID')
+            ->where('completedOrders.data.2.order_number', 'ORD-FIN-NOT-PAID')
+            ->where('filters.sort', 'payment_status')
+            ->where('filters.dir', 'desc'));
+
+    $this->get(route('finance', ['sort' => 'payment_status', 'dir' => 'asc']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('completedOrders.data.0.order_number', 'ORD-FIN-NOT-PAID')
+            ->where('completedOrders.data.1.order_number', 'ORD-FIN-PARTIALLY-PAID')
+            ->where('completedOrders.data.2.order_number', 'ORD-FIN-PAID')
+            ->where('filters.sort', 'payment_status')
+            ->where('filters.dir', 'asc'));
+});
+
 test('finance dashboard filters completed orders by vessel or customer', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 

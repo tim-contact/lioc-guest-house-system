@@ -45,7 +45,7 @@ type MonthlyProductVolume = {
 
 type CyLySalesMetric = {
     label: string;
-    currentYear: number;
+    currentYear: number | null;
     lastYear: number;
 };
 
@@ -714,7 +714,7 @@ function PortOrdersBarCard({ data }: { data: PortStatusMetric[] }) {
                     className={`flex items-center gap-2 ${analyticsCardTitleClassName}`}
                 >
                     <Anchor className="size-5 text-[#0077b6]" />
-                    Confirmed Orders by Port
+                    Confirmed - Orders by Port
                 </CardTitle>
                 <CardDescription>
                     Pending and completed orders across all ports and each port.
@@ -882,11 +882,11 @@ function CyLySalesCard({
         : '#3155E7';
     const data = selectedProduct?.months ?? [];
     const max = Math.max(
-        ...data.flatMap((month) => [month.currentYear, month.lastYear]),
+        ...data.flatMap((month) => [month.currentYear ?? 0, month.lastYear]),
         1,
     );
     const currentYearTotal = data.reduce(
-        (sum, month) => sum + month.currentYear,
+        (sum, month) => sum + (month.currentYear ?? 0),
         0,
     );
     const lastYearTotal = data.reduce((sum, month) => sum + month.lastYear, 0);

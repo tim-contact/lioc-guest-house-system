@@ -84,6 +84,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::patch('disputes/{dispute}/reopen', [DisputeController::class, 'reopen'])->name('disputes.reopen');
         Route::delete('disputes/{dispute}', [DisputeController::class, 'destroy'])->name('disputes.destroy');
         Route::resource('enquiries', EnquiryController::class)->only(['index', 'store', 'update']);
+        Route::patch('enquiries/{enquiry}/compliance', [EnquiryController::class, 'updateCompliance'])->name('enquiries.compliance.update');
         Route::patch('enquiries/{enquiry}/details', [EnquiryController::class, 'updateDetails'])->name('enquiries.details.update');
         Route::patch('enquiries/{enquiry}/lost', [EnquiryController::class, 'markLost'])->name('enquiries.lost');
         Route::post('enquiries/{enquiry}/customers', [EnquiryCustomerController::class, 'store'])->name('enquiries.customers.store');

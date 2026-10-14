@@ -85,14 +85,16 @@ interface FinanceDashboardProps {
     paymentTypeOptions: EnumOption[];
     filters: {
         search: string;
-        sort: keyof CompletedRow;
+        sort: FinanceSortKey;
         dir: SortDir;
     };
 }
 
+type FinanceSortKey = keyof CompletedRow | 'payment_status';
+
 interface Column {
     header: string;
-    sortKey: keyof CompletedRow;
+    sortKey: FinanceSortKey;
     align?: 'right';
     cell: (row: CompletedRow) => ReactNode;
 }
@@ -154,7 +156,7 @@ const COLUMNS: Column[] = [
     },
     {
         header: 'Status',
-        sortKey: 'amount_remaining',
+        sortKey: 'payment_status',
         cell: (row) => <StatusCell row={row} />,
     },
 ];
@@ -240,7 +242,7 @@ export default function FinanceDashboard({
         return () => window.clearTimeout(timeout);
     }, [completedOrders.per_page, searchFilters]);
 
-    const handleSort = (key: keyof CompletedRow): void => {
+    const handleSort = (key: FinanceSortKey): void => {
         const nextDir = key === sortKey && sortDir === 'asc' ? 'desc' : 'asc';
         const params: Record<string, string | number> = {
             sort: key,

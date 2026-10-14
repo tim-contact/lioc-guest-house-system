@@ -424,11 +424,12 @@ class ReportAnalyticsController extends Controller
     /**
      * @param  Collection<int, Order>  $orders
      * @param  list<string>  $completedStatuses
-     * @return list<array{key: string, label: string, months: list<array{label: string, currentYear: float, lastYear: float}>}>
+     * @return list<array{key: string, label: string, months: list<array{label: string, currentYear: float|null, lastYear: float}>}>
      */
     private function cyLyProductSales(Collection $orders, array $completedStatuses): array
     {
-        $currentYear = CarbonImmutable::now()->year;
+        $now = CarbonImmutable::now();
+        $currentYear = $now->year;
         $lastYear = $currentYear - 1;
 
         return collect(FuelGrade::cases())
@@ -438,7 +439,9 @@ class ReportAnalyticsController extends Controller
                 'months' => collect(range(1, 12))
                     ->map(fn (int $month): array => [
                         'label' => CarbonImmutable::create($currentYear, $month, 1)->format('M'),
-                        'currentYear' => $this->productSalesQuantityForMonth($orders, $completedStatuses, $grade, $currentYear, $month),
+                        'currentYear' => $month <= $now->month
+                            ? $this->productSalesQuantityForMonth($orders, $completedStatuses, $grade, $currentYear, $month)
+                            : null,
                         'lastYear' => $this->productSalesQuantityForMonth($orders, $completedStatuses, $grade, $lastYear, $month),
                     ])
                     ->all(),

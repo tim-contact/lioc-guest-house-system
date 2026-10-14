@@ -12,7 +12,10 @@ import {
     UserPlus,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { update } from '@/actions/App/Http/Controllers/EnquiryController';
+import {
+    update,
+    updateCompliance as updateEnquiryCompliance,
+} from '@/actions/App/Http/Controllers/EnquiryController';
 import {
     store as addCustomer,
     storeTemporary,
@@ -26,6 +29,7 @@ import { NoneSelect } from '@/components/none-select';
 import { SearchableCombobox } from '@/components/searchable-combobox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Dialog,
@@ -110,6 +114,7 @@ export interface EnquiryRow {
     sanctions_screening_status?: string | null;
     sanctions_screened_at?: string | null;
     sanctions_screening_error?: string | null;
+    compliance_checked: boolean;
     customers: EnquiryCustomerRow[];
     // Product details, flattened per product (vlsfo/mgo/hsfo).
     vlsfo_quantity_low: string | null;
@@ -617,6 +622,10 @@ export function EnquiryCard({
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
     const [lostOpen, setLostOpen] = useState(false);
+    const [complianceChecked, setComplianceChecked] = useState(
+        enquiry.compliance_checked,
+    );
+    const [complianceSaving, setComplianceSaving] = useState(false);
     const [dirtyCustomerIds, setDirtyCustomerIds] = useState<Set<number>>(
         new Set(),
     );
@@ -627,6 +636,10 @@ export function EnquiryCard({
     >({});
     // Shared across this card's customers so their totals stay comparable.
     const [totalBasis, setTotalBasis] = useState<TotalBasis>('latest');
+
+    useEffect(() => {
+        setComplianceChecked(enquiry.compliance_checked);
+    }, [enquiry.compliance_checked]);
 
     const handleCustomerDirtyChange = useCallback(
         (id: number, dirty: boolean) => {
@@ -736,6 +749,22 @@ export function EnquiryCard({
         );
     }
 
+    function setCompliance(checked: boolean) {
+        const previousValue = complianceChecked;
+
+        setComplianceChecked(checked);
+        router.patch(
+            updateEnquiryCompliance(enquiry.id).url,
+            { compliance_checked: checked },
+            {
+                preserveScroll: true,
+                onStart: () => setComplianceSaving(true),
+                onError: () => setComplianceChecked(previousValue),
+                onFinish: () => setComplianceSaving(false),
+            },
+        );
+    }
+
     function submitAddCustomer() {
         if (!picked) {
             return;
@@ -832,9 +861,28 @@ export function EnquiryCard({
                     </div>
                 </div>
                 {enquiry.sanctions_screening_status === 'not_listed' && (
-                    <p className="mt-2 text-xs font-medium text-teal-700">
-                        Not mentioned in the OFAC sanction list
-                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <p className="text-xs font-medium text-teal-700">
+                            Not mentioned in the OFAC sanction list
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <Checkbox
+                                id={`compliance-checked-${enquiry.id}`}
+                                checked={complianceChecked}
+                                disabled={complianceSaving}
+                                onCheckedChange={(checked) =>
+                                    setCompliance(checked === true)
+                                }
+                                className="border-teal-700 data-checked:border-teal-700 data-checked:bg-teal-700"
+                            />
+                            <Label
+                                htmlFor={`compliance-checked-${enquiry.id}`}
+                                className="text-xs font-semibold text-slate-700"
+                            >
+                                Compliance checked
+                            </Label>
+                        </div>
+                    </div>
                 )}
             </CardHeader>
 

@@ -48,6 +48,19 @@ test('super admins can view report analytics', function () {
             ->has('cyLyProductSales.0.months', 12));
 });
 
+test('current year sales series stops at the current month', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-03-15 12:00:00'));
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $this->get(route('reports.analytics'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('cyLyProductSales.0.months.2.currentYear', 0)
+            ->where('cyLyProductSales.0.months.3.currentYear', null)
+            ->where('cyLyProductSales.0.months.11.currentYear', null)
+            ->where('cyLyProductSales.0.months.11.lastYear', 0));
+});
+
 test('barge drilldown uses completed BDN deliveries and agrees with utilization counts', function (string $period, int $total) {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
     $barge = Barge::factory()->create(['imo' => '8923844']);

@@ -146,6 +146,18 @@ test('update saves core fields and product details', function () {
         ->vlsfo_delivery_mode->toBe(DeliveryMode::Barge);
 });
 
+test('compliance status can be updated from the enquiry card', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Sales]));
+
+    $enquiry = Enquiry::factory()->create(['compliance_checked' => false]);
+
+    $this->patch(route('enquiries.compliance.update', $enquiry), [
+        'compliance_checked' => true,
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($enquiry->refresh()->compliance_checked)->toBeTrue();
+});
+
 test('update clears product details when its fields are emptied', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
@@ -272,6 +284,7 @@ test('generate_order snapshots the enquiry and winning customer into an order', 
         'vlsfo_product_type' => ProductType::Bonded,
         'vlsfo_delivery_mode' => DeliveryMode::Barge,
         'barging_cost' => 1250,
+        'compliance_checked' => true,
     ]);
 
     $enquiry->enquiryCustomers()->create([
@@ -300,6 +313,7 @@ test('generate_order snapshots the enquiry and winning customer into an order', 
         ->and((float) $order->barging_cost)->toBe(1250.0)
         ->and($order->product_type)->toBe(ProductType::Bonded)
         ->and($order->delivery_mode)->toBe(DeliveryMode::Barge)
+        ->and($order->compliance_checked)->toBeTrue()
         ->and($order->vlsfo_qty_range)->toBe('500 - 1000')
         ->and((float) $order->vlsfo_rate)->toBe(650.5)
         ->and($order->credit_terms)->toBe(CreditTerms::Days14)

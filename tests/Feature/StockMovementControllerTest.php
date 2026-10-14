@@ -392,6 +392,52 @@ test('barge report exposes each loading and delivery separately', function () {
         ->and($row['closing']['mgo'])->toBe(18.0);
 });
 
+test('terminal report exposes each movement with its stock direction', function () {
+    $port = Port::factory()->create();
+    $barge = Barge::factory()->create(['name' => 'Southern Star']);
+
+    StockMovement::factory()->create([
+        'movement_date' => '2026-08-01',
+        'port_id' => $port->id,
+        'movement_scope' => StockMovementScope::Terminal,
+        'movement_type' => StockMovementType::Opening,
+        'mgo_qty' => 1000,
+        'vlsfo_qty' => 2000,
+        'hsfo_qty' => 0,
+    ]);
+
+    $movements = collect([
+        [StockMovementScope::Terminal, StockMovementType::Loading, null, 'Import Supplier', 100],
+        [StockMovementScope::Terminal, StockMovementType::RebondTransfer, null, 'Re-bond Customer', 30],
+        [StockMovementScope::Barge, StockMovementType::Loading, $barge->imo, null, 20],
+    ])->map(fn (array $movement): StockMovement => StockMovement::factory()->create([
+        'movement_date' => '2026-08-01',
+        'port_id' => $port->id,
+        'movement_scope' => $movement[0],
+        'movement_type' => $movement[1],
+        'barge_id' => $movement[2],
+        'counterparty_name' => $movement[3],
+        'mgo_qty' => $movement[4],
+        'vlsfo_qty' => 0,
+        'hsfo_qty' => 0,
+    ]));
+
+    $report = app(StockMovementService::class)->report(
+        $port->id,
+        CarbonImmutable::parse('2026-08-01'),
+        CarbonImmutable::parse('2026-08-01'),
+    );
+    $row = $report['terminal'][0];
+
+    expect($row['movement_entries'])->toHaveCount(3)
+        ->and(collect($row['movement_entries'])->pluck('id')->all())->toBe($movements->pluck('id')->all())
+        ->and(collect($row['movement_entries'])->pluck('label')->all())->toBe(['Import', 'Re-bond sale', 'Load barge'])
+        ->and(collect($row['movement_entries'])->pluck('party')->all())->toBe(['Import Supplier', 'Re-bond Customer', 'Southern Star'])
+        ->and(collect($row['movement_entries'])->pluck('direction')->all())->toBe([1, -1, -1])
+        ->and($row['movement_entries'][0]['quantities']['mgo'])->toBe(100.0)
+        ->and($row['closing']['mgo'])->toBe(1050.0);
+});
+
 test('report subtracts re-bond sales from terminal stock', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::Operations]));
 
