@@ -1422,9 +1422,13 @@ function ProductDemandColumn({
     index: number;
 }) {
     const color = productColor(product.label, index);
-    const max = niceAxisMax(
+    const productScaleMax = niceAxisMax(
         Math.max(product.current.total, product.lastYear.total, 1),
     );
+    const usesLowerVisualScale = ['mgo', 'hsfo'].includes(
+        product.key.toLowerCase(),
+    );
+    const max = usesLowerVisualScale ? productScaleMax * 1.5 : productScaleMax;
 
     return (
         <div className="relative z-10 grid min-h-[304px] grid-rows-[auto_1fr] border-b border-[#E3EAF2] p-3 last:border-b-0 md:border-r md:border-b-0 md:last:border-r-0">
