@@ -7,6 +7,7 @@ use App\Enums\FuelGrade;
 use App\Enums\OrderStatus;
 use App\Enums\ProductType;
 use App\Models\Barge;
+use App\Models\Customer;
 use App\Models\Dispute;
 use App\Models\Enquiry;
 use App\Models\Order;
@@ -59,6 +60,7 @@ class ReportAnalyticsController extends Controller
         return Inertia::render('reports/analytics', [
             'summary' => [
                 'enquiries' => $currentMonthEnquiryCount,
+                'totalCreditLimit' => round((float) Customer::query()->sum('credit_limit'), 2),
                 'orders' => $currentMonthOrderCount,
                 'completed' => $currentMonthCompletedCount,
                 'currentMonthVolume' => $this->totalProductVolume($currentMonthVolumeOrders),

@@ -42,6 +42,7 @@ export interface CrudColumn<T> {
     cell: (row: T) => ReactNode;
     align?: 'right';
     className?: string;
+    headerClassName?: string;
 }
 
 export interface CrudConfig<T> {
@@ -76,6 +77,8 @@ export interface CrudConfig<T> {
     canDelete?: boolean;
     /** Render a denser table (tighter row padding and smaller text) to fit more rows on screen. */
     dense?: boolean;
+    /** Optional page-specific table layout classes. */
+    tableClassName?: string;
     routes?: {
         store?: () => RouteDefinition<'post'>;
         update?: (
