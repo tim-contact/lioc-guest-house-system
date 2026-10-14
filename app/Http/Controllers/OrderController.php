@@ -26,6 +26,8 @@ class OrderController extends Controller
 {
     public function index(): Response
     {
+        $monthStart = now()->startOfMonth();
+        $monthEnd = now()->endOfMonth();
         $mapOrder = fn (Order $order): array => [
             ...OrderService::toRow($order),
             'order_date' => $order->order_date,
@@ -39,13 +41,21 @@ class OrderController extends Controller
             'disputes' => $order->disputes->map(fn (Dispute $dispute): array => DisputeService::toRow($dispute, $order)),
         ];
 
-        $pendingOrders = OrderService::pending()->load('disputes')->map($mapOrder);
+        $pendingOrders = OrderService::pending()->load('disputes');
 
-        $completedOrders = OrderService::completedWithin(30, keepOpenDisputes: true, useBdnDeliveryDate: true)->load('disputes')->map($mapOrder);
+        $completedOrders = OrderService::completedWithin(30, keepOpenDisputes: true, useBdnDeliveryDate: true)->load('disputes');
 
         return Inertia::render('orders/dashboard', [
-            'pendingOrders' => $pendingOrders,
-            'completedOrders' => $completedOrders,
+            'pendingOrders' => $pendingOrders->map($mapOrder),
+            'completedOrders' => $completedOrders->map($mapOrder),
+            'summaryPendingOrders' => $pendingOrders
+                ->filter(fn (Order $order): bool => $order->eta?->betweenIncluded($monthStart, $monthEnd) === true)
+                ->map($mapOrder)
+                ->values(),
+            'summaryCompletedOrders' => $completedOrders
+                ->filter(fn (Order $order): bool => $order->bdn?->delivery_date?->betweenIncluded($monthStart, $monthEnd) === true)
+                ->map($mapOrder)
+                ->values(),
             'customers' => Customer::orderBy('name')->get(['sap_id', 'name']),
             'ports' => Port::orderBy('name')->get(['id', 'name']),
             ...$this->agentContactProps(),

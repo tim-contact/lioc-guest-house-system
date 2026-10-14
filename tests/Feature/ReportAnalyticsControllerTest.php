@@ -159,7 +159,47 @@ test('pending barge utilization and drilldown include all assigned pending order
             ->has('orders.data', 3)
             ->where('orders.data.0.status', 'pending')
             ->where('orders.data.0.delivery_date', null)
-            ->where('orders.data.0.products.mgo', '12.345'));
+            ->where('orders.data.0.products.mgo', 12.345));
+});
+
+test('pending barge utilization falls back to nominated quantity bounds', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    $barge = Barge::factory()->create(['imo' => '8923844']);
+
+    foreach ([
+        ['ORD-PENDING-FINAL', 340, null, null],
+        ['ORD-PENDING-HIGH', null, 450, 400],
+        ['ORD-PENDING-LOW', null, null, 250],
+    ] as [$orderNumber, $final, $high, $low]) {
+        Order::factory()->create([
+            'order_number' => $orderNumber,
+            'barge_id' => $barge->imo,
+            'status' => OrderStatus::Pending,
+            'vlsfo_final_qty' => $final,
+            'vlsfo_quantity_high' => $high,
+            'vlsfo_quantity_low' => $low,
+        ]);
+    }
+
+    $this->get(route('reports.analytics'))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('bargeUtilization.0.periods.pending.products.vlsfo', 1040));
+
+    $this->get(route('reports.barges.orders', ['barge' => $barge->imo, 'period' => 'pending']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('orders.data', function ($orders): bool {
+                $quantities = collect($orders)
+                    ->mapWithKeys(fn (array $order): array => [
+                        $order['order_number'] => (float) $order['products']['vlsfo'],
+                    ]);
+
+                return $quantities->all() === [
+                    'ORD-PENDING-LOW' => 250.0,
+                    'ORD-PENDING-HIGH' => 450.0,
+                    'ORD-PENDING-FINAL' => 340.0,
+                ];
+            }));
 });
 
 test('barge utilization product volumes follow delivery scopes and pending nominations', function () {
@@ -205,6 +245,8 @@ test('barge utilization product volumes follow delivery scopes and pending nomin
             'mgo_final_qty' => 1.111,
             'vlsfo_final_qty' => 2.222,
             'hsfo_final_qty' => null,
+            'hsfo_quantity_high' => null,
+            'hsfo_quantity_low' => null,
             'mgo_bdn_qty' => 999,
             'vlsfo_bdn_qty' => 999,
             'hsfo_bdn_qty' => 999,

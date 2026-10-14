@@ -167,6 +167,49 @@ test('sales and operations expose BDN delivery dates without substituting ETA', 
             ->where('pendingOrders.0.eta', $pending->eta->toJSON()));
 })->with(['sales' => 'orders', 'operations' => 'operations']);
 
+test('sales and operations summaries use current month ETA and BDN delivery dates', function (string $routeName) {
+    $this->travelTo(now()->setDate(2026, 10, 15)->setTime(12, 0));
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    foreach ([
+        ['MV Pending This Month', now()->addDays(2)],
+        ['MV Pending Next Month', now()->addMonth()],
+        ['MV Pending Without ETA', null],
+    ] as [$vesselName, $eta]) {
+        createOrder([
+            'vessel_name' => $vesselName,
+            'status' => OrderStatus::Pending,
+            'eta' => $eta,
+        ]);
+    }
+
+    foreach ([
+        ['MV Delivered This Month', OrderStatus::Delivered, now()->subDays(2)],
+        ['MV Closed This Month', OrderStatus::Closed, now()->subDay()],
+        ['MV Delivered Previous Month', OrderStatus::Delivered, now()->subDays(20)],
+    ] as [$vesselName, $status, $deliveryDate]) {
+        $order = createOrder([
+            'vessel_name' => $vesselName,
+            'status' => $status,
+            'invoice_date' => now(),
+        ]);
+        $order->bdn()->create(['delivery_date' => $deliveryDate->toDateString()]);
+    }
+
+    $this->get(route($routeName))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('pendingOrders', 3)
+            ->has('completedOrders', 3)
+            ->has('summaryPendingOrders', 1)
+            ->where('summaryPendingOrders.0.vessel_name', 'MV Pending This Month')
+            ->has('summaryCompletedOrders', 2)
+            ->where('summaryCompletedOrders', fn ($orders): bool => collect($orders)
+                ->pluck('vessel_name')
+                ->sort()
+                ->values()
+                ->all() === ['MV Closed This Month', 'MV Delivered This Month']));
+})->with(['sales' => 'orders', 'operations' => 'operations']);
+
 test('old delivered orders stay on the completed list while a dispute is open', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 

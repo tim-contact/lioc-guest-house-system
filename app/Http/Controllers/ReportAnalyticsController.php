@@ -208,7 +208,7 @@ class ReportAnalyticsController extends Controller
                     'delivery_date' => $order->bdn?->delivery_date?->toDateString(),
                     'products' => collect(FuelGrade::keys())->mapWithKeys(fn (string $grade): array => [
                         $grade => $period === 'pending'
-                            ? $order->{"{$grade}_final_qty"}
+                            ? $this->pendingProductVolume($order, $grade)
                             : ($order->{"{$grade}_bdn_qty"} ?? $order->bdn?->{"{$grade}_metric_ton"}),
                     ])->all(),
                 ]),
@@ -598,9 +598,17 @@ class ReportAnalyticsController extends Controller
     {
         return collect(FuelGrade::keys())->mapWithKeys(fn (string $grade): array => [
             $grade => round((float) $orders->sum(fn (Order $order): float => $pending
-                ? (float) ($order->{"{$grade}_final_qty"} ?? 0)
+                ? $this->pendingProductVolume($order, $grade)
                 : (float) ($order->{"{$grade}_bdn_qty"} ?? $order->bdn?->{"{$grade}_metric_ton"} ?? 0)), 3),
         ])->all();
+    }
+
+    private function pendingProductVolume(Order $order, string $grade): float
+    {
+        return (float) ($order->{"{$grade}_final_qty"}
+            ?? $order->{"{$grade}_quantity_high"}
+            ?? $order->{"{$grade}_quantity_low"}
+            ?? 0);
     }
 
     private function isOrderInUtilizationPeriod(?CarbonInterface $date, string $period): bool

@@ -46,6 +46,8 @@ export interface PortOption {
 interface OrdersDashboardProps {
     pendingOrders: OrderEditRow[];
     completedOrders: OrderEditRow[];
+    summaryPendingOrders: OrderEditRow[];
+    summaryCompletedOrders: OrderEditRow[];
     customers: CustomerOption[];
     ports: PortOption[];
     agents: AgentOption[];
@@ -93,6 +95,8 @@ function sortPortsByBusinessOrder(ports: PortOption[]): PortOption[] {
 export default function OrdersDashboard({
     pendingOrders,
     completedOrders,
+    summaryPendingOrders,
+    summaryCompletedOrders,
     customers,
     ports,
     agents,
@@ -150,8 +154,8 @@ export default function OrdersDashboard({
             <div className="p-4 pb-0">
                 <PortSummaryCards
                     ports={portNames}
-                    pendingOrders={pendingOrders}
-                    completedOrders={completedOrders}
+                    pendingOrders={summaryPendingOrders}
+                    completedOrders={summaryCompletedOrders}
                 />
             </div>
 

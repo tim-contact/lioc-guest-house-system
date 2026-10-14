@@ -16,6 +16,8 @@ class OperationController extends Controller
 {
     public function index(): Response
     {
+        $monthStart = now()->startOfMonth();
+        $monthEnd = now()->endOfMonth();
         $mapOrder = fn (Order $order): array => [
             ...OrderService::toRow($order),
             'product_type' => $order->product_type?->value,
@@ -27,13 +29,21 @@ class OperationController extends Controller
             'hsfo_bdn_qty' => $order->hsfo_bdn_qty,
         ];
 
-        $pendingOrders = OrderService::pending()->load('barge')->map($mapOrder);
+        $pendingOrders = OrderService::pending()->load('barge');
 
-        $completedOrders = OrderService::completedWithin(30, keepOpenDisputes: true, useBdnDeliveryDate: true)->load('barge')->map($mapOrder);
+        $completedOrders = OrderService::completedWithin(30, keepOpenDisputes: true, useBdnDeliveryDate: true)->load('barge');
 
         return Inertia::render('operations/dashboard', [
-            'pendingOrders' => $pendingOrders,
-            'completedOrders' => $completedOrders,
+            'pendingOrders' => $pendingOrders->map($mapOrder),
+            'completedOrders' => $completedOrders->map($mapOrder),
+            'summaryPendingOrders' => $pendingOrders
+                ->filter(fn (Order $order): bool => $order->eta?->betweenIncluded($monthStart, $monthEnd) === true)
+                ->map($mapOrder)
+                ->values(),
+            'summaryCompletedOrders' => $completedOrders
+                ->filter(fn (Order $order): bool => $order->bdn?->delivery_date?->betweenIncluded($monthStart, $monthEnd) === true)
+                ->map($mapOrder)
+                ->values(),
             'ports' => Port::query()->orderBy('name')->pluck('name')->all(),
             'barges' => Barge::orderBy('name')->get(['imo', 'name']),
             ...$this->agentContactProps(),

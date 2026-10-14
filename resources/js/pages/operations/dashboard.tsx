@@ -43,6 +43,8 @@ export interface BargeOption {
 interface OperationsDashboardProps {
     pendingOrders: OpsEditRow[];
     completedOrders: OpsEditRow[];
+    summaryPendingOrders: OpsEditRow[];
+    summaryCompletedOrders: OpsEditRow[];
     ports: string[];
     barges: BargeOption[];
     agents: AgentOption[];
@@ -86,6 +88,8 @@ function sortPortsByBusinessOrder(ports: string[]): string[] {
 export default function OperationsDashboard({
     pendingOrders,
     completedOrders,
+    summaryPendingOrders,
+    summaryCompletedOrders,
     ports,
     barges,
     agents,
@@ -121,6 +125,14 @@ export default function OperationsDashboard({
         () => filterPortScopedRows(completedOrders, filters),
         [completedOrders, filters],
     );
+    const filteredSummaryPendingOrders = useMemo(
+        () => filterPortScopedRows(summaryPendingOrders, filters),
+        [filters, summaryPendingOrders],
+    );
+    const filteredSummaryCompletedOrders = useMemo(
+        () => filterPortScopedRows(summaryCompletedOrders, filters),
+        [filters, summaryCompletedOrders],
+    );
     const resultCount =
         filteredPendingOrders.length + filteredCompletedOrders.length;
 
@@ -139,8 +151,8 @@ export default function OperationsDashboard({
 
                     <PortSummaryCards
                         ports={visiblePorts}
-                        pendingOrders={filteredPendingOrders}
-                        completedOrders={filteredCompletedOrders}
+                        pendingOrders={filteredSummaryPendingOrders}
+                        completedOrders={filteredSummaryCompletedOrders}
                     />
 
                     <OrderDashboard
