@@ -149,11 +149,18 @@ type AnalyticsProps = {
 
 type StockPosition = {
     asOf: string;
-    rows: {
+    rows: StockPositionRow[];
+    views: {
+        key: 'both' | 'colombo' | 'trincomalee';
         label: string;
-        support: string | null;
-        values: Record<'vlsfo' | 'mgo' | 'hsfo', number | null>;
+        rows: StockPositionRow[];
     }[];
+};
+
+type StockPositionRow = {
+    label: string;
+    support: string | null;
+    values: Record<'vlsfo' | 'mgo' | 'hsfo', number | null>;
 };
 
 const compactNumber = new Intl.NumberFormat('en-US', {
@@ -1183,16 +1190,52 @@ function BargeUtilizationCard({ data }: { data: BargeUtilizationMetric[] }) {
 }
 
 function StockPositionCard({ data }: { data: StockPosition }) {
+    const [selectedViewKey, setSelectedViewKey] =
+        useState<StockPosition['views'][number]['key']>('both');
+    const selectedView =
+        data.views.find((view) => view.key === selectedViewKey) ??
+        data.views[0];
+    const rows = selectedView?.rows ?? data.rows;
+
     return (
         <Card className={`${chartCardClassName} min-h-[300px] min-w-0`}>
             <CardHeader className="pb-2">
-                <CardTitle
-                    className={`flex items-center gap-2 ${analyticsCardTitleClassName}`}
-                >
-                    <FileText className="size-5 text-[#2563eb]" />
-                    Stock Position
-                </CardTitle>
-                <CardDescription>All ports · {data.asOf} · MT</CardDescription>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <CardTitle
+                            className={`flex items-center gap-2 ${analyticsCardTitleClassName}`}
+                        >
+                            <FileText className="size-5 text-[#2563eb]" />
+                            Stock Position
+                        </CardTitle>
+                        <CardDescription>
+                            {selectedView?.label ?? 'Both ports'} · {data.asOf}{' '}
+                            · MT
+                        </CardDescription>
+                    </div>
+                    <div className="flex flex-wrap gap-1 rounded-full border border-[#D8E2EE] bg-[#F8FAFD] p-1">
+                        {data.views.map((view) => {
+                            const active = view.key === selectedViewKey;
+
+                            return (
+                                <button
+                                    key={view.key}
+                                    type="button"
+                                    aria-pressed={active}
+                                    className={cn(
+                                        'rounded-full px-2.5 py-1.5 text-[10px] font-bold whitespace-nowrap transition-colors',
+                                        active
+                                            ? 'bg-blue-600 text-white shadow-sm'
+                                            : 'text-slate-500 hover:bg-white hover:text-[#172033]',
+                                    )}
+                                    onClick={() => setSelectedViewKey(view.key)}
+                                >
+                                    {view.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
             </CardHeader>
             <CardContent>
                 <div className="overflow-hidden rounded-xl border border-[#E3EAF2] bg-white">
@@ -1211,7 +1254,7 @@ function StockPositionCard({ data }: { data: StockPosition }) {
                         ))}
                     </div>
                     <div className="divide-y divide-slate-100">
-                        {data.rows.map((row) => (
+                        {rows.map((row) => (
                             <div
                                 key={row.label}
                                 className="grid grid-cols-[minmax(112px,1.25fr)_repeat(3,minmax(0,0.65fr))] items-stretch"

@@ -263,7 +263,15 @@ function PortTable<T extends OrderRow>({
     showOperationsDetails: boolean;
 }) {
     const dateKey = quantitySource === 'bdn' ? 'delivery_date' : 'eta';
-    const { sortKey, sortDir, handleSort, sorted } = useSortable(rows, dateKey);
+    const { sortKey, sortDir, handleSort, sorted } = useSortable(
+        rows,
+        dateKey,
+        'asc',
+        (row, key) =>
+            quantitySource === 'ordered' && key === 'eta'
+                ? (row.eta ?? row.laycan_from)
+                : row[key],
+    );
     const hasActions =
         actions.length > 0 ||
         (quantitySource === 'bdn' && rows.some((row) => row.has_bdn));

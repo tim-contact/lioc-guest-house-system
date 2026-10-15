@@ -436,7 +436,19 @@ test('analytics stock position uses current stock balances and pending commitmen
             ->where('stockPosition.rows.4.values.mgo', 860 + $bargeBalance)
             ->where('stockPosition.rows.4.values.hsfo', 0)
             ->where('stockPosition.rows.5.values.mgo', null)
-            ->where('stockPosition.rows.6.values.mgo', null));
+            ->where('stockPosition.rows.6.values.mgo', null)
+            ->where('stockPosition.views.0.key', 'both')
+            ->where('stockPosition.views.0.rows.0.values.mgo', 1060)
+            ->where('stockPosition.views.0.rows.1.values.mgo', $bargeBalance)
+            ->where('stockPosition.views.0.rows.3.values.mgo', 200)
+            ->where('stockPosition.views.1.key', 'colombo')
+            ->where('stockPosition.views.1.rows.0.values.mgo', 880)
+            ->where('stockPosition.views.1.rows.1.values.mgo', $bargeBalance)
+            ->where('stockPosition.views.1.rows.3.values.mgo', 200)
+            ->where('stockPosition.views.2.key', 'trincomalee')
+            ->where('stockPosition.views.2.rows.0.values.mgo', 180)
+            ->where('stockPosition.views.2.rows.1.values.mgo', 0)
+            ->where('stockPosition.views.2.rows.3.values.mgo', 0));
 })->with([
     'all history' => [null, 30],
     'configured barge cutoff' => ['2026-10-04', 60],
@@ -762,6 +774,62 @@ test('report analytics includes enquiry to completed funnel counts', function ()
             ->where('pendingDisputesByPort.0.disputes.0.customerName', 'Acme Marine')
             ->where('pendingDisputesByPort.0.disputes.0.vesselName', 'MT Delivered Star')
             ->where('pendingDisputesByPort.0.disputes.1.vesselName', 'MT Pending Star'));
+});
+
+test('orders by port uses ETA for pending orders and BDN delivery date for completed orders', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    $port = Port::factory()->create(['name' => 'Trincomalee']);
+
+    Order::factory()->create([
+        'port_id' => $port->id,
+        'status' => OrderStatus::Pending,
+        'order_date' => now()->subMonth(),
+        'eta' => now(),
+    ]);
+    Order::factory()->create([
+        'port_id' => $port->id,
+        'status' => OrderStatus::Pending,
+        'order_date' => now()->subMonth(),
+        'eta' => null,
+        'laycan_from' => now(),
+    ]);
+    Order::factory()->create([
+        'port_id' => $port->id,
+        'status' => OrderStatus::Pending,
+        'order_date' => now(),
+        'eta' => now()->subMonth(),
+    ]);
+
+    foreach ([OrderStatus::Delivered, OrderStatus::Closed] as $status) {
+        $order = Order::factory()->create([
+            'port_id' => $port->id,
+            'status' => $status,
+            'invoice_date' => now()->subMonth(),
+        ]);
+        $order->bdn()->create(['delivery_date' => now()->toDateString()]);
+    }
+
+    $previousMonthDelivery = Order::factory()->create([
+        'port_id' => $port->id,
+        'status' => OrderStatus::Delivered,
+        'invoice_date' => now(),
+    ]);
+    $previousMonthDelivery->bdn()->create([
+        'delivery_date' => now()->subMonth()->toDateString(),
+    ]);
+
+    Order::factory()->create([
+        'port_id' => $port->id,
+        'status' => OrderStatus::Delivered,
+        'invoice_date' => now(),
+    ]);
+
+    $this->get(route('reports.analytics'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('portStatusMetrics.0.label', 'Trincomalee')
+            ->where('portStatusMetrics.0.pendingDeliveries', 2)
+            ->where('portStatusMetrics.0.completedDeliveries', 2));
 });
 
 test('product demand comparison is scoped to current month and same month last year sales', function () {

@@ -107,19 +107,67 @@ class ReportAnalyticsController extends Controller
 
     /**
      * @param  Collection<int, Order>  $orders
-     * @return array{asOf: string, rows: list<array{label: string, support: string|null, values: array<string, float|null>}>}
+     * @return array{asOf: string, rows: list<array{label: string, support: string|null, values: array<string, float|null>}>, views: list<array{key: string, label: string, rows: list<array{label: string, support: string|null, values: array<string, float|null>}>>}
      */
     private function stockPosition(Collection $orders, StockMovementService $stockMovementService): array
     {
         $today = CarbonImmutable::today();
-        $ports = Port::query()->pluck('id');
+        $ports = Port::query()->get(['id', 'name']);
+        $allPortIds = $ports->pluck('id');
+        $colomboPortIds = $ports
+            ->filter(fn (Port $port): bool => strcasecmp($port->name, 'Colombo') === 0)
+            ->pluck('id');
+        $trincomaleePortIds = $ports
+            ->filter(fn (Port $port): bool => strcasecmp($port->name, 'Trincomalee') === 0)
+            ->pluck('id');
+        $bothPortIds = $colomboPortIds->merge($trincomaleePortIds)->unique()->values();
+
+        return [
+            'asOf' => $today->toDateString(),
+            'rows' => $this->stockPositionRows($orders, $allPortIds, $stockMovementService, $today),
+            'views' => [
+                [
+                    'key' => 'both',
+                    'label' => 'Both ports',
+                    'rows' => $this->stockPositionRows(
+                        $orders,
+                        $bothPortIds->isNotEmpty() ? $bothPortIds : $allPortIds,
+                        $stockMovementService,
+                        $today,
+                    ),
+                ],
+                [
+                    'key' => 'colombo',
+                    'label' => 'Colombo',
+                    'rows' => $this->stockPositionRows($orders, $colomboPortIds, $stockMovementService, $today),
+                ],
+                [
+                    'key' => 'trincomalee',
+                    'label' => 'Trincomalee',
+                    'rows' => $this->stockPositionRows($orders, $trincomaleePortIds, $stockMovementService, $today),
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @param  Collection<int, Order>  $orders
+     * @param  Collection<int, int>  $portIds
+     * @return list<array{label: string, support: string|null, values: array<string, float|null>}>
+     */
+    private function stockPositionRows(
+        Collection $orders,
+        Collection $portIds,
+        StockMovementService $stockMovementService,
+        CarbonImmutable $today,
+    ): array {
         $terminal = array_fill_keys(FuelGrade::keys(), 0.0);
         $barges = $terminal;
         $total = $terminal;
         $committed = $terminal;
         $saleable = $terminal;
 
-        foreach ($ports as $portId) {
+        foreach ($portIds as $portId) {
             $report = $stockMovementService->report($portId, $today, $today);
 
             foreach (FuelGrade::keys() as $grade) {
@@ -132,7 +180,7 @@ class ReportAnalyticsController extends Controller
 
         foreach ($orders as $order) {
             if ($order->status !== OrderStatus::Pending
-                || ! $ports->contains($order->port_id)
+                || ! $portIds->contains($order->port_id)
                 || $order->order_date?->gt($today) === true) {
                 continue;
             }
@@ -149,16 +197,13 @@ class ReportAnalyticsController extends Controller
         $unavailable = array_fill_keys(FuelGrade::keys(), null);
 
         return [
-            'asOf' => $today->toDateString(),
-            'rows' => [
-                ['label' => 'Stock at Terminal', 'support' => 'Excluding dead stock', 'values' => $terminal],
-                ['label' => 'Stock on Barge', 'support' => null, 'values' => $barges],
-                ['label' => 'Total Stock', 'support' => null, 'values' => $total],
-                ['label' => 'Stock Sold', 'support' => 'Awaiting delivery', 'values' => $committed],
-                ['label' => 'Saleable Stock', 'support' => null, 'values' => $saleable],
-                ['label' => 'Planned Import', 'support' => null, 'values' => $unavailable],
-                ['label' => 'Import Date', 'support' => null, 'values' => $unavailable],
-            ],
+            ['label' => 'Stock at Terminal', 'support' => 'Excluding dead stock', 'values' => $terminal],
+            ['label' => 'Stock on Barge', 'support' => null, 'values' => $barges],
+            ['label' => 'Total Stock', 'support' => null, 'values' => $total],
+            ['label' => 'Stock Sold', 'support' => 'Awaiting delivery', 'values' => $committed],
+            ['label' => 'Saleable Stock', 'support' => null, 'values' => $saleable],
+            ['label' => 'Planned Import', 'support' => null, 'values' => $unavailable],
+            ['label' => 'Import Date', 'support' => null, 'values' => $unavailable],
         ];
     }
 
@@ -343,10 +388,10 @@ class ReportAnalyticsController extends Controller
     private function isCurrentMonthPortStatusOrder(Order $order, array $completedStatuses): bool
     {
         if ($order->status === OrderStatus::Pending) {
-            return $order->order_date?->isCurrentMonth() === true;
+            return ($order->eta ?? $order->laycan_from)?->isCurrentMonth() === true;
         }
 
-        return $order->invoice_date?->isCurrentMonth() === true
+        return $order->bdn?->delivery_date?->isCurrentMonth() === true
             && in_array($order->status->value, $completedStatuses, true);
     }
 
