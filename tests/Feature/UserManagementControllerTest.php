@@ -212,6 +212,28 @@ test('master cannot promote a user to super admin', function () {
     expect($salesUser->refresh()->type)->toBe(UserType::Sales);
 });
 
+test('updating a user role accepts a blank password and keeps the current password', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $user = User::factory()->create([
+        'type' => UserType::Sales,
+        'password' => bcrypt('CurrentPassword123!'),
+    ]);
+    $currentPasswordHash = $user->password;
+
+    $this->patch(route('users.update', $user), [
+        'name' => $user->name,
+        'email' => $user->email,
+        'type' => UserType::Operations->value,
+        'user_id' => $user->user_id,
+        'password' => '',
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($user->refresh())
+        ->type->toBe(UserType::Operations)
+        ->password->toBe($currentPasswordHash);
+});
+
 // ─── Master cannot manage other master users ──────────────────────────────────
 
 test('master cannot create a master user', function () {

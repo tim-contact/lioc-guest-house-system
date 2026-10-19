@@ -4,6 +4,8 @@ namespace App\Http\Requests;
 
 use App\Enums\UserType;
 use App\Models\User;
+use App\Policies\UserPolicy;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateUserRequest extends FormRequest
@@ -23,7 +25,7 @@ class UpdateUserRequest extends FormRequest
         /** @var User $target */
         $target = $this->route('user');
 
-        $policy = app(\App\Policies\UserPolicy::class);
+        $policy = app(UserPolicy::class);
 
         // If role is being changed, check changeRole policy.
         if ($this->has('type')) {
@@ -52,7 +54,7 @@ class UpdateUserRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -64,7 +66,7 @@ class UpdateUserRequest extends FormRequest
             'email' => ['sometimes', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email,'.$target->id],
             'type' => ['sometimes', 'string', 'in:'.implode(',', array_column(UserType::cases(), 'value'))],
             'user_id' => ['sometimes', 'nullable', 'string', 'max:255', 'unique:users,user_id,'.$target->id],
-            'password' => ['sometimes', 'string', 'min:8'],
+            'password' => ['sometimes', 'nullable', 'string', 'min:8'],
         ];
     }
 }
