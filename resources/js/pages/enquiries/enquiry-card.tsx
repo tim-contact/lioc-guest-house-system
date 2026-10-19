@@ -10,6 +10,7 @@ import {
     Ship,
     Trophy,
     UserPlus,
+    CheckCircle2,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -24,6 +25,7 @@ import {
 import Dot from '@/components/animata/background/dot';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { DetailRow } from '@/components/edit-panel/fields';
+import InputError from '@/components/input-error';
 import { MoneyInput } from '@/components/money-input';
 import { NoneSelect } from '@/components/none-select';
 import { SearchableCombobox } from '@/components/searchable-combobox';
@@ -169,7 +171,7 @@ function isSanctioned(enquiry: EnquiryRow): boolean {
 const PRICE_ROWS = [
     { key: 'initial_offer', label: 'Initial Offer' },
     { key: 'feedback_price', label: 'Feedback' },
-    { key: 'fixing_counter', label: 'Fixing Counter' },
+    { key: 'fixing_counter', label: 'Fixing Rate' },
 ] as const;
 
 type PriceRowKey = (typeof PRICE_ROWS)[number]['key'];
@@ -288,6 +290,7 @@ function CustomerBlock({
     creditByCustomer,
     otherCustomerIds,
     maxQuantities,
+    selectedProducts,
     totalBasis,
     setTotalBasis,
     setStatus,
@@ -301,6 +304,7 @@ function CustomerBlock({
     creditTermsOptions: EnumOption[];
     otherCustomerIds: Set<string>;
     maxQuantities: Record<FuelGradeKey, string>;
+    selectedProducts: Set<FuelGradeKey>;
     totalBasis: TotalBasis;
     setTotalBasis: (basis: TotalBasis) => void;
     setStatus: (row: EnquiryCustomerRow, status: 'fixed' | 'pending') => void;
@@ -340,9 +344,7 @@ function CustomerBlock({
             c.sap_id === form.data.customer_id,
     );
 
-    function save(event: React.FormEvent) {
-        event.preventDefault();
-
+    function saveCustomer(onSuccess?: () => void) {
         form.transform((data) => ({
             ...emptyToNull(data),
             customer_id: data.customer_id,
@@ -350,8 +352,45 @@ function CustomerBlock({
 
         form.submit(updateCustomer(customer.id), {
             preserveScroll: true,
-            onSuccess: () => form.setDefaults(),
+            onSuccess: () => {
+                form.setDefaults();
+                onSuccess?.();
+            },
         });
+    }
+
+    function save(event: React.FormEvent) {
+        event.preventDefault();
+        saveCustomer();
+    }
+
+    function markFixed() {
+        form.clearErrors();
+
+        const missingRateProducts = FUEL_GRADES.filter(
+            (product) =>
+                selectedProducts.has(product.key) &&
+                form.data[priceField(product.key, 'fixing_counter')] === '',
+        );
+
+        if (missingRateProducts.length > 0) {
+            missingRateProducts.forEach((product) => {
+                form.setError(
+                    priceField(product.key, 'fixing_counter'),
+                    `${product.label} rate required.`,
+                );
+            });
+
+            return;
+        }
+
+        if (form.isDirty) {
+            saveCustomer(() => setStatus(customer, 'fixed'));
+
+            return;
+        }
+
+        setStatus(customer, 'fixed');
     }
 
     return (
@@ -463,13 +502,21 @@ function CustomerBlock({
                                             key={product.key}
                                             className="p-2"
                                         >
-                                            <MoneyInput
-                                                className="h-7 rounded-sm"
-                                                value={form.data[field]}
-                                                onChange={(value) =>
-                                                    form.setData(field, value)
-                                                }
-                                            />
+                                            <div className="grid gap-1">
+                                                <MoneyInput
+                                                    className="h-7 rounded-sm"
+                                                    value={form.data[field]}
+                                                    onChange={(value) =>
+                                                        form.setData(
+                                                            field,
+                                                            value,
+                                                        )
+                                                    }
+                                                />
+                                                <InputError
+                                                    message={form.errors[field]}
+                                                />
+                                            </div>
                                         </TableCell>
                                     );
                                 })}
@@ -574,7 +621,7 @@ function CustomerBlock({
                         type="button"
                         size="sm"
                         className="bg-green-600 text-white hover:bg-green-600/90"
-                        onClick={() => setStatus(customer, 'fixed')}
+                        onClick={markFixed}
                     >
                         <Trophy className="size-3.5" />
                         Fixed
@@ -712,6 +759,14 @@ export function EnquiryCard({
         ]),
     ) as Record<FuelGradeKey, string>;
 
+    const selectedProducts = new Set(
+        FUEL_GRADES.filter(
+            (product) =>
+                form.data[productField(product.key, 'quantity_low')] !== '' ||
+                form.data[productField(product.key, 'quantity_high')] !== '',
+        ).map((product) => product.key),
+    );
+
     const hasUnsavedChanges = form.isDirty || dirtyCustomerIds.size > 0;
 
     function submitDetails() {
@@ -843,28 +898,32 @@ export function EnquiryCard({
                             </span>
                         </CardTitle>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                        {isSanctioned(enquiry) ? (
-                            <Badge
-                                variant="outline"
-                                className="h-6 animate-[sanctioned-soft-blink_1.5s_linear_infinite] rounded-md border-red-600 bg-red-600 px-2.5 text-[0.68rem] font-bold tracking-normal text-white uppercase shadow-none"
-                            >
-                                Sanctioned
-                            </Badge>
-                        ) : null}
-                        <Badge
+                    <div className="flex shrink-0 flex-col items-end gap-2">
+                        <div className="flex items-center gap-2">
+                       {isSanctioned(enquiry) ? (
+    <Badge
+        variant="outline"
+        className="h-6 animate-[sanctioned-soft-blink_1.5s_linear_infinite] rounded-md border-red-600 bg-red-600 px-2.5 text-[0.68rem] font-bold tracking-normal text-white uppercase shadow-none"
+    >
+        Sanctioned
+    </Badge>
+) : enquiry.sanctions_screening_status === 'not_listed' ? (
+    <Badge
+        variant="outline"
+        className="h-6 gap-1 rounded-md border-green-600 bg-green-600 px-2.5 text-[0.68rem] font-bold tracking-normal text-white shadow-none"
+    >
+        <CheckCircle2 className="size-3.5" />
+        OFAC-OK
+    </Badge>
+) : null}
+                         <Badge
                             variant="outline"
                             className={`h-6 rounded-md px-2.5 font-semibold capitalize ${statusStyle.badge}`}
                         >
                             {enquiry.status}
-                        </Badge>
-                    </div>
-                </div>
-                {enquiry.sanctions_screening_status === 'not_listed' && (
-                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
-                        <p className="text-xs font-medium text-teal-700">
-                            Not mentioned in the OFAC sanction list
-                        </p>
+                        </Badge> </div>
+ {enquiry.sanctions_screening_status === 'not_listed' && (
+                    <div className="flex items-center gap-2">
                         <div className="flex items-center gap-2">
                             <Checkbox
                                 id={`compliance-checked-${enquiry.id}`}
@@ -879,11 +938,15 @@ export function EnquiryCard({
                                 htmlFor={`compliance-checked-${enquiry.id}`}
                                 className="text-xs font-semibold text-slate-700"
                             >
-                                Compliance checked
+                                Compliance OK
                             </Label>
                         </div>
                     </div>
                 )}
+
+                    </div>
+                </div>
+               
             </CardHeader>
 
             <CardContent className="relative z-[1] flex flex-col gap-5">
@@ -1127,6 +1190,7 @@ export function EnquiryCard({
                             creditByCustomer={creditByCustomer}
                             otherCustomerIds={otherCustomerIds}
                             maxQuantities={maxQuantities}
+                            selectedProducts={selectedProducts}
                             totalBasis={totalBasis}
                             setTotalBasis={setTotalBasis}
                             setStatus={setStatus}

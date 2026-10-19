@@ -16,6 +16,7 @@ use App\Models\Order;
 use App\Models\Port;
 use App\Services\DisputeService;
 use App\Services\OrderService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -125,11 +126,18 @@ class OrderController extends Controller
         $perPage = (int) $request->input('per_page', 25);
         $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 25;
         $vesselSearch = trim((string) $request->input('vessel', ''));
+        $sortKey = (string) $request->input('sort', 'id');
+        $direction = $request->input('dir') === 'desc' ? 'desc' : 'asc';
+
+        if (! in_array($sortKey, self::orderTableSortableColumns(), true)) {
+            $sortKey = 'id';
+            $direction = 'asc';
+        }
 
         return Inertia::render('orders/table', [
             'orders' => Order::with('deliveryLocation')
                 ->when($vesselSearch !== '', fn ($query) => $query->where('vessel_name', 'like', '%'.$vesselSearch.'%'))
-                ->orderBy('id')
+                ->tap(fn (Builder $query) => self::applyOrderTableSort($query, $sortKey, $direction))
                 ->paginate($perPage)
                 ->withQueryString()
                 ->through(fn (Order $order): array => [
@@ -139,6 +147,8 @@ class OrderController extends Controller
                 ]),
             'filters' => [
                 'vessel' => $vesselSearch,
+                'sort' => $sortKey,
+                'dir' => $direction,
             ],
             ...$this->agentContactProps(),
             'statusOptions' => $this->enumOptions(OrderStatus::cases()),
@@ -147,6 +157,91 @@ class OrderController extends Controller
             'productTypeOptions' => $this->enumOptions(ProductType::cases()),
             'creditTermsOptions' => $this->enumOptions(CreditTerms::cases()),
         ]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function orderTableSortableColumns(): array
+    {
+        return [
+            'id',
+            'order_number',
+            'order_date',
+            'customer_id',
+            'vessel_name',
+            'vessel_id',
+            'port_id',
+            'eta',
+            'laycan_from',
+            'laycan_to',
+            'delivery_mode',
+            'delivery_location_id',
+            'product_type',
+            'barge_id',
+            'agent_id',
+            'agent_name',
+            'agent_pic_id',
+            'pic',
+            'mobile_no',
+            'credit_terms',
+            'vlsfo_qty_range',
+            'vlsfo_rate',
+            'vlsfo_final_qty',
+            'vlsfo_bdn_qty',
+            'mgo_qty_range',
+            'mgo_rate',
+            'mgo_final_qty',
+            'mgo_bdn_qty',
+            'hsfo_qty_range',
+            'hsfo_rate',
+            'hsfo_final_qty',
+            'hsfo_bdn_qty',
+            'barging_cost',
+            'agent_fees',
+            'invoice_value',
+            'invoice_date',
+            'payment_due_date',
+            'amount_received',
+            'payment_receipt_date',
+            'balance_amount',
+            'status',
+            'created_at',
+            'updated_at',
+        ];
+    }
+
+    private static function applyOrderTableSort(Builder $query, string $sort, string $direction): void
+    {
+        $textColumns = [
+            'order_number',
+            'customer_id',
+            'vessel_name',
+            'vessel_id',
+            'delivery_mode',
+            'product_type',
+            'barge_id',
+            'agent_name',
+            'pic',
+            'mobile_no',
+            'credit_terms',
+            'vlsfo_qty_range',
+            'mgo_qty_range',
+            'hsfo_qty_range',
+            'status',
+        ];
+
+        if ($sort === 'balance_amount') {
+            $query->orderByRaw("(COALESCE(orders.invoice_value, 0) - COALESCE(orders.amount_received, 0)) {$direction}");
+        } elseif (in_array($sort, $textColumns, true)) {
+            $query->orderByRaw("LOWER(orders.{$sort}) {$direction} NULLS LAST");
+        } else {
+            $query->orderByRaw("orders.{$sort} {$direction} NULLS LAST");
+        }
+
+        if ($sort !== 'id') {
+            $query->orderBy('orders.id');
+        }
     }
 
     /**

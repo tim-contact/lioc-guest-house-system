@@ -2,6 +2,7 @@ import { useForm } from '@inertiajs/react';
 import { useEffect, useMemo } from 'react';
 import { updateDetails } from '@/actions/App/Http/Controllers/EnquiryController';
 import { MoneyInput } from '@/components/money-input';
+import InputError from '@/components/input-error';
 import { SearchableCombobox } from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
 import {
@@ -242,6 +243,8 @@ export function AdditionalDetailsDialog({
                         />
                     </div>
                 </div>
+
+                <InputError message={form.errors.generate_order} />
 
                 <DialogFooter>
                     <Button

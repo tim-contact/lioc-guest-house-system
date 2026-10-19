@@ -73,6 +73,7 @@ export interface CompletedRow {
     payment_receipt_date: string | null;
     status: string | null;
     paid_in_full: boolean;
+    is_overdue: boolean;
     can_close: boolean;
     payments: PaymentRow[];
 }
@@ -768,7 +769,7 @@ function DateCell({ value }: { value: string | null }) {
 }
 
 function getPaymentStatus(row: CompletedRow): {
-    label: 'Paid' | 'Partially paid' | 'Not paid';
+    label: 'Paid' | 'Overdue' | 'Partially paid' | 'Not paid';
     className: string;
 } {
     const amountReceived = Number(row.amount_received ?? 0);
@@ -778,6 +779,13 @@ function getPaymentStatus(row: CompletedRow): {
         return {
             label: 'Paid',
             className: 'border-[#0F766E] bg-[#0F766E] text-white',
+        };
+    }
+
+    if (row.is_overdue) {
+        return {
+            label: 'Overdue',
+            className: 'border-[#B91C1C] bg-[#B91C1C] text-white',
         };
     }
 

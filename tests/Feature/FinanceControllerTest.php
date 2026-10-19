@@ -108,6 +108,39 @@ test('paid_in_full is true only when amount received covers the invoice', functi
             ->where('filters.search', ''));
 });
 
+test('finance marks outstanding orders past their due date as overdue', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    createFinanceOrder([
+        'order_number' => 'ORD-FIN-OVERDUE',
+        'invoice_value' => 1000,
+        'amount_received' => 400,
+        'payment_due_date' => now()->subDays(2),
+    ]);
+    createFinanceOrder([
+        'order_number' => 'ORD-FIN-PAID-PAST-DUE',
+        'invoice_value' => 1000,
+        'amount_received' => 1000,
+        'payment_due_date' => now()->subDay(),
+    ]);
+    createFinanceOrder([
+        'order_number' => 'ORD-FIN-DUE-TODAY',
+        'invoice_value' => 1000,
+        'amount_received' => 0,
+        'payment_due_date' => now(),
+    ]);
+
+    $this->get(route('finance'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('completedOrders.data.0.order_number', 'ORD-FIN-OVERDUE')
+            ->where('completedOrders.data.0.is_overdue', true)
+            ->where('completedOrders.data.1.order_number', 'ORD-FIN-PAID-PAST-DUE')
+            ->where('completedOrders.data.1.is_overdue', false)
+            ->where('completedOrders.data.2.order_number', 'ORD-FIN-DUE-TODAY')
+            ->where('completedOrders.data.2.is_overdue', false));
+});
+
 test('finance dashboard paginates completed orders', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
@@ -232,24 +265,34 @@ test('finance dashboard sorts by payment status in both directions', function ()
         'order_number' => 'ORD-FIN-NOT-PAID',
         'invoice_value' => 1000,
         'amount_received' => 0,
+        'payment_due_date' => now()->addDay(),
     ]);
     createFinanceOrder([
         'order_number' => 'ORD-FIN-PARTIALLY-PAID',
         'invoice_value' => 1000,
         'amount_received' => 400,
+        'payment_due_date' => now()->addDay(),
+    ]);
+    createFinanceOrder([
+        'order_number' => 'ORD-FIN-OVERDUE',
+        'invoice_value' => 1000,
+        'amount_received' => 400,
+        'payment_due_date' => now()->subDay(),
     ]);
     createFinanceOrder([
         'order_number' => 'ORD-FIN-PAID',
         'invoice_value' => 1000,
         'amount_received' => 1000,
+        'payment_due_date' => now()->subDay(),
     ]);
 
     $this->get(route('finance', ['sort' => 'payment_status', 'dir' => 'desc']))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('completedOrders.data.0.order_number', 'ORD-FIN-PAID')
-            ->where('completedOrders.data.1.order_number', 'ORD-FIN-PARTIALLY-PAID')
-            ->where('completedOrders.data.2.order_number', 'ORD-FIN-NOT-PAID')
+            ->where('completedOrders.data.1.order_number', 'ORD-FIN-OVERDUE')
+            ->where('completedOrders.data.2.order_number', 'ORD-FIN-PARTIALLY-PAID')
+            ->where('completedOrders.data.3.order_number', 'ORD-FIN-NOT-PAID')
             ->where('filters.sort', 'payment_status')
             ->where('filters.dir', 'desc'));
 
@@ -258,7 +301,8 @@ test('finance dashboard sorts by payment status in both directions', function ()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('completedOrders.data.0.order_number', 'ORD-FIN-NOT-PAID')
             ->where('completedOrders.data.1.order_number', 'ORD-FIN-PARTIALLY-PAID')
-            ->where('completedOrders.data.2.order_number', 'ORD-FIN-PAID')
+            ->where('completedOrders.data.2.order_number', 'ORD-FIN-OVERDUE')
+            ->where('completedOrders.data.3.order_number', 'ORD-FIN-PAID')
             ->where('filters.sort', 'payment_status')
             ->where('filters.dir', 'asc'));
 });

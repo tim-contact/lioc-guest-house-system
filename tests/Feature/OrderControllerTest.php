@@ -578,6 +578,36 @@ test('orders table paginates orders', function () {
             ->where('orders.data.0.order_number', 'ORD-026'));
 });
 
+test('orders table sorts the complete result before pagination', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    foreach (range(1, 10) as $number) {
+        createOrder([
+            'order_number' => 'ORD-ZULU-'.str_pad((string) $number, 2, '0', STR_PAD_LEFT),
+            'vessel_name' => 'MV Zulu '.str_pad((string) $number, 2, '0', STR_PAD_LEFT),
+        ]);
+    }
+
+    createOrder([
+        'order_number' => 'ORD-ALPHA',
+        'vessel_name' => 'MV Alpha',
+    ]);
+
+    $this->get(route('orders.table', [
+        'per_page' => 10,
+        'sort' => 'vessel_name',
+        'dir' => 'asc',
+    ]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('orders/table')
+            ->has('orders.data', 10)
+            ->where('orders.data.0.order_number', 'ORD-ALPHA')
+            ->where('orders.total', 11)
+            ->where('filters.sort', 'vessel_name')
+            ->where('filters.dir', 'asc'));
+});
+
 test('orders table can be searched by vessel name', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 

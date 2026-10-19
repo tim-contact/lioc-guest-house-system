@@ -26,6 +26,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -355,6 +356,23 @@ class EnquiryController extends Controller
 
         if (! $fixed) {
             return;
+        }
+
+        $missingRateProducts = collect(FuelGrade::cases())
+            ->filter(function (FuelGrade $product) use ($enquiry, $fixed): bool {
+                $key = $product->value;
+                $hasQuantity = $enquiry->{"{$key}_quantity_low"} !== null
+                    || $enquiry->{"{$key}_quantity_high"} !== null;
+
+                return $hasQuantity && $fixed->{"{$key}_fixing_counter"} === null;
+            })
+            ->map(fn (FuelGrade $product): string => $product->label())
+            ->values();
+
+        if ($missingRateProducts->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'generate_order' => 'Add a fixed rate for '.$missingRateProducts->join(', ', ' and ').' before generating the order.',
+            ]);
         }
 
         $products = FuelGrade::keys();

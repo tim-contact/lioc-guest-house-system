@@ -322,6 +322,35 @@ test('generate_order snapshots the enquiry and winning customer into an order', 
     expect($enquiry->refresh()->order)->not->toBeNull();
 });
 
+test('generate_order requires a fixed rate for every selected product', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $enquiry = Enquiry::factory()->create([
+        'status' => EnquiryStatus::Completing,
+        'vlsfo_quantity_low' => 500,
+        'mgo_quantity_high' => 100,
+    ]);
+    $fixed = $enquiry->enquiryCustomers()->create([
+        'customer_id' => Customer::factory()->create()->sap_id,
+        'status' => EnquiryCustomerStatus::Fixed,
+        'vlsfo_fixing_counter' => 650.5,
+        'mgo_fixing_counter' => null,
+    ]);
+
+    $this->patch(route('enquiries.details.update', $enquiry), [
+        'sampling' => 'barge_manifold',
+        'generate_order' => true,
+    ])
+        ->assertRedirect()
+        ->assertSessionHasErrors([
+            'generate_order' => 'Add a fixed rate for MGO before generating the order.',
+        ]);
+
+    expect(Order::count())->toBe(0)
+        ->and($enquiry->refresh()->status)->toBe(EnquiryStatus::Completing)
+        ->and($fixed->refresh()->status)->toBe(EnquiryCustomerStatus::Fixed);
+});
+
 test('saving details without generate_order creates no order', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 

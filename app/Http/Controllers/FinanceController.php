@@ -158,10 +158,12 @@ class FinanceController extends Controller
             'paid_in_full' => $query->orderByRaw('(orders.invoice_value > 0 AND COALESCE(orders.invoice_value, 0) - COALESCE(orders.amount_received, 0) <= 0) '.$direction),
             'amount_remaining' => $query->orderByRaw("(COALESCE(orders.invoice_value, 0) - COALESCE(orders.amount_received, 0)) {$direction}"),
             'payment_status' => $query->orderByRaw("CASE
-                WHEN COALESCE(orders.invoice_value, 0) - COALESCE(orders.amount_received, 0) <= 0 THEN 3
+                WHEN COALESCE(orders.invoice_value, 0) - COALESCE(orders.amount_received, 0) <= 0 THEN 4
+                WHEN orders.payment_due_date < ?
+                    AND COALESCE(orders.invoice_value, 0) - COALESCE(orders.amount_received, 0) > 0 THEN 3
                 WHEN COALESCE(orders.amount_received, 0) > 0 THEN 2
                 ELSE 1
-            END {$direction}"),
+            END {$direction}", [Carbon::today()->toDateString()]),
             default => $query->orderBy("orders.{$sort}", $direction),
         };
     }
@@ -192,6 +194,9 @@ class FinanceController extends Controller
             'payment_receipt_date' => $order->payment_receipt_date,
             'status' => $order->status->label(),
             'paid_in_full' => $order->isPaidInFull(),
+            'is_overdue' => ! $order->isPaidInFull()
+                && $order->balance_amount > 0
+                && $order->payment_due_date?->isBefore(Carbon::today()) === true,
             'can_close' => $order->canBeClosed(),
             'payments' => $order->payments
                 ->sortByDesc('date')

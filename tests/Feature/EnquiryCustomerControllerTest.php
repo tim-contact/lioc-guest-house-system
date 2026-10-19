@@ -101,8 +101,14 @@ test('store rejects a customer already on the enquiry', function () {
 test('marking a customer fixed does not touch the others, and moves the enquiry to completing', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
-    $enquiry = Enquiry::factory()->create(['status' => EnquiryStatus::Open]);
-    $winner = $enquiry->enquiryCustomers()->create(['customer_id' => 'AAA']);
+    $enquiry = Enquiry::factory()->create([
+        'status' => EnquiryStatus::Open,
+        'vlsfo_quantity_low' => 100,
+    ]);
+    $winner = $enquiry->enquiryCustomers()->create([
+        'customer_id' => 'AAA',
+        'vlsfo_fixing_counter' => 650,
+    ]);
     $otherA = $enquiry->enquiryCustomers()->create(['customer_id' => 'BBB']);
     $otherB = $enquiry->enquiryCustomers()->create(['customer_id' => 'CCC']);
 
@@ -114,6 +120,31 @@ test('marking a customer fixed does not touch the others, and moves the enquiry 
     expect($otherA->refresh()->status)->toBe(EnquiryCustomerStatus::Pending);
     expect($otherB->refresh()->status)->toBe(EnquiryCustomerStatus::Pending);
     expect($enquiry->refresh()->status)->toBe(EnquiryStatus::Completing);
+});
+
+test('marking a customer fixed requires a fixing rate for each selected product', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $enquiry = Enquiry::factory()->create([
+        'status' => EnquiryStatus::Open,
+        'vlsfo_quantity_low' => 100,
+        'mgo_quantity_high' => 50,
+    ]);
+    $winner = $enquiry->enquiryCustomers()->create([
+        'customer_id' => 'AAA',
+        'vlsfo_fixing_counter' => 650,
+    ]);
+
+    $this->patch(route('enquiry-customers.update-status', $winner), [
+        'status' => 'fixed',
+    ])
+        ->assertRedirect()
+        ->assertSessionHasErrors([
+            'mgo_fixing_counter' => 'MGO rate required.',
+        ]);
+
+    expect($winner->refresh()->status)->toBe(EnquiryCustomerStatus::Pending)
+        ->and($enquiry->refresh()->status)->toBe(EnquiryStatus::Open);
 });
 
 test('marking a customer lost only affects that customer', function () {

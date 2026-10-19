@@ -181,7 +181,7 @@ class ReportAnalyticsController extends Controller
         foreach ($orders as $order) {
             if ($order->status !== OrderStatus::Pending
                 || ! $portIds->contains($order->port_id)
-                || $order->order_date?->gt($today) === true) {
+                || $this->pendingDeliveryDate($order)?->isCurrentMonth() !== true) {
                 continue;
             }
 
@@ -388,11 +388,26 @@ class ReportAnalyticsController extends Controller
     private function isCurrentMonthPortStatusOrder(Order $order, array $completedStatuses): bool
     {
         if ($order->status === OrderStatus::Pending) {
-            return ($order->eta ?? $order->laycan_from)?->isCurrentMonth() === true;
+            return $this->pendingDeliveryDate($order)?->isCurrentMonth() === true;
         }
 
         return $order->bdn?->delivery_date?->isCurrentMonth() === true
             && in_array($order->status->value, $completedStatuses, true);
+    }
+
+    private function pendingDeliveryDate(Order $order): ?CarbonInterface
+    {
+        if ($order->eta === null) {
+            return $order->laycan_from;
+        }
+
+        if ($order->laycan_from === null) {
+            return $order->eta;
+        }
+
+        return $order->eta->greaterThanOrEqualTo($order->laycan_from)
+            ? $order->eta
+            : $order->laycan_from;
     }
 
     /**

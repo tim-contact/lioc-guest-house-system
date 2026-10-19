@@ -4,6 +4,7 @@ import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
 import type { PaginationMeta } from '@/components/pagination-controls';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import type { SortDir } from '@/hooks/use-sortable';
 import { FUEL_GRADES } from '@/lib/domain';
 import type { ExportColumn } from '@/lib/export-xlsx';
 import {
@@ -87,6 +88,8 @@ interface OrdersTableProps {
     };
     filters: {
         vessel: string;
+        sort: keyof Order & string;
+        dir: SortDir;
     };
     agents: AgentOption[];
     agentPics: AgentPicOption[];
@@ -110,6 +113,14 @@ export default function OrdersTable({
 }: OrdersTableProps) {
     const rows = orders.data;
     const [vesselSearch, setVesselSearch] = useState(filters.vessel ?? '');
+    const sortKey = filters.sort;
+    const sortDir = filters.dir;
+
+    function handleSort(key: keyof Order & string) {
+        const nextDir = key === sortKey && sortDir === 'asc' ? 'desc' : 'asc';
+
+        visitOrdersTable(vesselSearch, orders.per_page, key, nextDir);
+    }
 
     const agentOptions = agents.map((agent) => ({
         value: String(agent.id),
@@ -234,7 +245,12 @@ export default function OrdersTable({
                 className="flex max-w-xl flex-col gap-2 rounded-[17px] border border-[#E3EAF2] bg-white p-3 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:flex-row sm:items-center"
                 onSubmit={(event) => {
                     event.preventDefault();
-                    visitOrdersTable(vesselSearch, orders.per_page);
+                    visitOrdersTable(
+                        vesselSearch,
+                        orders.per_page,
+                        sortKey,
+                        sortDir,
+                    );
                 }}
             >
                 <div className="relative min-w-0 flex-1">
@@ -260,7 +276,12 @@ export default function OrdersTable({
                             className="h-10 rounded-xl border-[#D8E2EE]"
                             onClick={() => {
                                 setVesselSearch('');
-                                visitOrdersTable('', orders.per_page);
+                                visitOrdersTable(
+                                    '',
+                                    orders.per_page,
+                                    sortKey,
+                                    sortDir,
+                                );
                             }}
                         >
                             <X />
@@ -682,7 +703,15 @@ export default function OrdersTable({
         },
     };
 
-    return <ResourceCrudPage rows={rows} config={config} pagination={orders} />;
+    return (
+        <ResourceCrudPage
+            rows={rows}
+            config={config}
+            pagination={orders}
+            sort={{ key: sortKey, direction: sortDir }}
+            onSort={handleSort}
+        />
+    );
 }
 
 function VesselNameCell({ order }: { order: Order }) {
@@ -773,7 +802,12 @@ function productQuantityValueFor(
     return null;
 }
 
-function visitOrdersTable(vessel: string, perPage: number) {
+function visitOrdersTable(
+    vessel: string,
+    perPage: number,
+    sortKey: string,
+    direction: SortDir,
+) {
     const params = new URLSearchParams();
     const trimmedVessel = vessel.trim();
 
@@ -783,6 +817,14 @@ function visitOrdersTable(vessel: string, perPage: number) {
 
     if (perPage !== 25) {
         params.set('per_page', String(perPage));
+    }
+
+    if (sortKey !== 'id') {
+        params.set('sort', sortKey);
+    }
+
+    if (direction !== 'asc') {
+        params.set('dir', direction);
     }
 
     const query = params.toString();
