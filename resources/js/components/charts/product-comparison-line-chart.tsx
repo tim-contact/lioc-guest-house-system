@@ -38,9 +38,9 @@ const compactNumber = new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 1,
 });
 
+const lastYearColor = '#2563EB';
 const chartWidth = 1420;
 const mainHeight = 420;
-const brushHeight = 72;
 const chartInsetX = 4;
 const plotAreaWidth = chartWidth - chartInsetX * 2;
 const mainPadding = {
@@ -49,13 +49,6 @@ const mainPadding = {
     bottom: 48,
     left: 0,
 };
-const brushPadding = {
-    top: 4,
-    right: 0,
-    bottom: 4,
-    left: 0,
-};
-
 export function ProductComparisonLineChart({
     currentColor,
     data,
@@ -78,7 +71,7 @@ export function ProductComparisonLineChart({
                 label: 'Current Year',
             },
             {
-                color: '#94A3B8',
+                color: lastYearColor,
                 key: 'lastYear',
                 label: 'Last Year',
             },
@@ -97,20 +90,6 @@ export function ProductComparisonLineChart({
         max,
         mainHeight,
         mainPadding,
-        'lastYear',
-    );
-    const brushCurrentPoints = pointsFor(
-        data,
-        max,
-        brushHeight,
-        brushPadding,
-        'currentYear',
-    );
-    const brushLastYearPoints = pointsFor(
-        data,
-        max,
-        brushHeight,
-        brushPadding,
         'lastYear',
     );
     const selectedSummary =
@@ -163,7 +142,7 @@ export function ProductComparisonLineChart({
                 </div>
             </div>
 
-            <div className="flex size-full min-h-0 min-w-0 flex-col gap-3">
+            <div className="flex size-full min-h-0 min-w-0 flex-col">
                 <div className="min-h-0 min-w-0 flex-1">
                     <div className="relative size-full">
                         <LineChartSvg
@@ -186,52 +165,6 @@ export function ProductComparisonLineChart({
                         <p className="sr-only" aria-live="polite">
                             {selectedSummary}
                         </p>
-                    </div>
-                </div>
-
-                <div
-                    className="min-h-0 shrink-0"
-                    style={{ height: brushHeight }}
-                >
-                    <div className="relative size-full">
-                        <LineChartSvg
-                            ariaLabel={`CY vs LY ${productLabel} sales brush preview`}
-                            chartId={`${generatedId}-brush`}
-                            currentColor={currentColor}
-                            currentPoints={brushCurrentPoints}
-                            data={data}
-                            height={brushHeight}
-                            highlightedSeries={highlightedSeries}
-                            lastYearPoints={brushLastYearPoints}
-                            max={max}
-                            productLabel={productLabel}
-                            series={series}
-                            showBrush
-                            visibleSeries={visibleSeries}
-                        />
-                        <div
-                            aria-hidden="true"
-                            className="pointer-events-none absolute inset-0 z-[2]"
-                        >
-                            <span
-                                className="absolute shrink-0 rounded-lg bg-[#3155E7]"
-                                style={{
-                                    top: 24,
-                                    left: 6,
-                                    width: 4,
-                                    height: 24,
-                                }}
-                            />
-                            <span
-                                className="absolute shrink-0 rounded-lg bg-[#3155E7]"
-                                style={{
-                                    top: 24,
-                                    right: 6,
-                                    width: 4,
-                                    height: 24,
-                                }}
-                            />
-                        </div>
                     </div>
                 </div>
             </div>
@@ -440,7 +373,7 @@ function LineChartSvg({
                     <circle cx="5" cy="5" fill="#CBD5E1" r="1.5" />
                 </pattern>
                 <LineGradient id={currentGradientId} color={currentColor} />
-                <LineGradient id={lastYearGradientId} color="#94A3B8" />
+                <LineGradient id={lastYearGradientId} color={lastYearColor} />
             </defs>
 
             <rect fill="transparent" height={height} width={chartWidth} />

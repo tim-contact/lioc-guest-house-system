@@ -19,7 +19,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSortable } from '@/hooks/use-sortable';
 import { FUEL_GRADES } from '@/lib/domain';
-import { shortDate } from '@/lib/utils';
+import { shortDate, shortDateTime } from '@/lib/utils';
 import { ebdn } from '@/routes/bdns';
 
 export const PORTS = ['Colombo', 'Trincomalee', 'Galle', 'Hambantota'] as const;
@@ -366,11 +366,11 @@ function PortTable<T extends OrderRow>({
                                 </TableCell>
                             ))}
                             <TableCell className="px-3 py-3 text-[#334155] tabular-nums">
-                                {shortDate(
-                                    quantitySource === 'bdn'
-                                        ? (row.delivery_date ?? null)
-                                        : (row.eta ?? row.laycan_from),
-                                )}
+                                {quantitySource === 'bdn'
+                                    ? shortDate(row.delivery_date ?? null)
+                                    : row.eta
+                                      ? shortDateTime(row.eta)
+                                      : shortDate(row.laycan_from)}
                             </TableCell>
                             {hasActions && (
                                 <TableCell className="px-3 py-3 text-right">

@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useDragScroll } from '@/hooks/use-drag-scroll';
-import { dateToDateOnly, toDateRange } from '@/lib/utils';
+import { cn, dateToDateOnly, portColorClasses, toDateRange } from '@/lib/utils';
 import { store } from '@/routes/enquiries';
 import type { AgentOption, EnumOption, SupplyLocationOption } from '@/types';
 import { EnquiryCard } from './enquiry-card';
@@ -55,17 +55,79 @@ export default function EnquiriesIndex({
     const [creating, setCreating] = useState(false);
     const rowRef = useDragScroll<HTMLDivElement>();
     const scrollbarRef = useRef<HTMLDivElement>(null);
+    const [selectedEnquiryId, setSelectedEnquiryId] = useState<number | null>(
+        enquiries[0]?.id ?? null,
+    );
+    const activeEnquiryId = enquiries.some(
+        (enquiry) => enquiry.id === selectedEnquiryId,
+    )
+        ? selectedEnquiryId
+        : (enquiries[0]?.id ?? null);
     const scrollWidth = `calc(${enquiries.length} * 36rem + ${Math.max(enquiries.length - 1, 0)} * 1.25rem)`;
 
     function syncScrollbar(event: React.UIEvent<HTMLDivElement>) {
-        if (scrollbarRef.current) {
+        if (
+            scrollbarRef.current &&
+            Math.abs(
+                scrollbarRef.current.scrollLeft -
+                    event.currentTarget.scrollLeft,
+            ) > 1
+        ) {
             scrollbarRef.current.scrollLeft = event.currentTarget.scrollLeft;
+        }
+
+        const container = event.currentTarget;
+        const cards = Array.from(
+            container.querySelectorAll<HTMLElement>('[data-enquiry-id]'),
+        );
+        const nearestCard = cards.reduce<HTMLElement | null>(
+            (nearest, card) =>
+                nearest === null ||
+                Math.abs(card.offsetLeft - container.scrollLeft) <
+                    Math.abs(nearest.offsetLeft - container.scrollLeft)
+                    ? card
+                    : nearest,
+            null,
+        );
+        const nearestId = Number(nearestCard?.dataset.enquiryId);
+
+        if (Number.isInteger(nearestId) && nearestId !== selectedEnquiryId) {
+            setSelectedEnquiryId(nearestId);
         }
     }
 
     function syncCards(event: React.UIEvent<HTMLDivElement>) {
-        if (rowRef.current) {
+        if (
+            rowRef.current &&
+            Math.abs(
+                rowRef.current.scrollLeft - event.currentTarget.scrollLeft,
+            ) > 1
+        ) {
             rowRef.current.scrollLeft = event.currentTarget.scrollLeft;
+        }
+    }
+
+    function scrollToEnquiry(enquiryId: number) {
+        const container = rowRef.current;
+        const card = container?.querySelector<HTMLElement>(
+            `[data-enquiry-id="${enquiryId}"]`,
+        );
+
+        if (!container || !card) {
+            return;
+        }
+
+        setSelectedEnquiryId(enquiryId);
+        const left =
+            container.scrollLeft +
+            card.getBoundingClientRect().left -
+            container.getBoundingClientRect().left -
+            container.clientLeft;
+
+        container.scrollLeft = left;
+
+        if (scrollbarRef.current) {
+            scrollbarRef.current.scrollLeft = container.scrollLeft;
         }
     }
 
@@ -90,13 +152,66 @@ export default function EnquiriesIndex({
                 </div>
 
                 <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-semibold tracking-normal text-slate-950">
-                            Enquiries
-                        </h1>
-                        <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-600 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-                            {enquiries.length}
-                        </span>
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <div className="flex shrink-0 items-center gap-3">
+                            <h1 className="text-2xl font-semibold tracking-normal text-slate-950">
+                                Enquiries
+                            </h1>
+                            <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-600 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                                {enquiries.length}
+                            </span>
+                        </div>
+
+                        {enquiries.length > 0 && (
+                            <nav
+                                aria-label="Jump to enquiry"
+                                className="flex min-w-0 flex-1 [scrollbar-width:thin] gap-2 overflow-x-auto py-1"
+                            >
+                                {enquiries.map((enquiry) => {
+                                    const selected =
+                                        enquiry.id === activeEnquiryId;
+                                    const pillColor = portColorClasses(
+                                        enquiry.port_id || enquiry.port,
+                                    );
+
+                                    return (
+                                        <button
+                                            key={enquiry.id}
+                                            type="button"
+                                            aria-current={
+                                                selected
+                                                    ? 'location'
+                                                    : undefined
+                                            }
+                                            title={`${enquiry.vessel_name || `Enquiry #${enquiry.id}`}${enquiry.port ? ` - ${enquiry.port}` : ''}`}
+                                            className={cn(
+                                                'shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-[filter,box-shadow] hover:brightness-95 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none',
+                                                selected
+                                                    ? 'text-white shadow-sm'
+                                                    : pillColor.card,
+                                                !selected &&
+                                                    pillColor.foreground,
+                                            )}
+                                            style={{
+                                                borderColor: pillColor.color,
+                                                ...(selected
+                                                    ? {
+                                                          backgroundColor:
+                                                              pillColor.color,
+                                                      }
+                                                    : {}),
+                                            }}
+                                            onClick={() =>
+                                                scrollToEnquiry(enquiry.id)
+                                            }
+                                        >
+                                            {enquiry.vessel_name ||
+                                                `Enquiry #${enquiry.id}`}
+                                        </button>
+                                    );
+                                })}
+                            </nav>
+                        )}
                     </div>
                     <Button
                         onClick={() => setCreating(true)}
@@ -123,6 +238,7 @@ export default function EnquiriesIndex({
                             {enquiries.map((enquiry) => (
                                 <div
                                     key={enquiry.id}
+                                    data-enquiry-id={enquiry.id}
                                     className="w-[36rem] shrink-0 cursor-auto"
                                 >
                                     <EnquiryCard

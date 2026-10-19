@@ -908,7 +908,7 @@ function CyLySalesCard({
         products.findIndex((product) => product.key === selectedProduct?.key),
         0,
     );
-    const selectedProductColor = selectedProduct
+    const currentYearColor = selectedProduct
         ? productColor(selectedProduct.label, selectedProductIndex)
         : '#3155E7';
     const data = selectedProduct?.months ?? [];
@@ -990,7 +990,7 @@ function CyLySalesCard({
                 ) : (
                     <div className="grid h-full min-h-0 gap-4">
                         <ProductComparisonLineChart
-                            currentColor={selectedProductColor}
+                            currentColor={currentYearColor}
                             data={data}
                             max={max}
                             productLabel={selectedProduct?.label ?? ''}
@@ -998,10 +998,10 @@ function CyLySalesCard({
                         <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
                             <div className="flex flex-wrap gap-3">
                                 <Legend
-                                    color={selectedProductColor}
+                                    color={currentYearColor}
                                     label="Current Year"
                                 />
-                                <Legend color="#94A3B8" label="Last Year" />
+                                <Legend color="#2563EB" label="Last Year" />
                             </div>
                             <span className="font-semibold tabular-nums">
                                 LY Total {compactNumber.format(lastYearTotal)}
