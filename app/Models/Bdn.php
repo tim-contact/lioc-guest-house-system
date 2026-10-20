@@ -6,8 +6,10 @@ use App\Enums\DeliveryMode;
 use App\Enums\FuelGrade;
 use App\Enums\Sampling;
 use App\Enums\SamplingMethod;
+use Carbon\CarbonInterface;
 use Database\Factories\BdnFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -143,6 +145,20 @@ class Bdn extends Model
         'metric_ton' => 3,
     ];
 
+    private const COMPLETION_DATE_EXPRESSION = <<<'SQL'
+        CASE
+            WHEN vlsfo_hose_disconnected_at IS NOT NULL
+                AND (mgo_hose_disconnected_at IS NULL OR vlsfo_hose_disconnected_at >= mgo_hose_disconnected_at)
+                AND (hsfo_hose_disconnected_at IS NULL OR vlsfo_hose_disconnected_at >= hsfo_hose_disconnected_at)
+                THEN vlsfo_hose_disconnected_at
+            WHEN mgo_hose_disconnected_at IS NOT NULL
+                AND (hsfo_hose_disconnected_at IS NULL OR mgo_hose_disconnected_at >= hsfo_hose_disconnected_at)
+                THEN mgo_hose_disconnected_at
+            WHEN hsfo_hose_disconnected_at IS NOT NULL THEN hsfo_hose_disconnected_at
+            ELSE delivery_date
+        END
+        SQL;
+
     /**
      * @return array<string, string>
      */
@@ -173,6 +189,28 @@ class Bdn extends Model
         }
 
         return $casts;
+    }
+
+    public function completionDate(): ?CarbonInterface
+    {
+        $hoseDisconnectedAt = collect(FuelGrade::keys())
+            ->map(fn (string $grade): mixed => $this->getAttribute("{$grade}_hose_disconnected_at"))
+            ->filter(fn (mixed $value): bool => $value instanceof CarbonInterface)
+            ->sortByDesc(fn (CarbonInterface $value): int => $value->getTimestamp())
+            ->first();
+
+        return $hoseDisconnectedAt instanceof CarbonInterface
+            ? $hoseDisconnectedAt
+            : $this->delivery_date;
+    }
+
+    /** @param Builder<Bdn> $query */
+    public function scopeWhereCompletionBetween(Builder $query, CarbonInterface $start, CarbonInterface $end): void
+    {
+        $query->whereRaw(
+            '('.self::COMPLETION_DATE_EXPRESSION.') BETWEEN ? AND ?',
+            [$start, $end],
+        );
     }
 
     /** @return BelongsTo<Order, $this> */
