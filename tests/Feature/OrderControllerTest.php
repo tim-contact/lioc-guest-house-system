@@ -167,7 +167,7 @@ test('sales and operations expose BDN delivery dates without substituting ETA', 
             ->where('pendingOrders.0.eta', $pending->eta->toJSON()));
 })->with(['sales' => 'orders', 'operations' => 'operations']);
 
-test('sales and operations summaries use current month ETA and BDN delivery dates', function (string $routeName) {
+test('sales and operations summaries use pending fallbacks and BDN completion dates', function (string $routeName) {
     $this->travelTo(now()->setDate(2026, 10, 15)->setTime(12, 0));
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
@@ -186,10 +186,25 @@ test('sales and operations summaries use current month ETA and BDN delivery date
     }
 
     foreach ([
-        ['MV Delivered This Month', OrderStatus::Delivered, now()->subDays(2), 100, 95],
-        ['MV Closed This Month', OrderStatus::Closed, now()->subDay(), 200, 190],
-        ['MV Delivered Previous Month', OrderStatus::Delivered, now()->subDays(20), 300, 285],
-    ] as [$vesselName, $status, $deliveryDate, $finalQuantity, $bdnQuantity]) {
+        [
+            'MV Completed By Hose',
+            OrderStatus::Delivered,
+            now()->subDays(20),
+            ['vlsfo_hose_disconnected_at' => now()->subDays(15), 'mgo_hose_disconnected_at' => now()->subDays(2)],
+            100,
+            95,
+        ],
+        ['MV Completed By Delivery Fallback', OrderStatus::Closed, now()->subDay(), [], 200, 190],
+        [
+            'MV Delivery Date Ignored',
+            OrderStatus::Delivered,
+            now()->subDays(2),
+            ['vlsfo_hose_disconnected_at' => now()->subDays(15)],
+            300,
+            285,
+        ],
+        ['MV Previous Completion', OrderStatus::Delivered, now()->subDays(20), [], 400, 380],
+    ] as [$vesselName, $status, $deliveryDate, $timesheet, $finalQuantity, $bdnQuantity]) {
         $order = createOrder([
             'vessel_name' => $vesselName,
             'status' => $status,
@@ -197,13 +212,16 @@ test('sales and operations summaries use current month ETA and BDN delivery date
             'vlsfo_final_qty' => $finalQuantity,
             'vlsfo_bdn_qty' => $bdnQuantity,
         ]);
-        $order->bdn()->create(['delivery_date' => $deliveryDate->toDateString()]);
+        $order->bdn()->create([
+            'delivery_date' => $deliveryDate->toDateString(),
+            ...$timesheet,
+        ]);
     }
 
     $this->get(route($routeName))->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->has('pendingOrders', 4)
-            ->has('completedOrders', 3)
+            ->has('completedOrders', 4)
             ->has('summaryPendingOrders', 2)
             ->where('summaryPendingOrders', fn ($orders): bool => collect($orders)
                 ->pluck('vessel_name')
@@ -215,12 +233,12 @@ test('sales and operations summaries use current month ETA and BDN delivery date
                 ->pluck('vessel_name')
                 ->sort()
                 ->values()
-                ->all() === ['MV Closed This Month', 'MV Delivered This Month'])
+                ->all() === ['MV Completed By Delivery Fallback', 'MV Completed By Hose'])
             ->where('summaryCompletedOrders', function ($orders): bool {
                 $rows = collect($orders)->keyBy('vessel_name');
 
-                return $rows['MV Delivered This Month']['vlsfo_final_qty'] === '100.000'
-                    && $rows['MV Delivered This Month']['vlsfo_bdn_qty'] === '95.000';
+                return $rows['MV Completed By Hose']['vlsfo_final_qty'] === '100.000'
+                    && $rows['MV Completed By Hose']['vlsfo_bdn_qty'] === '95.000';
             }));
 })->with(['sales' => 'orders', 'operations' => 'operations']);
 

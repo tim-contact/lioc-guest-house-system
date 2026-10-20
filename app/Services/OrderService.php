@@ -38,7 +38,8 @@ class OrderService
 
     /**
      * Orders completed within the last $days, same loading and ordering.
-     * Sales and operations opt into BDN delivery dates; other callers retain invoice dates.
+     * Sales and operations opt into BDN completion dates; other callers retain invoice dates.
+     * Completion uses the latest hose-disconnected timestamp, falling back to delivery date.
      * BDN-based history also includes settled (closed) deliveries.
      *
      * With $keepOpenDisputes, orders carrying an unresolved dispute stay on the
@@ -46,18 +47,22 @@ class OrderService
      *
      * @return Collection<int, Order>
      */
-    public static function completedWithin(int $days = 30, bool $keepOpenDisputes = false, bool $useBdnDeliveryDate = false): Collection
+    public static function completedWithin(int $days = 30, bool $keepOpenDisputes = false, bool $useBdnCompletionDate = false): Collection
     {
+        $periodStart = Carbon::today()->subDays($days)->startOfDay();
+        $periodEnd = Carbon::today()->endOfDay();
+
         return Order::with(['customer', 'port', 'deliveryLocation', 'bdn'])
-            ->whereIn('status', $useBdnDeliveryDate
+            ->whereIn('status', $useBdnCompletionDate
                 ? [OrderStatus::Delivered, OrderStatus::Closed]
                 : OrderStatus::completedStatuses())
             ->where(fn ($query) => $query
                 ->when(
-                    $useBdnDeliveryDate,
-                    fn ($completed) => $completed->whereHas('bdn', fn ($bdn) => $bdn
-                        ->whereDate('delivery_date', '>=', Carbon::today()->subDays($days))
-                        ->whereDate('delivery_date', '<=', Carbon::today())),
+                    $useBdnCompletionDate,
+                    fn ($completed) => $completed->whereHas(
+                        'bdn',
+                        fn ($bdn) => $bdn->whereCompletionBetween($periodStart, $periodEnd),
+                    ),
                     fn ($completed) => $completed->where('invoice_date', '>=', Carbon::now()->subDays($days)),
                 )
                 ->when($keepOpenDisputes, fn ($disputed) => $disputed->orWhereHas(

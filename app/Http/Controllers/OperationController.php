@@ -31,7 +31,7 @@ class OperationController extends Controller
 
         $pendingOrders = OrderService::pending()->load('barge');
 
-        $completedOrders = OrderService::completedWithin(30, keepOpenDisputes: true, useBdnDeliveryDate: true)->load('barge');
+        $completedOrders = OrderService::completedWithin(30, keepOpenDisputes: true, useBdnCompletionDate: true)->load('barge');
 
         return Inertia::render('operations/dashboard', [
             'pendingOrders' => $pendingOrders->map($mapOrder),
@@ -41,7 +41,7 @@ class OperationController extends Controller
                 ->map($mapOrder)
                 ->values(),
             'summaryCompletedOrders' => $completedOrders
-                ->filter(fn (Order $order): bool => $order->bdn?->delivery_date?->betweenIncluded($monthStart, $monthEnd) === true)
+                ->filter(fn (Order $order): bool => $order->bdn?->completionDate()?->betweenIncluded($monthStart, $monthEnd) === true)
                 ->map($mapOrder)
                 ->values(),
             'ports' => Port::query()->orderBy('name')->pluck('name')->all(),
