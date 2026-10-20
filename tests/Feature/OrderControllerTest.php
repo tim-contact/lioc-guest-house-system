@@ -172,14 +172,16 @@ test('sales and operations summaries use current month ETA and BDN delivery date
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     foreach ([
-        ['MV Pending This Month', now()->addDays(2)],
-        ['MV Pending Next Month', now()->addMonth()],
-        ['MV Pending Without ETA', null],
-    ] as [$vesselName, $eta]) {
+        ['MV Pending This Month', now()->addDays(2), null],
+        ['MV Pending Next Month', now()->addMonth(), now()->toDateString()],
+        ['MV Pending From Laycan', null, now()->addDays(3)->toDateString()],
+        ['MV Pending Without Date', null, null],
+    ] as [$vesselName, $eta, $laycanFrom]) {
         createOrder([
             'vessel_name' => $vesselName,
             'status' => OrderStatus::Pending,
             'eta' => $eta,
+            'laycan_from' => $laycanFrom,
         ]);
     }
 
@@ -198,10 +200,14 @@ test('sales and operations summaries use current month ETA and BDN delivery date
 
     $this->get(route($routeName))->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('pendingOrders', 3)
+            ->has('pendingOrders', 4)
             ->has('completedOrders', 3)
-            ->has('summaryPendingOrders', 1)
-            ->where('summaryPendingOrders.0.vessel_name', 'MV Pending This Month')
+            ->has('summaryPendingOrders', 2)
+            ->where('summaryPendingOrders', fn ($orders): bool => collect($orders)
+                ->pluck('vessel_name')
+                ->sort()
+                ->values()
+                ->all() === ['MV Pending From Laycan', 'MV Pending This Month'])
             ->has('summaryCompletedOrders', 2)
             ->where('summaryCompletedOrders', fn ($orders): bool => collect($orders)
                 ->pluck('vessel_name')

@@ -50,7 +50,7 @@ class OrderController extends Controller
             'pendingOrders' => $pendingOrders->map($mapOrder),
             'completedOrders' => $completedOrders->map($mapOrder),
             'summaryPendingOrders' => $pendingOrders
-                ->filter(fn (Order $order): bool => $order->eta?->betweenIncluded($monthStart, $monthEnd) === true)
+                ->filter(fn (Order $order): bool => ($order->eta ?? $order->laycan_from)?->betweenIncluded($monthStart, $monthEnd) === true)
                 ->map($mapOrder)
                 ->values(),
             'summaryCompletedOrders' => $completedOrders
