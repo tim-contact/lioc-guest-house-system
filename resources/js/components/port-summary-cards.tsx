@@ -24,9 +24,14 @@ function formatVolume(value: number): string {
         : value.toLocaleString(undefined, { maximumFractionDigits: 3 });
 }
 
-/** The final quantity once known, else the upper or lower ordered bound. */
-function orderVolume(row: OrderRow, product: FuelGradeKey): number {
+/** Use delivered quantity for completed orders, then fall back to the ordered quantity. */
+function orderVolume(
+    row: OrderRow,
+    product: FuelGradeKey,
+    quantitySource: 'ordered' | 'bdn',
+): number {
     const quantity =
+        (quantitySource === 'bdn' ? row[`${product}_bdn_qty`] : null) ??
         row[`${product}_final_qty`] ??
         row[`${product}_quantity_high`] ??
         row[`${product}_quantity_low`];
@@ -36,14 +41,18 @@ function orderVolume(row: OrderRow, product: FuelGradeKey): number {
     return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function summarise(rows: OrderRow[]): Summary {
+function summarise(
+    rows: OrderRow[],
+    quantitySource: 'ordered' | 'bdn',
+): Summary {
     return {
         count: rows.length,
         volumes: Object.fromEntries(
             FUEL_GRADES.map((product) => [
                 product.key,
                 rows.reduce(
-                    (total, row) => total + orderVolume(row, product.key),
+                    (total, row) =>
+                        total + orderVolume(row, product.key, quantitySource),
                     0,
                 ),
             ]),
@@ -165,17 +174,19 @@ export function PortSummaryCards({
     completedOrders: OrderRow[];
 }) {
     const total = {
-        pending: summarise(pendingOrders),
-        completed: summarise(completedOrders),
+        pending: summarise(pendingOrders, 'ordered'),
+        completed: summarise(completedOrders, 'bdn'),
     };
 
     const byPort = ports.map((port) => ({
         label: port,
         pending: summarise(
             pendingOrders.filter((order) => order.port === port),
+            'ordered',
         ),
         completed: summarise(
             completedOrders.filter((order) => order.port === port),
+            'bdn',
         ),
     }));
 

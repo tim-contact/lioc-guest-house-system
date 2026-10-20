@@ -186,14 +186,16 @@ test('sales and operations summaries use current month ETA and BDN delivery date
     }
 
     foreach ([
-        ['MV Delivered This Month', OrderStatus::Delivered, now()->subDays(2)],
-        ['MV Closed This Month', OrderStatus::Closed, now()->subDay()],
-        ['MV Delivered Previous Month', OrderStatus::Delivered, now()->subDays(20)],
-    ] as [$vesselName, $status, $deliveryDate]) {
+        ['MV Delivered This Month', OrderStatus::Delivered, now()->subDays(2), 100, 95],
+        ['MV Closed This Month', OrderStatus::Closed, now()->subDay(), 200, 190],
+        ['MV Delivered Previous Month', OrderStatus::Delivered, now()->subDays(20), 300, 285],
+    ] as [$vesselName, $status, $deliveryDate, $finalQuantity, $bdnQuantity]) {
         $order = createOrder([
             'vessel_name' => $vesselName,
             'status' => $status,
             'invoice_date' => now(),
+            'vlsfo_final_qty' => $finalQuantity,
+            'vlsfo_bdn_qty' => $bdnQuantity,
         ]);
         $order->bdn()->create(['delivery_date' => $deliveryDate->toDateString()]);
     }
@@ -213,7 +215,13 @@ test('sales and operations summaries use current month ETA and BDN delivery date
                 ->pluck('vessel_name')
                 ->sort()
                 ->values()
-                ->all() === ['MV Closed This Month', 'MV Delivered This Month']));
+                ->all() === ['MV Closed This Month', 'MV Delivered This Month'])
+            ->where('summaryCompletedOrders', function ($orders): bool {
+                $rows = collect($orders)->keyBy('vessel_name');
+
+                return $rows['MV Delivered This Month']['vlsfo_final_qty'] === '100.000'
+                    && $rows['MV Delivered This Month']['vlsfo_bdn_qty'] === '95.000';
+            }));
 })->with(['sales' => 'orders', 'operations' => 'operations']);
 
 test('old delivered orders stay on the completed list while a dispute is open', function () {
