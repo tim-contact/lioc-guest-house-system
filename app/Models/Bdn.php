@@ -205,7 +205,7 @@ class Bdn extends Model
     }
 
     /** @param Builder<Bdn> $query */
-    public function scopeWhereCompletionBetween(Builder $query, CarbonInterface $start, CarbonInterface $end): void
+    public static function constrainToCompletionPeriod(Builder $query, CarbonInterface $start, CarbonInterface $end): void
     {
         $query->whereRaw(
             '('.self::COMPLETION_DATE_EXPRESSION.') BETWEEN ? AND ?',

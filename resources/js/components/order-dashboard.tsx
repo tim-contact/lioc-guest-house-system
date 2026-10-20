@@ -278,7 +278,7 @@ function PortTable<T extends OrderRow>({
     const baseColumns: Column[] = COLUMNS.map((column) =>
         column.sortKey === 'eta'
             ? {
-                  header: quantitySource === 'bdn' ? 'Delivery date' : 'ETA',
+                  header: quantitySource === 'bdn' ? 'Completed date' : 'ETA',
                   sortKey: dateKey,
               }
             : column,

@@ -238,7 +238,9 @@ test('sales and operations summaries use pending fallbacks and BDN completion da
                 $rows = collect($orders)->keyBy('vessel_name');
 
                 return $rows['MV Completed By Hose']['vlsfo_final_qty'] === '100.000'
-                    && $rows['MV Completed By Hose']['vlsfo_bdn_qty'] === '95.000';
+                    && $rows['MV Completed By Hose']['vlsfo_bdn_qty'] === '95.000'
+                    && $rows['MV Completed By Hose']['delivery_date'] === now()->subDays(2)->toDateString()
+                    && $rows['MV Completed By Delivery Fallback']['delivery_date'] === now()->subDay()->toDateString();
             }));
 })->with(['sales' => 'orders', 'operations' => 'operations']);
 

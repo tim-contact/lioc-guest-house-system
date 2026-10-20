@@ -7,6 +7,7 @@ use App\Enums\FuelGrade;
 use App\Enums\OrderStatus;
 use App\Models\Agent;
 use App\Models\AgentPic;
+use App\Models\Bdn;
 use App\Models\Order;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
@@ -61,7 +62,7 @@ class OrderService
                     $useBdnCompletionDate,
                     fn ($completed) => $completed->whereHas(
                         'bdn',
-                        fn ($bdn) => $bdn->whereCompletionBetween($periodStart, $periodEnd),
+                        fn ($bdn) => Bdn::constrainToCompletionPeriod($bdn, $periodStart, $periodEnd),
                     ),
                     fn ($completed) => $completed->where('invoice_date', '>=', Carbon::now()->subDays($days)),
                 )
@@ -181,7 +182,7 @@ class OrderService
             'pic' => $order->pic,
             'mobile_no' => $order->mobile_no,
             'eta' => $order->eta,
-            'delivery_date' => $order->bdn?->delivery_date?->toDateString(),
+            'delivery_date' => $order->bdn?->completionDate()?->toDateString(),
             'has_bdn' => $order->bdn !== null,
             'etb' => $order->etb,
             'etd' => $order->etd,
