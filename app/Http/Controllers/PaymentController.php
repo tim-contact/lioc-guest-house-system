@@ -25,7 +25,7 @@ class PaymentController extends Controller
             $direction = 'desc';
         }
 
-        $payments = Payment::with('order.customer')
+        $payments = Payment::with(['order.customer', 'order.port'])
             ->select('payments.*')
             ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
                 $searchPattern = "%{$search}%";
@@ -44,6 +44,7 @@ class PaymentController extends Controller
                 'order_number' => $payment->order_number,
                 'customer_name' => $payment->order?->customer?->name,
                 'vessel_name' => $payment->order?->vessel_name,
+                'port_name' => $payment->order?->port?->name,
                 'amount' => $payment->amount,
                 'date' => $payment->date?->toDateString(),
                 'type' => $payment->type->value,

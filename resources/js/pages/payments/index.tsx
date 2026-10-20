@@ -15,6 +15,7 @@ interface Payment {
     order_number: string | null;
     customer_name: string | null;
     vessel_name: string | null;
+    port_name: string | null;
     amount: string | null;
     date: string | null;
     type: string;
@@ -97,6 +98,7 @@ export default function PaymentsIndex({
         },
         { header: 'Customer', value: (payment) => payment.customer_name ?? '' },
         { header: 'Vessel', value: (payment) => payment.vessel_name ?? '' },
+        { header: 'Port', value: (payment) => payment.port_name ?? '' },
         { header: 'Amount', value: (payment) => payment.amount ?? '' },
         { header: 'Date', value: (payment) => payment.date ?? '' },
         {
@@ -152,6 +154,10 @@ export default function PaymentsIndex({
                 header: 'Vessel',
                 sortKey: 'vessel_name',
                 cell: (payment) => payment.vessel_name ?? '—',
+            },
+            {
+                header: 'Port',
+                cell: (payment) => payment.port_name ?? '—',
             },
             {
                 header: 'Amount',

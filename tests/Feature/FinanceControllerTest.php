@@ -99,6 +99,7 @@ test('paid_in_full is true only when amount received covers the invoice', functi
             ->has('completedOrders.data', 2)
             ->where('completedOrders.data.0.order_number', 'ORD-FIN-PAID')
             ->where('completedOrders.data.0.customer_name', 'Blue Ocean Ltd')
+            ->where('completedOrders.data.0.port', 'Colombo')
             ->where('completedOrders.data.0.location', 'BERTH')
             ->where('completedOrders.data.0.invoice_value', '1000.00')
             ->where('completedOrders.data.0.status', 'Delivered')

@@ -29,7 +29,7 @@ class FinanceController extends Controller
         $direction = $request->input('dir') === 'desc' ? 'desc' : 'asc';
         $sort = in_array($sort, self::sortableColumns(), true) ? $sort : 'payment_due_date';
 
-        $completedOrders = Order::with(['customer', 'deliveryLocation', 'payments'])
+        $completedOrders = Order::with(['customer', 'port', 'deliveryLocation', 'payments'])
             ->select('orders.*')
             ->when($sort === 'customer_name', fn ($query) => $query->leftJoin('customers', 'orders.customer_id', '=', 'customers.sap_id'))
             ->when($sort === 'location', fn ($query) => $query->leftJoin('supply_locations', 'orders.delivery_location_id', '=', 'supply_locations.id'))
@@ -68,7 +68,7 @@ class FinanceController extends Controller
             'eta_to' => ['nullable', 'date', 'after_or_equal:eta_from'],
         ]);
 
-        $orders = Order::with(['customer', 'deliveryLocation', 'payments'])
+        $orders = Order::with(['customer', 'port', 'deliveryLocation', 'payments'])
             ->whereIn('status', OrderStatus::completedStatuses())
             ->when($validated['order_date_from'] ?? null, fn ($query, string $date) => $query->whereDate('order_date', '>=', $date))
             ->when($validated['order_date_to'] ?? null, fn ($query, string $date) => $query->whereDate('order_date', '<=', $date))
@@ -179,6 +179,7 @@ class FinanceController extends Controller
             'order_date' => $order->order_date?->toDateString(),
             'customer_name' => $order->customer?->name,
             'vessel_name' => $order->vessel_name,
+            'port' => $order->port?->name,
             'eta' => $order->eta?->toDateTimeString(),
             'location' => $order->deliveryLocation?->name,
             'vlsfo_qty' => $order->vlsfo_bdn_qty ?? $order->vlsfo_final_qty,

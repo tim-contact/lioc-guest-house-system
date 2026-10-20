@@ -167,6 +167,7 @@ const EXPORT_COLUMNS: ExportColumn<CompletedRow>[] = [
     { header: 'Order Date', value: (row) => row.order_date ?? '' },
     { header: 'Customer Name', value: (row) => row.customer_name ?? '' },
     { header: 'Vessel Name', value: (row) => row.vessel_name ?? '' },
+    { header: 'Port', value: (row) => row.port ?? '' },
     { header: 'ETA', value: (row) => row.eta ?? '' },
     { header: 'Supply Location', value: (row) => row.location ?? '' },
     { header: 'VLSFO Qty', value: (row) => row.vlsfo_qty ?? '' },
@@ -686,6 +687,9 @@ function VesselCell({ row }: { row: CompletedRow }) {
         <div className="flex min-w-36 flex-col gap-1">
             <span className="font-semibold text-[#172033]">
                 {row.vessel_name ?? '—'}
+            </span>
+            <span className="text-xs text-[#64748B]">
+                {row.port ?? 'No port'}
             </span>
         </div>
     );

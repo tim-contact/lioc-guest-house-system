@@ -5,6 +5,7 @@ use App\Enums\UserType;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Port;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
@@ -16,7 +17,12 @@ test('index lists payments with their order and customer', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $customer = Customer::factory()->create(['name' => 'Blue Ocean Ltd']);
-    $order = Order::factory()->create(['customer_id' => $customer->sap_id, 'order_number' => 'ORD-PAY-1']);
+    $port = Port::factory()->create(['name' => 'Trincomalee']);
+    $order = Order::factory()->create([
+        'customer_id' => $customer->sap_id,
+        'order_number' => 'ORD-PAY-1',
+        'port_id' => $port->id,
+    ]);
     Payment::factory()->create([
         'order_number' => $order->order_number,
         'amount' => 400,
@@ -30,6 +36,7 @@ test('index lists payments with their order and customer', function () {
             ->has('payments.data', 1)
             ->where('payments.data.0.order_number', 'ORD-PAY-1')
             ->where('payments.data.0.customer_name', 'Blue Ocean Ltd')
+            ->where('payments.data.0.port_name', 'Trincomalee')
             ->where('payments.data.0.type', 'credit_note')
             ->where('payments.per_page', 25)
             ->where('payments.total', 1)
