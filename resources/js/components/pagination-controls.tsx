@@ -32,8 +32,10 @@ export interface PaginationMeta {
 
 export function PaginationControls({
     pagination,
+    showPageSize = true,
 }: {
     pagination: PaginationMeta;
+    showPageSize?: boolean;
 }) {
     const visit = (url: string | null) => {
         if (!url) {
@@ -66,21 +68,23 @@ export function PaginationControls({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-                <Select
-                    value={String(pagination.per_page)}
-                    onValueChange={changePageSize}
-                >
-                    <SelectTrigger className="h-8 min-w-24 bg-background">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {[10, 25, 50, 100].map((size) => (
-                            <SelectItem key={size} value={String(size)}>
-                                {size} / page
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                {showPageSize && (
+                    <Select
+                        value={String(pagination.per_page)}
+                        onValueChange={changePageSize}
+                    >
+                        <SelectTrigger className="h-8 min-w-24 bg-background">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {[10, 25, 50, 100].map((size) => (
+                                <SelectItem key={size} value={String(size)}>
+                                    {size} / page
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
 
                 <div className="flex items-center gap-1">
                     {pagination.links.map((link, index) => (

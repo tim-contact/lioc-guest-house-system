@@ -72,6 +72,50 @@ test('index lists only delivered orders regardless of age', function () {
             ->where('completedOrders.total', 2));
 });
 
+test('finance dashboard lists cancelled orders separately with cancellation balances', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Finance]));
+
+    createFinanceOrder([
+        'order_number' => 'ORD-FIN-CANCELLED',
+        'vessel_name' => 'MV Cancelled',
+        'status' => OrderStatus::Cancelled,
+        'cancellation_charge' => 1500,
+        'cancellation_reason' => 'Customer withdrew the nomination.',
+        'cancelled_at' => '2026-10-20 10:30:00',
+        'amount_received' => 500,
+    ]);
+
+    $this->get(route('finance'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('completedOrders.data', 0)
+            ->has('cancelledOrders.data', 1)
+            ->where('cancelledOrders.data.0.order_number', 'ORD-FIN-CANCELLED')
+            ->where('cancelledOrders.data.0.cancellation_charge', '1500.00')
+            ->where('cancelledOrders.data.0.cancellation_reason', 'Customer withdrew the nomination.')
+            ->where('cancelledOrders.data.0.amount_remaining', 1000)
+            ->where('cancelledOrders.data.0.paid_in_full', false));
+});
+
+test('finance users can record payments against cancellation charges', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Finance]));
+
+    $order = createFinanceOrder([
+        'status' => OrderStatus::Cancelled,
+        'cancellation_charge' => 750,
+        'cancellation_reason' => 'Customer cancelled.',
+        'cancelled_at' => now(),
+    ]);
+
+    $this->post(route('finance.payments.store', $order), [
+        'amount' => 750,
+        'date' => '2026-10-21',
+        'type' => PaymentType::Regular->value,
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($order->refresh()->amount_received)->toBe('750.00');
+});
+
 test('paid_in_full is true only when amount received covers the invoice', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 

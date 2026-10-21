@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { CheckCircle2, CreditCard, XCircle } from 'lucide-react';
+import { CheckCircle2, ChevronDown, CreditCard, XCircle } from 'lucide-react';
 import type { FormEvent, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -14,6 +14,11 @@ import {
 import { SortableHead } from '@/components/sortable-head';
 import { TableFrame } from '@/components/table-frame';
 import { Button } from '@/components/ui/button';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
     Dialog,
     DialogContent,
@@ -38,7 +43,7 @@ import { exportToXlsx } from '@/lib/export-xlsx';
 import { cn, formatMoney, productColor, shortDate } from '@/lib/utils';
 import { close as closeFinanceOrder } from '@/routes/finance';
 import type { EnumOption } from '@/types';
-import { AddPaymentDialog } from './add-payment-dialog';
+import { AddPaymentDialog, type PaymentOrderRow } from './add-payment-dialog';
 import {
     FinanceSummaryCards,
     type FinanceSummaryBucket,
@@ -78,9 +83,23 @@ export interface CompletedRow {
     payments: PaymentRow[];
 }
 
+interface CancelledRow extends PaymentOrderRow {
+    customer_name: string | null;
+    vessel_name: string | null;
+    port: string | null;
+    cancelled_at: string | null;
+    cancellation_charge: string | null;
+    cancellation_reason: string | null;
+    amount_remaining: number;
+    paid_in_full: boolean;
+}
+
 interface FinanceDashboardProps {
     completedOrders: PaginationMeta & {
         data: CompletedRow[];
+    };
+    cancelledOrders: PaginationMeta & {
+        data: CancelledRow[];
     };
     financeSummary: FinanceSummaryBucket[];
     paymentTypeOptions: EnumOption[];
@@ -192,13 +211,18 @@ const EXPORT_COLUMNS: ExportColumn<CompletedRow>[] = [
 
 export default function FinanceDashboard({
     completedOrders,
+    cancelledOrders,
     financeSummary,
     paymentTypeOptions,
     filters,
 }: FinanceDashboardProps) {
     const rows = completedOrders.data;
+    const cancelledRows = cancelledOrders.data;
     const [closingId, setClosingId] = useState<number | null>(null);
-    const [payingRow, setPayingRow] = useState<CompletedRow | null>(null);
+    const [payingRow, setPayingRow] = useState<{
+        order: PaymentOrderRow;
+        cancellation: boolean;
+    } | null>(null);
     const [exportDialogOpen, setExportDialogOpen] = useState(false);
     const [searchFilters, setSearchFilters] = useState<PortSearchState>({
         query: filters.search,
@@ -290,7 +314,9 @@ export default function FinanceDashboard({
                     <PortScopedOrderSearch
                         value={searchFilters}
                         onChange={setSearchFilters}
-                        resultCount={completedOrders.total}
+                        resultCount={
+                            completedOrders.total + cancelledOrders.total
+                        }
                         showPortSelect={false}
                     />
 
@@ -368,9 +394,10 @@ export default function FinanceDashboard({
                                                             size="sm"
                                                             className="h-8 rounded-lg border border-[#4F75F5] bg-white px-3 text-sm font-semibold text-[#2455E6] shadow-none transition-[background-color,color,box-shadow] duration-200 hover:bg-[#2455E6] hover:text-white hover:shadow-[0_6px_14px_rgba(36,85,230,0.20)] focus-visible:ring-[#3155E7]/40"
                                                             onClick={() =>
-                                                                setPayingRow(
-                                                                    row,
-                                                                )
+                                                                setPayingRow({
+                                                                    order: row,
+                                                                    cancellation: false,
+                                                                })
                                                             }
                                                         >
                                                             <CreditCard
@@ -432,6 +459,145 @@ export default function FinanceDashboard({
                             </div>
                         </div>
                     </section>
+
+                    <Collapsible className="overflow-hidden rounded-[17px] border border-[#E3EAF2] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
+                        <CollapsibleTrigger className="group flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-[#F8FAFD] focus-visible:ring-2 focus-visible:ring-[#3155E7]/40 focus-visible:outline-none">
+                            <ChevronDown className="size-5 shrink-0 text-[#64748B] transition-transform group-data-[state=closed]:-rotate-90" />
+                            <h2 className="text-xl font-bold tracking-normal text-[#0F172A]">
+                                Cancelled Orders
+                            </h2>
+                            <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700 tabular-nums">
+                                {cancelledOrders.total}
+                            </span>
+                        </CollapsibleTrigger>
+
+                        <CollapsibleContent className="px-4 pb-4">
+                            <TableFrame className="rounded-[14px] border-[#E3EAF2]">
+                                <Table>
+                                    <TableHeader className="bg-[#EDF3FA]">
+                                        <TableRow className="border-[#E7EDF4] hover:bg-[#EDF3FA]">
+                                            <TableHead>Order</TableHead>
+                                            <TableHead>
+                                                Customer / Vessel
+                                            </TableHead>
+                                            <TableHead>Port</TableHead>
+                                            <TableHead>Cancelled</TableHead>
+                                            <TableHead>Reason</TableHead>
+                                            <TableHead className="text-right">
+                                                Charge
+                                            </TableHead>
+                                            <TableHead className="text-right">
+                                                Received
+                                            </TableHead>
+                                            <TableHead className="text-right">
+                                                Outstanding
+                                            </TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead className="text-right">
+                                                Action
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {cancelledRows.map((row) => (
+                                            <TableRow key={row.id}>
+                                                <TableCell className="font-semibold text-[#0F172A]">
+                                                    {row.order_number ?? '—'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="font-medium text-[#0F172A]">
+                                                        {row.customer_name ??
+                                                            '—'}
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {row.vessel_name ?? '—'}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {row.port ?? '—'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {shortDate(
+                                                        row.cancelled_at,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <p className="max-w-72 text-sm whitespace-normal">
+                                                        {row.cancellation_reason ??
+                                                            '—'}
+                                                    </p>
+                                                </TableCell>
+                                                <TableCell className="text-right font-semibold tabular-nums">
+                                                    {formatMoney(
+                                                        row.cancellation_charge,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums">
+                                                    {formatMoney(
+                                                        row.amount_received,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right font-semibold tabular-nums">
+                                                    {formatMoney(
+                                                        row.amount_remaining,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span
+                                                        className={cn(
+                                                            'inline-flex rounded-full px-2 py-1 text-xs font-semibold',
+                                                            row.paid_in_full
+                                                                ? 'bg-teal-50 text-teal-700'
+                                                                : 'bg-orange-50 text-orange-700',
+                                                        )}
+                                                    >
+                                                        {row.paid_in_full
+                                                            ? 'Paid'
+                                                            : 'Pending'}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() =>
+                                                            setPayingRow({
+                                                                order: row,
+                                                                cancellation: true,
+                                                            })
+                                                        }
+                                                    >
+                                                        <CreditCard className="size-3.5" />
+                                                        Add Payment
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+
+                                        {cancelledRows.length === 0 && (
+                                            <TableRow>
+                                                <TableCell
+                                                    colSpan={10}
+                                                    className="py-8 text-center text-muted-foreground"
+                                                >
+                                                    No cancelled orders.
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </TableFrame>
+
+                            {cancelledOrders.last_page > 1 && (
+                                <div className="mt-4">
+                                    <PaginationControls
+                                        pagination={cancelledOrders}
+                                        showPageSize={false}
+                                    />
+                                </div>
+                            )}
+                        </CollapsibleContent>
+                    </Collapsible>
                 </div>
             </main>
 
@@ -439,8 +605,16 @@ export default function FinanceDashboard({
                 <AddPaymentDialog
                     open
                     onOpenChange={(open) => !open && setPayingRow(null)}
-                    order={payingRow}
+                    order={payingRow.order}
                     paymentTypeOptions={paymentTypeOptions}
+                    summaryTitle={
+                        payingRow.cancellation ? 'Cancellation' : 'Invoice'
+                    }
+                    amountLabel={
+                        payingRow.cancellation
+                            ? 'Cancellation Charge'
+                            : 'Invoice Value'
+                    }
                 />
             )}
 
@@ -451,7 +625,6 @@ export default function FinanceDashboard({
         </>
     );
 }
-
 FinanceDashboard.layout = {
     title: 'Finance',
 };

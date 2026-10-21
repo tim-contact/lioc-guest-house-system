@@ -114,9 +114,20 @@ class OrderController extends Controller
         return $this->toast('Order updated.');
     }
 
-    public function cancel(Order $order): RedirectResponse
+    public function cancel(Request $request, Order $order): RedirectResponse
     {
-        $order->update(['status' => OrderStatus::Cancelled]);
+        abort_unless($order->status === OrderStatus::Pending, 403);
+
+        $validated = $request->validate([
+            'cancellation_charge' => ['required', 'numeric', 'min:0'],
+            'cancellation_reason' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $order->update([
+            ...$validated,
+            'status' => OrderStatus::Cancelled,
+            'cancelled_at' => now(),
+        ]);
 
         return $this->toast('Order cancelled.');
     }

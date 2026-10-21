@@ -47,8 +47,24 @@ class FinanceController extends Controller
             ->withQueryString()
             ->through(fn (Order $order): array => $this->financeOrderRow($order));
 
+        $cancelledOrders = Order::with(['customer', 'port', 'payments'])
+            ->where('status', OrderStatus::Cancelled)
+            ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
+                $searchPattern = "%{$search}%";
+
+                $query
+                    ->whereRaw('LOWER(vessel_name) LIKE ?', [$searchPattern])
+                    ->orWhereHas('customer', fn ($customer) => $customer->whereRaw('LOWER(name) LIKE ?', [$searchPattern]));
+            }))
+            ->orderByDesc('cancelled_at')
+            ->orderByDesc('id')
+            ->paginate(10, ['*'], 'cancelled_page')
+            ->withQueryString()
+            ->through(fn (Order $order): array => $this->cancelledOrderRow($order));
+
         return Inertia::render('finance/dashboard', [
             'completedOrders' => $completedOrders,
+            'cancelledOrders' => $cancelledOrders,
             'financeSummary' => $this->financeSummary(),
             'paymentTypeOptions' => $this->enumOptions(PaymentType::cases()),
             'filters' => [
@@ -86,6 +102,8 @@ class FinanceController extends Controller
 
     public function storePayment(Request $request, Order $order): RedirectResponse
     {
+        abort_unless(in_array($order->status, [OrderStatus::Delivered, OrderStatus::Cancelled], true), 403);
+
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0'],
             'date' => ['required', 'date'],
@@ -199,6 +217,39 @@ class FinanceController extends Controller
                 && $order->balance_amount > 0
                 && $order->payment_due_date?->isBefore(Carbon::today()) === true,
             'can_close' => $order->canBeClosed(),
+            'payments' => $order->payments
+                ->sortByDesc('date')
+                ->values()
+                ->map(fn (Payment $payment): array => [
+                    'id' => $payment->id,
+                    'amount' => $payment->amount,
+                    'date' => $payment->date?->toDateString(),
+                    'type' => $payment->type->value,
+                ]),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function cancelledOrderRow(Order $order): array
+    {
+        $charge = (float) ($order->cancellation_charge ?? 0);
+        $received = (float) ($order->amount_received ?? 0);
+
+        return [
+            'id' => $order->id,
+            'order_number' => $order->order_number,
+            'customer_name' => $order->customer?->name,
+            'vessel_name' => $order->vessel_name,
+            'port' => $order->port?->name,
+            'cancelled_at' => $order->cancelled_at?->toDateTimeString(),
+            'cancellation_charge' => $order->cancellation_charge,
+            'cancellation_reason' => $order->cancellation_reason,
+            'invoice_value' => $order->cancellation_charge,
+            'amount_received' => $order->amount_received,
+            'amount_remaining' => $charge - $received,
+            'paid_in_full' => $charge <= $received,
             'payments' => $order->payments
                 ->sortByDesc('date')
                 ->values()

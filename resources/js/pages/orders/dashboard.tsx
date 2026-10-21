@@ -1,17 +1,17 @@
-import { Head, router } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { useState } from 'react';
 import type { DisputeRow } from '@/components/dispute-edit-dialog';
 import { DisputeEditDialog } from '@/components/dispute-edit-dialog';
 import OrderDashboard from '@/components/order-dashboard';
 import type { OrderRow, RowAction } from '@/components/order-dashboard';
 import { PortSummaryCards } from '@/components/port-summary-cards';
-import { cancel as cancelOrder } from '@/routes/orders';
 import type {
     AgentOption,
     AgentPicOption,
     EnumOption,
     SupplyLocationOption,
 } from '@/types';
+import { CancelOrderDialog } from './cancel-order-dialog';
 import { DisputeCreateDialog } from './dispute-create-dialog';
 import { DisputePickerDialog } from './dispute-picker-dialog';
 import { OrderEditDialog } from './order-edit-dialog';
@@ -110,6 +110,7 @@ export default function OrdersDashboard({
     const [editing, setEditing] = useState<OrderEditRow | null>(null);
     const [picking, setPicking] = useState<OrderEditRow | null>(null);
     const [creating, setCreating] = useState<OrderEditRow | null>(null);
+    const [cancelling, setCancelling] = useState<OrderEditRow | null>(null);
     const [editingDispute, setEditingDispute] = useState<DisputeRow | null>(
         null,
     );
@@ -133,12 +134,7 @@ export default function OrdersDashboard({
         {
             label: 'Cancel',
             variant: 'destructive',
-            onClick: (row) =>
-                router.patch(
-                    cancelOrder(row.id).url,
-                    {},
-                    { preserveScroll: true },
-                ),
+            onClick: setCancelling,
         },
         disputeAction,
     ];
@@ -179,6 +175,14 @@ export default function OrdersDashboard({
                     agentPics={agentPics}
                     deliveryModeOptions={deliveryModeOptions}
                     supplyLocationOptions={supplyLocationOptions}
+                />
+            )}
+
+            {cancelling && (
+                <CancelOrderDialog
+                    open
+                    order={cancelling}
+                    onOpenChange={(open) => !open && setCancelling(null)}
                 />
             )}
 

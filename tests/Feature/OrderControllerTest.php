@@ -539,15 +539,44 @@ test('cancel marks the order cancelled, hiding it from the dashboard but not the
 
     $order = createOrder(['vessel_name' => 'MV Doomed', 'status' => OrderStatus::Pending]);
 
-    $this->patch(route('orders.cancel', $order))->assertRedirect();
+    $this->patch(route('orders.cancel', $order), [
+        'cancellation_charge' => 1250.50,
+        'cancellation_reason' => 'Vessel schedule changed.',
+    ])->assertRedirect()->assertSessionHasNoErrors();
 
-    expect($order->refresh()->status)->toBe(OrderStatus::Cancelled);
+    expect($order->refresh())
+        ->status->toBe(OrderStatus::Cancelled)
+        ->cancellation_charge->toBe('1250.50')
+        ->cancellation_reason->toBe('Vessel schedule changed.')
+        ->cancelled_at->not->toBeNull();
 
     $this->get(route('orders'))
         ->assertInertia(fn (AssertableInertia $page) => $page->has('pendingOrders', 0));
 
     $this->get(route('orders.table'))
         ->assertInertia(fn (AssertableInertia $page) => $page->has('orders.data', 1));
+});
+
+test('cancelling an order requires a charge and reason', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $order = createOrder(['status' => OrderStatus::Pending]);
+
+    $this->patch(route('orders.cancel', $order), [])
+        ->assertSessionHasErrors(['cancellation_charge', 'cancellation_reason']);
+
+    expect($order->refresh()->status)->toBe(OrderStatus::Pending);
+});
+
+test('only pending orders can be cancelled', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $order = createOrder(['status' => OrderStatus::Delivered]);
+
+    $this->patch(route('orders.cancel', $order), [
+        'cancellation_charge' => 100,
+        'cancellation_reason' => 'Invalid transition.',
+    ])->assertForbidden();
 });
 
 test('guests are redirected from the orders table page', function () {

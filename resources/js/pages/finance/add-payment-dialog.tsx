@@ -14,7 +14,15 @@ import {
     shortDate,
 } from '@/lib/utils';
 import type { EnumOption } from '@/types';
-import type { CompletedRow, PaymentRow } from './dashboard';
+import type { PaymentRow } from './dashboard';
+
+export interface PaymentOrderRow {
+    id: number;
+    order_number: string | null;
+    invoice_value: string | null;
+    amount_received: string | null;
+    payments: PaymentRow[];
+}
 
 interface PaymentFormData {
     amount: string;
@@ -27,11 +35,15 @@ export function AddPaymentDialog({
     onOpenChange,
     order,
     paymentTypeOptions,
+    summaryTitle = 'Invoice',
+    amountLabel = 'Invoice Value',
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    order: CompletedRow;
+    order: PaymentOrderRow;
     paymentTypeOptions: EnumOption[];
+    summaryTitle?: string;
+    amountLabel?: string;
 }) {
     const form = useForm<PaymentFormData>({
         amount: '',
@@ -57,9 +69,9 @@ export function AddPaymentDialog({
             onSave={submit}
             saving={form.processing}
             summary={
-                <FormSection title="Invoice">
+                <FormSection title={summaryTitle}>
                     <ReadOnlyValue
-                        label="Invoice Value"
+                        label={amountLabel}
                         value={formatMoney(order.invoice_value)}
                     />
                     <ReadOnlyValue
