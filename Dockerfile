@@ -1,6 +1,6 @@
 # PHP 8.5 Alpine images currently fail while compiling ext/opcache.
 # Use 8.4 by default until the upstream docker-library/php image is patched.
-ARG PHP_VERSION=8.4
+ARG PHP_VERSION=8.4.27
 
 FROM php:${PHP_VERSION}-cli-alpine AS assets
 
