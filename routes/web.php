@@ -45,6 +45,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
 
         // Order table (all orders).
         Route::get('orders/all', [OrderController::class, 'table'])->name('orders.table');
+        Route::get('orders/all/export', [OrderController::class, 'tableExport'])->name('orders.table.export');
         Route::patch('orders/all/{order}', [OrderController::class, 'tableUpdate'])->name('orders.table.update');
 
         // Enquiry edit (admin).

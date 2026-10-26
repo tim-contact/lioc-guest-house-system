@@ -6,6 +6,7 @@ export type AppLayoutProps = {
 };
 
 export type FlashToast = {
+    id: string;
     type: 'success' | 'info' | 'warning' | 'error';
     message: string;
 };

@@ -76,10 +76,12 @@ test('inactive users are logged out and redirected to home when accessing a prot
     $response = $this->actingAs($user)->get(route('sales-dashboard'));
 
     $response->assertRedirect(route('home'));
-    $response->assertSessionHas('toast', [
-        'type' => 'error',
-        'message' => 'Your account has been deactivated. Please contact an administrator.',
-    ]);
+    $response->assertSessionHas('toast.id');
+    $response->assertSessionHas('toast.type', 'error');
+    $response->assertSessionHas(
+        'toast.message',
+        'Your account has been deactivated. Please contact an administrator.',
+    );
 
     $this->assertGuest();
 });

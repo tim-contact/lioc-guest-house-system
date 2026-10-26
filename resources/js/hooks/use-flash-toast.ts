@@ -21,5 +21,5 @@ export function useFlashToast(): void {
         if (data) {
             toast[data.type](data.message);
         }
-    }, [data]);
+    }, [data?.id, data?.message, data?.type]);
 }

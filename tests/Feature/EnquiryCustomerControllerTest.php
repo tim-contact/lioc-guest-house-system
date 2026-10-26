@@ -90,12 +90,21 @@ test('store blocks a customer below the enquiry credit threshold', function () {
     $enquiry = Enquiry::factory()->create();
     $customer = Customer::factory()->create(['credit_limit' => -100000.01]);
 
+    $firstResponse = $this->post(route('enquiries.customers.store', $enquiry), [
+        'customer_id' => $customer->sap_id,
+    ]);
+    $firstResponse->assertRedirect()
+        ->assertSessionHas('toast.id')
+        ->assertSessionHas('toast.type', 'error')
+        ->assertSessionHas('toast.message', 'The customer has exceeded the credit limit threshold.');
+    $firstToastId = session('toast.id');
+
     $this->post(route('enquiries.customers.store', $enquiry), [
         'customer_id' => $customer->sap_id,
-    ])->assertRedirect()->assertSessionHas('toast', [
-        'type' => 'error',
-        'message' => 'The customer has exceeded the credit limit threshold.',
-    ]);
+    ])->assertRedirect()
+        ->assertSessionHas('toast.id', fn (string $id): bool => $id !== $firstToastId)
+        ->assertSessionHas('toast.type', 'error')
+        ->assertSessionHas('toast.message', 'The customer has exceeded the credit limit threshold.');
 
     expect($enquiry->enquiryCustomers()->count())->toBe(0);
 });
@@ -275,10 +284,10 @@ test('update blocks reassignment to a customer below the enquiry credit threshol
 
     $this->patch(route('enquiry-customers.update', $enquiryCustomer), [
         'customer_id' => $blockedCustomer->sap_id,
-    ])->assertRedirect()->assertSessionHas('toast', [
-        'type' => 'error',
-        'message' => 'The customer has exceeded the credit limit threshold.',
-    ]);
+    ])->assertRedirect()
+        ->assertSessionHas('toast.id')
+        ->assertSessionHas('toast.type', 'error')
+        ->assertSessionHas('toast.message', 'The customer has exceeded the credit limit threshold.');
 
     expect($enquiryCustomer->refresh()->customer_id)->toBe($currentCustomer->sap_id);
 });

@@ -7,6 +7,7 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\User;
 use App\Policies\UserPolicy;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -61,10 +62,7 @@ class UserManagementController extends Controller
             'is_active' => true,
         ]);
 
-        return redirect()->back()->with('toast', [
-            'type' => 'success',
-            'message' => 'User created successfully.',
-        ]);
+        return $this->toast('User created successfully.');
     }
 
     /**
@@ -82,10 +80,7 @@ class UserManagementController extends Controller
 
         $user->update($data);
 
-        return redirect()->back()->with('toast', [
-            'type' => 'success',
-            'message' => 'User updated successfully.',
-        ]);
+        return $this->toast('User updated successfully.');
     }
 
     /**
@@ -106,10 +101,7 @@ class UserManagementController extends Controller
             'deactivated_at' => now(),
         ]);
 
-        return redirect()->back()->with('toast', [
-            'type' => 'success',
-            'message' => 'User deactivated successfully.',
-        ]);
+        return $this->toast('User deactivated successfully.');
     }
 
     /**
@@ -130,10 +122,7 @@ class UserManagementController extends Controller
             'deactivated_at' => null,
         ]);
 
-        return redirect()->back()->with('toast', [
-            'type' => 'success',
-            'message' => 'User activated successfully.',
-        ]);
+        return $this->toast('User activated successfully.');
     }
 
     /**
@@ -151,16 +140,13 @@ class UserManagementController extends Controller
 
         $user->delete();
 
-        return redirect()->back()->with('toast', [
-            'type' => 'success',
-            'message' => 'User deleted successfully.',
-        ]);
+        return $this->toast('User deleted successfully.');
     }
 
     /**
      * Return role options available to the current actor.
      */
-    public function roleOptions(Request $request): \Illuminate\Http\JsonResponse
+    public function roleOptions(Request $request): JsonResponse
     {
         /** @var User $actor */
         $actor = $request->user();

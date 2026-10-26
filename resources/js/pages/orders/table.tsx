@@ -1,12 +1,24 @@
-import { tableUpdate } from '@/actions/App/Http/Controllers/OrderController';
+import {
+    tableExport,
+    tableUpdate,
+} from '@/actions/App/Http/Controllers/OrderController';
 import type { CrudConfig } from '@/components/crud/crud-types';
 import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
 import type { PaginationMeta } from '@/components/pagination-controls';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import type { SortDir } from '@/hooks/use-sortable';
 import { FUEL_GRADES } from '@/lib/domain';
-import type { ExportColumn } from '@/lib/export-xlsx';
+import { exportToXlsx, type ExportColumn } from '@/lib/export-xlsx';
 import {
     formatMoney,
     optionLabel,
@@ -17,7 +29,7 @@ import {
     toDateTimeInput,
 } from '@/lib/utils';
 import { router } from '@inertiajs/react';
-import { Search, X } from 'lucide-react';
+import { FileSpreadsheet, LoaderCircle, Search, X } from 'lucide-react';
 import { useState } from 'react';
 import type {
     AgentOption,
@@ -88,7 +100,7 @@ interface OrdersTableProps {
         data: Order[];
     };
     filters: {
-        vessel: string;
+        search: string;
         sort: keyof Order & string;
         dir: SortDir;
     };
@@ -113,14 +125,14 @@ export default function OrdersTable({
     creditTermsOptions,
 }: OrdersTableProps) {
     const rows = orders.data;
-    const [vesselSearch, setVesselSearch] = useState(filters.vessel ?? '');
+    const [search, setSearch] = useState(filters.search ?? '');
     const sortKey = filters.sort;
     const sortDir = filters.dir;
 
     function handleSort(key: keyof Order & string) {
         const nextDir = key === sortKey && sortDir === 'asc' ? 'desc' : 'asc';
 
-        visitOrdersTable(vesselSearch, orders.per_page, key, nextDir);
+        visitOrdersTable(search, orders.per_page, key, nextDir);
     }
 
     const agentOptions = agents.map((agent) => ({
@@ -242,42 +254,41 @@ export default function OrdersTable({
         exportColumns,
         editTitle: (order) => order.order_number,
         canDelete: false,
+        exportControl: (
+            <OrdersExportControl
+                columns={exportColumns}
+                search={filters.search}
+            />
+        ),
         toolbar: (
             <form
                 className="flex max-w-xl flex-col gap-2 rounded-[17px] border border-[#E3EAF2] bg-white p-3 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:flex-row sm:items-center"
                 onSubmit={(event) => {
                     event.preventDefault();
-                    visitOrdersTable(
-                        vesselSearch,
-                        orders.per_page,
-                        sortKey,
-                        sortDir,
-                    );
+                    visitOrdersTable(search, orders.per_page, sortKey, sortDir);
                 }}
             >
                 <div className="relative min-w-0 flex-1">
                     <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#64748B]" />
                     <Input
-                        aria-label="Search admin orders by vessel name"
+                        aria-label="Search admin orders by vessel or customer name"
                         className="h-10 rounded-xl border-[#D8E2EE] bg-[#F8FAFD] pl-9 text-[#0F172A] placeholder:text-[#64748B]"
-                        onChange={(event) =>
-                            setVesselSearch(event.target.value)
-                        }
-                        placeholder="Search by vessel name"
-                        value={vesselSearch}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder="Search vessel or customer"
+                        value={search}
                     />
                 </div>
                 <div className="flex items-center gap-2">
                     <Button type="submit" className="h-10 rounded-xl">
                         Search
                     </Button>
-                    {filters.vessel && (
+                    {filters.search && (
                         <Button
                             type="button"
                             variant="outline"
                             className="h-10 rounded-xl border-[#D8E2EE]"
                             onClick={() => {
-                                setVesselSearch('');
+                                setSearch('');
                                 visitOrdersTable(
                                     '',
                                     orders.per_page,
@@ -721,6 +732,154 @@ export default function OrdersTable({
     );
 }
 
+function OrdersExportControl({
+    columns,
+    search,
+}: {
+    columns: ExportColumn<Order>[];
+    search: string;
+}) {
+    const [open, setOpen] = useState(false);
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
+    const [exporting, setExporting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    async function exportOrders() {
+        setError(null);
+
+        if (!dateFrom || !dateTo) {
+            setError('Select both dates.');
+            return;
+        }
+
+        if (dateTo < dateFrom) {
+            setError('The end date must be on or after the start date.');
+            return;
+        }
+
+        setExporting(true);
+
+        try {
+            const response = await fetch(
+                tableExport({
+                    query: {
+                        date_from: dateFrom,
+                        date_to: dateTo,
+                        ...(search ? { search } : {}),
+                    },
+                }).url,
+                {
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                },
+            );
+
+            if (!response.ok) {
+                throw new Error('The order export could not be prepared.');
+            }
+
+            const payload = (await response.json()) as { orders: Order[] };
+
+            if (payload.orders.length === 0) {
+                setError('No orders were found for this date range.');
+                return;
+            }
+
+            exportToXlsx(
+                payload.orders,
+                columns,
+                `orders-${dateFrom}-to-${dateTo}`,
+                'Orders',
+            );
+            setOpen(false);
+        } catch (exportError) {
+            setError(
+                exportError instanceof Error
+                    ? exportError.message
+                    : 'The order export could not be prepared.',
+            );
+        } finally {
+            setExporting(false);
+        }
+    }
+
+    return (
+        <Dialog
+            open={open}
+            onOpenChange={(nextOpen) => {
+                setOpen(nextOpen);
+                if (!nextOpen) {
+                    setError(null);
+                }
+            }}
+        >
+            <Button variant="outline" onClick={() => setOpen(true)}>
+                <FileSpreadsheet className="size-4" />
+                Export to Excel
+            </Button>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Export orders</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        Select the order date range to export.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-2 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                        <Label htmlFor="orders-export-from">From</Label>
+                        <Input
+                            id="orders-export-from"
+                            type="date"
+                            value={dateFrom}
+                            onChange={(event) =>
+                                setDateFrom(event.target.value)
+                            }
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="orders-export-to">To</Label>
+                        <Input
+                            id="orders-export-to"
+                            type="date"
+                            min={dateFrom || undefined}
+                            value={dateTo}
+                            onChange={(event) => setDateTo(event.target.value)}
+                        />
+                    </div>
+                </div>
+                {error && (
+                    <p className="text-sm font-medium text-red-700">{error}</p>
+                )}
+                <DialogFooter>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setOpen(false)}
+                        disabled={exporting}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        type="button"
+                        onClick={exportOrders}
+                        disabled={exporting}
+                    >
+                        {exporting ? (
+                            <LoaderCircle className="size-4 animate-spin" />
+                        ) : (
+                            <FileSpreadsheet className="size-4" />
+                        )}
+                        Export
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 function VesselNameCell({ order }: { order: Order }) {
     return (
         <div className="flex min-w-0 items-center gap-2">
@@ -810,16 +969,16 @@ function productQuantityValueFor(
 }
 
 function visitOrdersTable(
-    vessel: string,
+    search: string,
     perPage: number,
     sortKey: string,
     direction: SortDir,
 ) {
     const params = new URLSearchParams();
-    const trimmedVessel = vessel.trim();
+    const trimmedSearch = search.trim();
 
-    if (trimmedVessel !== '') {
-        params.set('vessel', trimmedVessel);
+    if (trimmedSearch !== '') {
+        params.set('search', trimmedSearch);
     }
 
     if (perPage !== 25) {

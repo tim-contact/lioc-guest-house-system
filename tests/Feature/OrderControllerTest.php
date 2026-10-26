@@ -700,14 +700,111 @@ test('orders table can be searched by vessel name', function () {
     createOrder(['vessel_name' => 'MV Coral Star', 'order_number' => 'ORD-CORAL']);
     createOrder(['vessel_name' => 'MV Lagoon Wave', 'order_number' => 'ORD-LAGOON']);
 
-    $this->get(route('orders.table', ['vessel' => 'coral']))
+    $this->get(route('orders.table', ['search' => 'coral']))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('orders/table')
             ->has('orders.data', 1)
             ->where('orders.data.0.order_number', 'ORD-CORAL')
             ->where('orders.total', 1)
-            ->where('filters.vessel', 'coral'));
+            ->where('filters.search', 'coral'));
+});
+
+test('orders table can be searched by customer name', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    $matchingCustomer = Customer::factory()->create(['name' => 'Coral Marine Fuels']);
+    $otherCustomer = Customer::factory()->create(['name' => 'Lagoon Trading']);
+
+    createOrder([
+        'customer_id' => $matchingCustomer->sap_id,
+        'order_number' => 'ORD-CORAL-CUSTOMER',
+    ]);
+    createOrder([
+        'customer_id' => $otherCustomer->sap_id,
+        'order_number' => 'ORD-LAGOON-CUSTOMER',
+    ]);
+
+    $this->get(route('orders.table', ['search' => 'coral marine']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('orders.data', 1)
+            ->where('orders.data.0.order_number', 'ORD-CORAL-CUSTOMER')
+            ->where('orders.data.0.customer_name', 'Coral Marine Fuels')
+            ->where('filters.search', 'coral marine'));
+});
+
+test('orders export returns every order in the date range regardless of table pagination', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    $customer = Customer::factory()->create(['name' => 'Export Customer']);
+
+    foreach (range(1, 26) as $number) {
+        createOrder([
+            'customer_id' => $customer->sap_id,
+            'order_number' => 'ORD-EXPORT-'.str_pad((string) $number, 2, '0', STR_PAD_LEFT),
+            'order_date' => '2026-09-15',
+        ]);
+    }
+
+    createOrder([
+        'customer_id' => $customer->sap_id,
+        'order_number' => 'ORD-OUTSIDE-RANGE',
+        'order_date' => '2026-10-01',
+    ]);
+
+    $this->getJson(route('orders.table.export', [
+        'date_from' => '2026-09-01',
+        'date_to' => '2026-09-30',
+    ]))
+        ->assertOk()
+        ->assertJsonCount(26, 'orders')
+        ->assertJsonPath('orders.0.order_number', 'ORD-EXPORT-01')
+        ->assertJsonPath('orders.0.customer_name', 'Export Customer')
+        ->assertJsonMissing(['order_number' => 'ORD-OUTSIDE-RANGE']);
+});
+
+test('orders export applies the current vessel or customer search', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    $matchingCustomer = Customer::factory()->create(['name' => 'Coral Marine']);
+    $otherCustomer = Customer::factory()->create(['name' => 'Lagoon Trading']);
+
+    createOrder([
+        'customer_id' => $matchingCustomer->sap_id,
+        'order_number' => 'ORD-CUSTOMER-MATCH',
+        'vessel_name' => 'MV Alpha',
+        'order_date' => '2026-09-10',
+    ]);
+    createOrder([
+        'customer_id' => $otherCustomer->sap_id,
+        'order_number' => 'ORD-VESSEL-MATCH',
+        'vessel_name' => 'MV Coral Star',
+        'order_date' => '2026-09-11',
+    ]);
+    createOrder([
+        'customer_id' => $otherCustomer->sap_id,
+        'order_number' => 'ORD-NO-MATCH',
+        'vessel_name' => 'MV Horizon',
+        'order_date' => '2026-09-12',
+    ]);
+
+    $this->getJson(route('orders.table.export', [
+        'date_from' => '2026-09-01',
+        'date_to' => '2026-09-30',
+        'search' => 'coral',
+    ]))
+        ->assertOk()
+        ->assertJsonCount(2, 'orders')
+        ->assertJsonPath('orders.0.order_number', 'ORD-CUSTOMER-MATCH')
+        ->assertJsonPath('orders.1.order_number', 'ORD-VESSEL-MATCH')
+        ->assertJsonMissing(['order_number' => 'ORD-NO-MATCH']);
+});
+
+test('orders export requires a valid date range', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $this->getJson(route('orders.table.export', [
+        'date_from' => '2026-10-10',
+        'date_to' => '2026-10-01',
+    ]))->assertUnprocessable()->assertJsonValidationErrors('date_to');
 });
 
 test('guests cannot save an order from the admin table', function () {

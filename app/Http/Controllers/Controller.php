@@ -19,7 +19,11 @@ abstract class Controller
      */
     protected function toast(string $message, string $type = 'success'): RedirectResponse
     {
-        return back()->with('toast', ['type' => $type, 'message' => $message]);
+        return back()->with('toast', [
+            'id' => (string) Str::uuid(),
+            'type' => $type,
+            'message' => $message,
+        ]);
     }
 
     /**

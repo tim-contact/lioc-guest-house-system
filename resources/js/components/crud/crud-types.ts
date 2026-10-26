@@ -66,6 +66,8 @@ export interface CrudConfig<T> {
     rowActions?: (row: T) => ReactNode;
     /** Optional controls rendered beside the page actions above the table. */
     toolbar?: ReactNode;
+    /** Optional replacement for the default current-page Excel export button. */
+    exportControl?: ReactNode;
     editTitle?: (row: T) => string;
     /** Names the row in the delete confirmation; defaults to its primary key. */
     deleteLabel?: (row: T) => string;

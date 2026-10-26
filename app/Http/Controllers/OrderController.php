@@ -17,8 +17,10 @@ use App\Models\Port;
 use App\Services\DisputeService;
 use App\Services\OrderService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -136,7 +138,7 @@ class OrderController extends Controller
     {
         $perPage = (int) $request->input('per_page', 25);
         $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 25;
-        $vesselSearch = trim((string) $request->input('vessel', ''));
+        $search = trim((string) $request->input('search', $request->input('vessel', '')));
         $sortKey = (string) $request->input('sort', 'id');
         $direction = $request->input('dir') === 'desc' ? 'desc' : 'asc';
 
@@ -146,19 +148,14 @@ class OrderController extends Controller
         }
 
         return Inertia::render('orders/table', [
-            'orders' => Order::with(['deliveryLocation', 'customer:sap_id,name'])
-                ->when($vesselSearch !== '', fn ($query) => $query->where('vessel_name', 'like', '%'.$vesselSearch.'%'))
+            'orders' => self::orderTableQuery()
+                ->when($search !== '', fn (Builder $query) => self::applyOrderTableSearch($query, $search))
                 ->tap(fn (Builder $query) => self::applyOrderTableSort($query, $sortKey, $direction))
                 ->paginate($perPage)
                 ->withQueryString()
-                ->through(fn (Order $order): array => [
-                    ...$order->toArray(),
-                    ...OrderService::timingMetrics($order),
-                    'customer_name' => $order->customer?->name,
-                    'delivery_location' => $order->deliveryLocation?->name,
-                ]),
+                ->through(self::orderTableRow(...)),
             'filters' => [
-                'vessel' => $vesselSearch,
+                'search' => $search,
                 'sort' => $sortKey,
                 'dir' => $direction,
             ],
@@ -169,6 +166,62 @@ class OrderController extends Controller
             'productTypeOptions' => $this->enumOptions(ProductType::cases()),
             'creditTermsOptions' => $this->enumOptions(CreditTerms::cases()),
         ]);
+    }
+
+    public function tableExport(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'date_from' => ['required', 'date_format:Y-m-d'],
+            'date_to' => ['required', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+            'search' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $validated = $validator->validated();
+
+        $orders = self::orderTableQuery()
+            ->whereDate('order_date', '>=', $validated['date_from'])
+            ->whereDate('order_date', '<=', $validated['date_to'])
+            ->when(
+                filled($validated['search'] ?? null),
+                fn (Builder $query) => self::applyOrderTableSearch($query, trim($validated['search'])),
+            )
+            ->orderBy('order_date')
+            ->orderBy('id')
+            ->get()
+            ->map(self::orderTableRow(...));
+
+        return response()->json(['orders' => $orders]);
+    }
+
+    private static function orderTableQuery(): Builder
+    {
+        return Order::query()->with(['deliveryLocation', 'customer:sap_id,name']);
+    }
+
+    /** @return array<string, mixed> */
+    private static function orderTableRow(Order $order): array
+    {
+        return [
+            ...$order->toArray(),
+            ...OrderService::timingMetrics($order),
+            'customer_name' => $order->customer?->name,
+            'delivery_location' => $order->deliveryLocation?->name,
+        ];
+    }
+
+    private static function applyOrderTableSearch(Builder $query, string $search): void
+    {
+        $needle = '%'.mb_strtolower($search).'%';
+
+        $query->where(function (Builder $query) use ($needle): void {
+            $query->whereRaw('LOWER(orders.vessel_name) LIKE ?', [$needle])
+                ->orWhereHas('customer', fn (Builder $query) => $query
+                    ->whereRaw('LOWER(customers.name) LIKE ?', [$needle]));
+        });
     }
 
     /**

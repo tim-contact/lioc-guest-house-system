@@ -76,11 +76,13 @@ export function ResourceCrudPage<T>({
                         <span />
                     )}
                     <div className="flex items-center justify-end gap-2">
-                        <ExportButton
-                            rows={sorted}
-                            columns={config.exportColumns}
-                            filename={config.filename}
-                        />
+                        {config.exportControl ?? (
+                            <ExportButton
+                                rows={sorted}
+                                columns={config.exportColumns}
+                                filename={config.filename}
+                            />
+                        )}
                         {config.canCreate !== false && (
                             <Button onClick={() => setCreating(true)}>
                                 + Add {config.entityLabel}
