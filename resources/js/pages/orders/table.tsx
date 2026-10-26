@@ -32,6 +32,7 @@ interface Order {
     order_number: string;
     order_date: string | null;
     customer_id: string;
+    customer_name: string | null;
     vessel_id: string | null;
     vessel_name: string | null;
     port_id: number | null;
@@ -140,6 +141,7 @@ export default function OrdersTable({
         { header: 'Order Number', value: (o) => o.order_number },
         { header: 'Order Date', value: (o) => o.order_date ?? '' },
         { header: 'Customer ID', value: (o) => o.customer_id },
+        { header: 'Customer Name', value: (o) => o.customer_name ?? '' },
         { header: 'Vessel ID', value: (o) => o.vessel_id ?? '' },
         { header: 'Vessel Name', value: (o) => o.vessel_name ?? '' },
         { header: 'Port ID', value: (o) => o.port_id ?? '' },
@@ -307,6 +309,11 @@ export default function OrdersTable({
                 header: 'Customer ID',
                 sortKey: 'customer_id',
                 cell: (o) => o.customer_id,
+            },
+            {
+                header: 'Customer Name',
+                sortKey: 'customer_name',
+                cell: (o) => o.customer_name ?? '—',
             },
             {
                 header: 'Vessel Name',

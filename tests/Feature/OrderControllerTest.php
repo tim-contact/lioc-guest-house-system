@@ -585,10 +585,12 @@ test('guests are redirected from the orders table page', function () {
 
 test('table renders every order with all attributes', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    $customer = Customer::factory()->create(['name' => 'Alpha Marine Fuels']);
 
     createOrder([
         'vessel_name' => 'MV Alpha',
         'order_number' => 'ORD-ALPHA',
+        'customer_id' => $customer->sap_id,
         'compliance_checked' => true,
         'nomination_received' => true,
     ]);
@@ -600,6 +602,7 @@ test('table renders every order with all attributes', function () {
             ->component('orders/table')
             ->has('orders.data', 2)
             ->where('orders.data.0.order_number', 'ORD-ALPHA')
+            ->where('orders.data.0.customer_name', 'Alpha Marine Fuels')
             ->where('orders.data.0.status', OrderStatus::Pending->value)
             ->where('orders.data.0.compliance_checked', true)
             ->where('orders.data.0.nomination_received', true)
@@ -669,6 +672,26 @@ test('orders table sorts the complete result before pagination', function () {
             ->where('orders.total', 11)
             ->where('filters.sort', 'vessel_name')
             ->where('filters.dir', 'asc'));
+});
+
+test('orders table sorts by customer name before pagination', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    $zuluCustomer = Customer::factory()->create(['name' => 'Zulu Marine']);
+    $alphaCustomer = Customer::factory()->create(['name' => 'Alpha Marine']);
+
+    createOrder(['order_number' => 'ORD-ZULU', 'customer_id' => $zuluCustomer->sap_id]);
+    createOrder(['order_number' => 'ORD-ALPHA', 'customer_id' => $alphaCustomer->sap_id]);
+
+    $this->get(route('orders.table', [
+        'sort' => 'customer_name',
+        'dir' => 'asc',
+    ]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('orders.data.0.order_number', 'ORD-ALPHA')
+            ->where('orders.data.0.customer_name', 'Alpha Marine')
+            ->where('orders.data.1.order_number', 'ORD-ZULU')
+            ->where('filters.sort', 'customer_name'));
 });
 
 test('orders table can be searched by vessel name', function () {

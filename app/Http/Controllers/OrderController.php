@@ -146,7 +146,7 @@ class OrderController extends Controller
         }
 
         return Inertia::render('orders/table', [
-            'orders' => Order::with('deliveryLocation')
+            'orders' => Order::with(['deliveryLocation', 'customer:sap_id,name'])
                 ->when($vesselSearch !== '', fn ($query) => $query->where('vessel_name', 'like', '%'.$vesselSearch.'%'))
                 ->tap(fn (Builder $query) => self::applyOrderTableSort($query, $sortKey, $direction))
                 ->paginate($perPage)
@@ -154,6 +154,7 @@ class OrderController extends Controller
                 ->through(fn (Order $order): array => [
                     ...$order->toArray(),
                     ...OrderService::timingMetrics($order),
+                    'customer_name' => $order->customer?->name,
                     'delivery_location' => $order->deliveryLocation?->name,
                 ]),
             'filters' => [
@@ -180,6 +181,7 @@ class OrderController extends Controller
             'order_number',
             'order_date',
             'customer_id',
+            'customer_name',
             'vessel_name',
             'vessel_id',
             'port_id',
@@ -242,7 +244,9 @@ class OrderController extends Controller
             'status',
         ];
 
-        if ($sort === 'balance_amount') {
+        if ($sort === 'customer_name') {
+            $query->orderByRaw("LOWER((SELECT customers.name FROM customers WHERE customers.sap_id = orders.customer_id)) {$direction} NULLS LAST");
+        } elseif ($sort === 'balance_amount') {
             $query->orderByRaw("(COALESCE(orders.invoice_value, 0) - COALESCE(orders.amount_received, 0)) {$direction}");
         } elseif (in_array($sort, $textColumns, true)) {
             $query->orderByRaw("LOWER(orders.{$sort}) {$direction} NULLS LAST");
