@@ -54,6 +54,9 @@ ENV APP_ENV=production \
     LARAVEL_PDF_NPM_BINARY=/usr/bin/npm \
     LARAVEL_PDF_NO_SANDBOX=true
 
+RUN printf '%s\n' 'session.upload_progress.enabled=0' \
+    > /usr/local/etc/php/conf.d/zz-session-security.ini
+
 RUN apk add --no-cache \
         bash \
         ca-certificates \

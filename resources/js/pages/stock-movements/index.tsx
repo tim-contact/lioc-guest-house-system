@@ -75,6 +75,12 @@ interface BargeRow {
         id: number;
         quantities: ProductTotals;
     }[];
+    movement_entries: {
+        id: number;
+        label: string;
+        direction: 1 | -1;
+        quantities: ProductTotals;
+    }[];
     deliveries: ProductTotals;
     closing: ProductTotals;
 }
@@ -117,6 +123,7 @@ interface MovementFormData {
     movement_date: string;
     port_id: string;
     barge_id: string;
+    destination_barge_id: string;
     movement_scope: string;
     movement_type: string;
     counterparty_name: string;
@@ -145,6 +152,12 @@ const MOVEMENT_OPTIONS = [
         label: 'Load barge',
         scope: 'barge',
         type: 'loading',
+    },
+    {
+        key: 'barge-transfer',
+        label: 'Barge transfer',
+        scope: 'barge',
+        type: 'barge_transfer',
     },
     {
         key: 'rebond-sale',
@@ -251,6 +264,7 @@ export default function StockMovementsIndex({
         movement_date: filters.date_from,
         port_id: String(filters.port_id || ports[0]?.id || ''),
         barge_id: '',
+        destination_barge_id: '',
         movement_scope: 'terminal',
         movement_type: 'loading',
         counterparty_name: '',
@@ -268,6 +282,7 @@ export default function StockMovementsIndex({
                 option.type === movementForm.data.movement_type,
         ) ?? MOVEMENT_OPTIONS[0];
     const requiresBarge = selectedMovement.scope === 'barge';
+    const isBargeTransfer = selectedMovement.type === 'barge_transfer';
     const showsCompany = selectedMovement.scope === 'terminal';
     const reportBarges = Array.from(
         new Map(
@@ -291,6 +306,10 @@ export default function StockMovementsIndex({
             movementForm.setData('barge_id', '');
         }
 
+        if (option.type !== 'barge_transfer') {
+            movementForm.setData('destination_barge_id', '');
+        }
+
         if (option.scope === 'barge') {
             movementForm.setData('counterparty_name', '');
         }
@@ -304,6 +323,7 @@ export default function StockMovementsIndex({
             onSuccess: () => {
                 movementForm.reset(
                     'barge_id',
+                    'destination_barge_id',
                     'counterparty_name',
                     'mgo_qty',
                     'vlsfo_qty',
@@ -500,7 +520,7 @@ export default function StockMovementsIndex({
                                             <span className="text-xs font-semibold text-[#64748B]">
                                                 Movement
                                             </span>
-                                            <div className="grid gap-1.5 rounded-xl border border-[#D6DEE9] bg-[#F8FAFC] p-1 sm:grid-cols-3">
+                                            <div className="grid gap-1.5 rounded-xl border border-[#D6DEE9] bg-[#F8FAFC] p-1 sm:grid-cols-4">
                                                 {MOVEMENT_OPTIONS.map(
                                                     (option) => {
                                                         const active =
@@ -545,7 +565,11 @@ export default function StockMovementsIndex({
                                         <div className="grid gap-3 md:grid-cols-2">
                                             {requiresBarge && (
                                                 <FormField
-                                                    label="Barge"
+                                                    label={
+                                                        isBargeTransfer
+                                                            ? 'Source barge'
+                                                            : 'Barge'
+                                                    }
                                                     error={
                                                         movementForm.errors
                                                             .barge_id
@@ -573,6 +597,58 @@ export default function StockMovementsIndex({
                                                                 key={barge.imo}
                                                                 value={
                                                                     barge.imo
+                                                                }
+                                                                disabled={
+                                                                    isBargeTransfer &&
+                                                                    barge.imo ===
+                                                                        movementForm
+                                                                            .data
+                                                                            .destination_barge_id
+                                                                }
+                                                            >
+                                                                {barge.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </FormField>
+                                            )}
+
+                                            {isBargeTransfer && (
+                                                <FormField
+                                                    label="Destination barge"
+                                                    error={
+                                                        movementForm.errors
+                                                            .destination_barge_id
+                                                    }
+                                                >
+                                                    <select
+                                                        value={
+                                                            movementForm.data
+                                                                .destination_barge_id
+                                                        }
+                                                        onChange={(event) =>
+                                                            movementForm.setData(
+                                                                'destination_barge_id',
+                                                                event.target
+                                                                    .value,
+                                                            )
+                                                        }
+                                                        className="h-10 rounded-xl border border-[#D6DEE9] bg-white px-3 text-sm font-semibold text-[#172033] transition outline-none focus:border-[#2455E6] focus:ring-3 focus:ring-[#2455E6]/15"
+                                                    >
+                                                        <option value="">
+                                                            Select destination
+                                                        </option>
+                                                        {barges.map((barge) => (
+                                                            <option
+                                                                key={barge.imo}
+                                                                value={
+                                                                    barge.imo
+                                                                }
+                                                                disabled={
+                                                                    barge.imo ===
+                                                                    movementForm
+                                                                        .data
+                                                                        .barge_id
                                                                 }
                                                             >
                                                                 {barge.name}
@@ -1330,16 +1406,25 @@ function bargeMovementRows(
             const movements: BargeMovementRow[] = [];
             let balance = addTotals(row.opening, row.opening_entries);
 
-            row.loading_movements.forEach((loading) => {
-                const closing = addTotals(balance, loading.quantities);
+            row.movement_entries.forEach((entry) => {
+                const movement = PRODUCTS.reduce(
+                    (totals, product) => ({
+                        ...totals,
+                        [product.key]:
+                            Number(entry.quantities[product.key] ?? 0) *
+                            entry.direction,
+                    }),
+                    zeroTotals(),
+                );
+                const closing = addTotals(balance, movement);
                 movements.push({
                     ...row,
-                    key: `${row.date}-${row.barge_id}-loading-${loading.id}`,
-                    order_number: `Terminal loading #${loading.id}`,
+                    key: `${row.date}-${row.barge_id}-movement-${entry.id}-${entry.direction}`,
+                    order_number: entry.label,
                     vessel_name: null,
                     opening: balance,
                     opening_entries: zeroTotals(),
-                    loadings: loading.quantities,
+                    loadings: movement,
                     deliveries: zeroTotals(),
                     closing,
                 });
@@ -1347,7 +1432,7 @@ function bargeMovementRows(
             });
 
             if (
-                row.loading_movements.length === 0 &&
+                row.movement_entries.length === 0 &&
                 row.delivery_orders.length === 0
             ) {
                 movements.push({

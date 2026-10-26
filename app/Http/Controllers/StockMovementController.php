@@ -50,19 +50,30 @@ class StockMovementController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $isBargeTransfer = $request->input('movement_type') === StockMovementType::BargeTransfer->value;
+        $quantityRules = $isBargeTransfer
+            ? ['nullable', 'numeric', 'min:0']
+            : ['nullable', 'numeric'];
+
         $validated = $request->validate([
             'movement_date' => ['required', 'date'],
             'port_id' => ['required', 'exists:ports,id'],
             'barge_id' => ['nullable', 'exists:barges,imo'],
+            'destination_barge_id' => [
+                'nullable',
+                'required_if:movement_type,'.StockMovementType::BargeTransfer->value,
+                'different:barge_id',
+                'exists:barges,imo',
+            ],
             'movement_scope' => ['required', Rule::enum(StockMovementScope::class)],
             'movement_type' => ['required', Rule::in(array_map(
                 fn (StockMovementType $type): string => $type->value,
                 $this->availableMovementTypes(),
             ))],
             'counterparty_name' => ['nullable', 'string', 'max:255'],
-            'mgo_qty' => ['nullable', 'numeric'],
-            'vlsfo_qty' => ['nullable', 'numeric'],
-            'hsfo_qty' => ['nullable', 'numeric'],
+            'mgo_qty' => $quantityRules,
+            'vlsfo_qty' => $quantityRules,
+            'hsfo_qty' => $quantityRules,
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -72,17 +83,34 @@ class StockMovementController extends Controller
 
         if (
             $validated['movement_scope'] === StockMovementScope::Barge->value
-            && $validated['movement_type'] !== StockMovementType::Loading->value
+            && ! in_array($validated['movement_type'], [
+                StockMovementType::Loading->value,
+                StockMovementType::BargeTransfer->value,
+            ], true)
         ) {
-            return back()->withErrors(['movement_type' => 'Barge movements can only be terminal-to-barge loadings.'])->withInput();
+            return back()->withErrors(['movement_type' => 'Select a supported barge stock movement.'])->withInput();
+        }
+
+        if ($isBargeTransfer && $validated['movement_scope'] !== StockMovementScope::Barge->value) {
+            return back()->withErrors(['movement_type' => 'Barge transfers must use the barge movement scope.'])->withInput();
         }
 
         if ($validated['movement_scope'] === StockMovementScope::Terminal->value) {
             $validated['barge_id'] = null;
         }
 
+        if (! $isBargeTransfer) {
+            $validated['destination_barge_id'] = null;
+        }
+
         foreach (FuelGrade::keys() as $product) {
             $validated["{$product}_qty"] = $validated["{$product}_qty"] ?? 0;
+        }
+
+        if ($isBargeTransfer && collect(FuelGrade::keys())->every(
+            fn (string $product): bool => (float) $validated["{$product}_qty"] === 0.0,
+        )) {
+            return back()->withErrors(['mgo_qty' => 'Enter at least one transfer quantity greater than zero.'])->withInput();
         }
 
         $validated['created_by'] = $request->user()->id;
@@ -101,6 +129,7 @@ class StockMovementController extends Controller
             StockMovementType::cases(),
             fn (StockMovementType $type): bool => in_array($type, [
                 StockMovementType::Loading,
+                StockMovementType::BargeTransfer,
                 StockMovementType::RebondTransfer,
             ], true),
         ));
@@ -111,7 +140,7 @@ class StockMovementController extends Controller
      */
     private function recentMovements(int $portId): array
     {
-        return StockMovement::with(['port', 'barge'])
+        return StockMovement::with(['port', 'barge', 'destinationBarge'])
             ->when($portId > 0, fn ($query) => $query->where('port_id', $portId))
             ->whereIn('movement_type', array_map(
                 fn (StockMovementType $type): string => $type->value,
@@ -126,6 +155,7 @@ class StockMovementController extends Controller
                 'movement_date' => $movement->movement_date->toDateString(),
                 'port_name' => $movement->port?->name,
                 'barge_name' => $movement->barge?->name,
+                'destination_barge_name' => $movement->destinationBarge?->name,
                 'movement_scope' => $movement->movement_scope->value,
                 'movement_type' => $movement->movement_type->value,
                 'movement_type_label' => $this->movementTypeLabel($movement),

@@ -106,9 +106,10 @@ test('stock movement form only exposes operational movement types', function () 
     ]))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('movementTypeOptions', 2)
+            ->has('movementTypeOptions', 3)
             ->where('movementTypeOptions.0.value', StockMovementType::Loading->value)
-            ->where('movementTypeOptions.1.value', StockMovementType::RebondTransfer->value));
+            ->where('movementTypeOptions.1.value', StockMovementType::BargeTransfer->value)
+            ->where('movementTypeOptions.2.value', StockMovementType::RebondTransfer->value));
 });
 
 test('recent movements distinguish terminal imports from barge loadings', function () {
@@ -228,6 +229,75 @@ test('terminal re-bond sales can be recorded', function () {
         'vlsfo_qty' => '75.000',
         'created_by' => $user->id,
     ]);
+});
+
+test('barge to barge stock transfers can be recorded', function () {
+    $user = User::factory()->create(['type' => UserType::Operations]);
+    $this->actingAs($user);
+
+    $port = Port::factory()->create();
+    $sourceBarge = Barge::factory()->create();
+    $destinationBarge = Barge::factory()->create();
+
+    $this->post(route('stock-movements.store'), [
+        'movement_date' => '2026-08-01',
+        'port_id' => $port->id,
+        'movement_scope' => StockMovementScope::Barge->value,
+        'movement_type' => StockMovementType::BargeTransfer->value,
+        'barge_id' => $sourceBarge->imo,
+        'destination_barge_id' => $destinationBarge->imo,
+        'mgo_qty' => 12.5,
+        'vlsfo_qty' => 80,
+        'hsfo_qty' => 0,
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    $this->assertDatabaseHas('stock_movements', [
+        'port_id' => $port->id,
+        'barge_id' => $sourceBarge->imo,
+        'destination_barge_id' => $destinationBarge->imo,
+        'movement_scope' => StockMovementScope::Barge->value,
+        'movement_type' => StockMovementType::BargeTransfer->value,
+        'mgo_qty' => '12.500',
+        'vlsfo_qty' => '80.000',
+        'created_by' => $user->id,
+    ]);
+});
+
+test('barge transfers require distinct source and destination barges', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Operations]));
+    $port = Port::factory()->create();
+    $sourceBarge = Barge::factory()->create();
+
+    $this->post(route('stock-movements.store'), [
+        'movement_date' => '2026-08-01',
+        'port_id' => $port->id,
+        'movement_scope' => StockMovementScope::Barge->value,
+        'movement_type' => StockMovementType::BargeTransfer->value,
+        'barge_id' => $sourceBarge->imo,
+        'destination_barge_id' => $sourceBarge->imo,
+        'mgo_qty' => 10,
+        'vlsfo_qty' => 0,
+        'hsfo_qty' => 0,
+    ])->assertSessionHasErrors('destination_barge_id');
+});
+
+test('barge transfers require at least one positive quantity', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Operations]));
+    $port = Port::factory()->create();
+    $sourceBarge = Barge::factory()->create();
+    $destinationBarge = Barge::factory()->create();
+
+    $this->post(route('stock-movements.store'), [
+        'movement_date' => '2026-08-01',
+        'port_id' => $port->id,
+        'movement_scope' => StockMovementScope::Barge->value,
+        'movement_type' => StockMovementType::BargeTransfer->value,
+        'barge_id' => $sourceBarge->imo,
+        'destination_barge_id' => $destinationBarge->imo,
+        'mgo_qty' => 0,
+        'vlsfo_qty' => 0,
+        'hsfo_qty' => 0,
+    ])->assertSessionHasErrors('mgo_qty');
 });
 
 test('opening and dead stock movements cannot be recorded by users', function (StockMovementType $type) {
@@ -390,6 +460,63 @@ test('barge report exposes each loading and delivery separately', function () {
         ->and($row['loadings']['mgo'])->toBe(30.0)
         ->and($row['deliveries']['mgo'])->toBe(12.0)
         ->and($row['closing']['mgo'])->toBe(18.0);
+});
+
+test('barge transfers reduce the source and increase the destination without changing terminal stock', function () {
+    $port = Port::factory()->create();
+    $sourceBarge = Barge::factory()->create(['name' => 'Source Barge']);
+    $destinationBarge = Barge::factory()->create(['name' => 'Destination Barge']);
+
+    foreach ([[$sourceBarge, 100], [$destinationBarge, 20]] as [$barge, $quantity]) {
+        StockMovement::factory()->create([
+            'movement_date' => '2026-07-31',
+            'port_id' => $port->id,
+            'barge_id' => $barge->imo,
+            'movement_scope' => StockMovementScope::Barge,
+            'movement_type' => StockMovementType::Loading,
+            'mgo_qty' => $quantity,
+            'vlsfo_qty' => 0,
+            'hsfo_qty' => 0,
+        ]);
+    }
+
+    StockMovement::factory()->create([
+        'movement_date' => '2026-08-01',
+        'port_id' => $port->id,
+        'barge_id' => $sourceBarge->imo,
+        'destination_barge_id' => $destinationBarge->imo,
+        'movement_scope' => StockMovementScope::Barge,
+        'movement_type' => StockMovementType::BargeTransfer,
+        'mgo_qty' => 30,
+        'vlsfo_qty' => 0,
+        'hsfo_qty' => 0,
+    ]);
+
+    $report = app(StockMovementService::class)->report(
+        $port->id,
+        CarbonImmutable::parse('2026-08-01'),
+        CarbonImmutable::parse('2026-08-01'),
+    );
+    $sourceRow = collect($report['barges'])->firstWhere('barge_id', $sourceBarge->imo);
+    $destinationRow = collect($report['barges'])->firstWhere('barge_id', $destinationBarge->imo);
+    $nextDayReport = app(StockMovementService::class)->report(
+        $port->id,
+        CarbonImmutable::parse('2026-08-02'),
+        CarbonImmutable::parse('2026-08-02'),
+    );
+
+    expect($sourceRow['opening']['mgo'])->toBe(100.0)
+        ->and($sourceRow['closing']['mgo'])->toBe(70.0)
+        ->and($sourceRow['movement_entries'][0]['label'])->toBe('Transfer to Destination Barge')
+        ->and($sourceRow['movement_entries'][0]['direction'])->toBe(-1)
+        ->and($destinationRow['opening']['mgo'])->toBe(20.0)
+        ->and($destinationRow['closing']['mgo'])->toBe(50.0)
+        ->and($destinationRow['movement_entries'][0]['label'])->toBe('Transfer from Source Barge')
+        ->and($destinationRow['movement_entries'][0]['direction'])->toBe(1)
+        ->and($report['totals']['barge_closing']['mgo'])->toBe(120.0)
+        ->and($report['totals']['terminal_closing']['mgo'])->toBe(-120.0)
+        ->and($nextDayReport['barge_balances'][$sourceBarge->imo]['mgo'])->toBe(70.0)
+        ->and($nextDayReport['barge_balances'][$destinationBarge->imo]['mgo'])->toBe(50.0);
 });
 
 test('terminal report exposes each movement with its stock direction', function () {

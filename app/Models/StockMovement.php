@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $movement_date
  * @property int $port_id
  * @property string|null $barge_id
+ * @property string|null $destination_barge_id
  * @property StockMovementScope $movement_scope
  * @property StockMovementType $movement_type
  * @property string|null $counterparty_name
@@ -28,7 +29,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $created_by
  */
 #[Fillable([
-    'movement_date', 'port_id', 'barge_id', 'movement_scope', 'movement_type',
+    'movement_date', 'port_id', 'barge_id', 'destination_barge_id', 'movement_scope', 'movement_type',
     'counterparty_name', 'order_id', 'bdn_id', 'mgo_qty', 'vlsfo_qty',
     'hsfo_qty', 'notes', 'created_by',
 ])]
@@ -62,6 +63,12 @@ class StockMovement extends Model
     public function barge(): BelongsTo
     {
         return $this->belongsTo(Barge::class, 'barge_id', 'imo');
+    }
+
+    /** @return BelongsTo<Barge, $this> */
+    public function destinationBarge(): BelongsTo
+    {
+        return $this->belongsTo(Barge::class, 'destination_barge_id', 'imo');
     }
 
     /** @return BelongsTo<Order, $this> */

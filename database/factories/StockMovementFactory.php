@@ -33,6 +33,7 @@ class StockMovementFactory extends Factory
             'movement_date' => fake()->dateTimeBetween('-30 days', 'now'),
             'port_id' => Port::factory(),
             'barge_id' => $scope === StockMovementScope::Barge ? Barge::factory() : null,
+            'destination_barge_id' => null,
             'movement_scope' => $scope,
             'movement_type' => $movementType,
             'counterparty_name' => fake()->optional()->company(),

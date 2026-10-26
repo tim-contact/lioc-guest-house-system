@@ -29,7 +29,7 @@ class StockMovementService
             ? CarbonImmutable::createFromFormat('!Y-m-d', $configuredBargeStart)
             : null;
 
-        $movements = StockMovement::with('barge')
+        $movements = StockMovement::with(['barge', 'destinationBarge'])
             ->where('port_id', $portId)
             ->whereDate('movement_date', '<=', $end->toDateString())
             ->orderBy('movement_date')
@@ -139,6 +139,12 @@ class StockMovementService
                 $opening = $bargeBalances[$bargeId];
                 $bargeOpening = $this->sumManualMovements($bargeMovements, $day, StockMovementScope::Barge, [StockMovementType::Opening], $bargeId);
                 $bargeLoading = $this->sumManualMovements($bargeMovements, $day, StockMovementScope::Barge, [StockMovementType::Loading], $bargeId);
+                $bargeTransferIn = $this->sumBargeTransfers($bargeMovements, $day, $bargeId, true);
+                $bargeTransferOut = $this->sumBargeTransfers($bargeMovements, $day, $bargeId, false);
+                $bargeMovement = $this->subtractTotals(
+                    $this->addTotals($bargeLoading, $bargeTransferIn),
+                    $bargeTransferOut,
+                );
                 $bargeDeliveries = $this->sumDeliveries($deliveries, $day, $bargeId);
                 $dayLoadingMovements = $bargeMovements
                     ->filter(fn (StockMovement $movement): bool => $movement->movement_date->isSameDay($day)
@@ -153,6 +159,32 @@ class StockMovementService
                         ])->all(),
                     ])
                     ->values();
+                $dayBargeMovements = $bargeMovements
+                    ->filter(fn (StockMovement $movement): bool => $movement->movement_date->isSameDay($day)
+                        && $movement->movement_scope === StockMovementScope::Barge
+                        && (($movement->movement_type === StockMovementType::Loading
+                            && $movement->barge_id === $bargeId)
+                            || ($movement->movement_type === StockMovementType::BargeTransfer
+                                && in_array($bargeId, [$movement->barge_id, $movement->destination_barge_id], true))))
+                    ->sortBy('id')
+                    ->map(function (StockMovement $movement) use ($bargeId, $products): array {
+                        $isLoading = $movement->movement_type === StockMovementType::Loading;
+                        $isIncoming = $movement->destination_barge_id === $bargeId;
+
+                        return [
+                            'id' => $movement->id,
+                            'label' => match (true) {
+                                $isLoading => 'Terminal loading',
+                                $isIncoming => 'Transfer from '.($movement->barge?->name ?? $movement->barge_id),
+                                default => 'Transfer to '.($movement->destinationBarge?->name ?? $movement->destination_barge_id),
+                            },
+                            'direction' => $isLoading || $isIncoming ? 1 : -1,
+                            'quantities' => collect($products)->mapWithKeys(fn (string $product): array => [
+                                $product => (float) $movement->{"{$product}_qty"},
+                            ])->all(),
+                        ];
+                    })
+                    ->values();
                 $dayDeliveries = $deliveries
                     ->filter(fn (Bdn $bdn): bool => $bdn->delivery_date?->isSameDay($day) === true
                         && ($bdn->barge_id ?? $bdn->order?->barge_id) === $bargeId)
@@ -160,7 +192,7 @@ class StockMovementService
 
                 foreach ($products as $product) {
                     $bargeBalances[$bargeId][$product] += $bargeOpening[$product]
-                        + $bargeLoading[$product]
+                        + $bargeMovement[$product]
                         - $bargeDeliveries[$product];
                 }
 
@@ -184,8 +216,9 @@ class StockMovementService
                     ])->values()->all(),
                     'opening' => $opening,
                     'opening_entries' => $bargeOpening,
-                    'loadings' => $bargeLoading,
+                    'loadings' => $bargeMovement,
                     'loading_movements' => $dayLoadingMovements->all(),
+                    'movement_entries' => $dayBargeMovements->all(),
                     'deliveries' => $bargeDeliveries,
                     'closing' => $bargeBalances[$bargeId],
                 ];
@@ -261,6 +294,25 @@ class StockMovementService
                 }
 
                 if ($bargeStart !== null && $movement->movement_date->lt($bargeStart)) {
+                    return;
+                }
+
+                if ($movement->movement_type === StockMovementType::BargeTransfer) {
+                    if ($movement->destination_barge_id === null) {
+                        return;
+                    }
+
+                    foreach ([$movement->barge_id, $movement->destination_barge_id] as $bargeId) {
+                        $bargeBalances[$bargeId] ??= $this->emptyProductTotals();
+                        $bargeNames[$bargeId] ??= $this->bargeName($movements, $deliveries, $bargeId);
+                    }
+
+                    foreach (FuelGrade::keys() as $product) {
+                        $quantity = (float) $movement->{"{$product}_qty"};
+                        $bargeBalances[$movement->barge_id][$product] -= $quantity;
+                        $bargeBalances[$movement->destination_barge_id][$product] += $quantity;
+                    }
+
                     return;
                 }
 
@@ -348,6 +400,29 @@ class StockMovementService
 
     /**
      * @param  Collection<int, StockMovement>  $movements
+     * @return array<string, float>
+     */
+    private function sumBargeTransfers(Collection $movements, CarbonImmutable $date, string $bargeId, bool $incoming): array
+    {
+        $totals = $this->emptyProductTotals();
+        $bargeColumn = $incoming ? 'destination_barge_id' : 'barge_id';
+
+        $movements
+            ->filter(fn (StockMovement $movement): bool => $movement->movement_date->isSameDay($date)
+                && $movement->movement_scope === StockMovementScope::Barge
+                && $movement->movement_type === StockMovementType::BargeTransfer
+                && $movement->{$bargeColumn} === $bargeId)
+            ->each(function (StockMovement $movement) use (&$totals): void {
+                foreach (FuelGrade::keys() as $product) {
+                    $totals[$product] += (float) $movement->{"{$product}_qty"};
+                }
+            });
+
+        return $totals;
+    }
+
+    /**
+     * @param  Collection<int, StockMovement>  $movements
      * @return list<string>
      */
     private function dailyBargeMovementIds(Collection $movements, CarbonImmutable $date): array
@@ -357,7 +432,14 @@ class StockMovementService
                 && $movement->movement_date->isSameDay($date)
                 && $movement->movement_type !== StockMovementType::Adjustment
                 && $movement->barge_id !== null)
-            ->pluck('barge_id')
+            ->flatMap(fn (StockMovement $movement): array => array_filter([
+                $movement->barge_id,
+                $movement->movement_type === StockMovementType::BargeTransfer
+                    ? $movement->destination_barge_id
+                    : null,
+            ]))
+            ->unique()
+            ->values()
             ->all();
     }
 
@@ -385,6 +467,12 @@ class StockMovementService
 
         if ($movementBarge !== null) {
             return $movementBarge;
+        }
+
+        $destinationBarge = $movements->firstWhere('destination_barge_id', $bargeId)?->destinationBarge?->name;
+
+        if ($destinationBarge !== null) {
+            return $destinationBarge;
         }
 
         return $deliveries->first(
