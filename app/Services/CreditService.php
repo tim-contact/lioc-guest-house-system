@@ -9,6 +9,8 @@ use App\Models\Order;
 
 class CreditService
 {
+    public const ENQUIRY_CREDIT_THRESHOLD = -100000.0;
+
     /**
      * Credit still available per customer, keyed by SAP ID: the credit limit less
      * open invoices (delivered, not yet settled) and open orders (not yet delivered).
@@ -36,6 +38,14 @@ class CreditService
         return $limits
             ->map(fn ($limit, string $sapId): float => (float) $limit - (float) ($exposure[$sapId] ?? 0))
             ->all();
+    }
+
+    public static function hasExceededEnquiryCreditThreshold(string $customerId): bool
+    {
+        $availableCredit = self::availableByCustomer([$customerId])[$customerId] ?? null;
+
+        return $availableCredit !== null
+            && $availableCredit < self::ENQUIRY_CREDIT_THRESHOLD;
     }
 
     /**

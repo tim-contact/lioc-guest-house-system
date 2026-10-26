@@ -10,6 +10,7 @@ use App\Enums\FuelGrade;
 use App\Models\Customer;
 use App\Models\Enquiry;
 use App\Models\EnquiryCustomer;
+use App\Services\CreditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -51,6 +52,10 @@ class EnquiryCustomerController extends Controller
             ],
         ]);
 
+        if (CreditService::hasExceededEnquiryCreditThreshold($validated['customer_id'])) {
+            return $this->toast('The customer has exceeded the credit limit threshold.', 'error');
+        }
+
         $enquiry->enquiryCustomers()->create($validated);
 
         return $this->toast('Customer added.');
@@ -75,7 +80,16 @@ class EnquiryCustomerController extends Controller
             }
         }
 
-        $enquiryCustomer->update($request->validate($rules));
+        $validated = $request->validate($rules);
+
+        if (
+            $validated['customer_id'] !== $enquiryCustomer->customer_id
+            && CreditService::hasExceededEnquiryCreditThreshold($validated['customer_id'])
+        ) {
+            return $this->toast('The customer has exceeded the credit limit threshold.', 'error');
+        }
+
+        $enquiryCustomer->update($validated);
 
         return $this->toast('Customer saved.');
     }

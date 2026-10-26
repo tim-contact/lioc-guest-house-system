@@ -141,3 +141,22 @@ it('keeps each customer to their own exposure and omits unknown ones', function 
 it('returns nothing when given no customers', function () {
     expect(CreditService::availableByCustomer([]))->toBe([]);
 });
+
+it('blocks enquiries only when calculated available credit falls below the threshold', function () {
+    $atThreshold = Customer::factory()->create(['credit_limit' => 100000]);
+    $belowThreshold = Customer::factory()->create(['credit_limit' => 100000]);
+
+    orderFor($atThreshold, [
+        'status' => OrderStatus::Delivered,
+        'invoice_value' => 200000,
+        'amount_received' => 0,
+    ]);
+    orderFor($belowThreshold, [
+        'status' => OrderStatus::Delivered,
+        'invoice_value' => 200000.01,
+        'amount_received' => 0,
+    ]);
+
+    expect(CreditService::hasExceededEnquiryCreditThreshold($atThreshold->sap_id))->toBeFalse()
+        ->and(CreditService::hasExceededEnquiryCreditThreshold($belowThreshold->sap_id))->toBeTrue();
+});

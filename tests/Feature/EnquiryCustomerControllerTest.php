@@ -84,6 +84,35 @@ test('store adds a customer to an enquiry', function () {
         ->status->toBe(EnquiryCustomerStatus::Pending);
 });
 
+test('store blocks a customer below the enquiry credit threshold', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $enquiry = Enquiry::factory()->create();
+    $customer = Customer::factory()->create(['credit_limit' => -100000.01]);
+
+    $this->post(route('enquiries.customers.store', $enquiry), [
+        'customer_id' => $customer->sap_id,
+    ])->assertRedirect()->assertSessionHas('toast', [
+        'type' => 'error',
+        'message' => 'The customer has exceeded the credit limit threshold.',
+    ]);
+
+    expect($enquiry->enquiryCustomers()->count())->toBe(0);
+});
+
+test('store allows a customer exactly at the enquiry credit threshold', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $enquiry = Enquiry::factory()->create();
+    $customer = Customer::factory()->create(['credit_limit' => -100000]);
+
+    $this->post(route('enquiries.customers.store', $enquiry), [
+        'customer_id' => $customer->sap_id,
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($enquiry->enquiryCustomers()->sole()->customer_id)->toBe($customer->sap_id);
+});
+
 test('store rejects a customer already on the enquiry', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
@@ -232,6 +261,26 @@ test('update saves credit terms and price fields', function () {
         ->vlsfo_initial_offer->toEqual('500.00')
         ->vlsfo_feedback_price->toEqual('480.00')
         ->vlsfo_fixing_counter->toEqual('490.00');
+});
+
+test('update blocks reassignment to a customer below the enquiry credit threshold', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $enquiry = Enquiry::factory()->create();
+    $currentCustomer = Customer::factory()->create();
+    $blockedCustomer = Customer::factory()->create(['credit_limit' => -100000.01]);
+    $enquiryCustomer = $enquiry->enquiryCustomers()->create([
+        'customer_id' => $currentCustomer->sap_id,
+    ]);
+
+    $this->patch(route('enquiry-customers.update', $enquiryCustomer), [
+        'customer_id' => $blockedCustomer->sap_id,
+    ])->assertRedirect()->assertSessionHas('toast', [
+        'type' => 'error',
+        'message' => 'The customer has exceeded the credit limit threshold.',
+    ]);
+
+    expect($enquiryCustomer->refresh()->customer_id)->toBe($currentCustomer->sap_id);
 });
 
 test('update clears a price field when set to null', function () {
