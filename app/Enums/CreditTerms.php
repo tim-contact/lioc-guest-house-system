@@ -39,4 +39,9 @@ enum CreditTerms: string
             self::Cia, self::Cod => 0,
         };
     }
+
+    public function isCashPayment(): bool
+    {
+        return in_array($this, [self::Cia, self::Cod], true);
+    }
 }

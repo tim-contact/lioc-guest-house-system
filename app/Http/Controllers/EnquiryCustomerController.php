@@ -52,10 +52,6 @@ class EnquiryCustomerController extends Controller
             ],
         ]);
 
-        if (CreditService::hasExceededEnquiryCreditThreshold($validated['customer_id'])) {
-            return $this->toast('The customer has exceeded the credit limit threshold.', 'error');
-        }
-
         $enquiry->enquiryCustomers()->create($validated);
 
         return $this->toast('Customer added.');
@@ -82,13 +78,6 @@ class EnquiryCustomerController extends Controller
 
         $validated = $request->validate($rules);
 
-        if (
-            $validated['customer_id'] !== $enquiryCustomer->customer_id
-            && CreditService::hasExceededEnquiryCreditThreshold($validated['customer_id'])
-        ) {
-            return $this->toast('The customer has exceeded the credit limit threshold.', 'error');
-        }
-
         $enquiryCustomer->update($validated);
 
         return $this->toast('Customer saved.');
@@ -103,6 +92,16 @@ class EnquiryCustomerController extends Controller
         $status = EnquiryCustomerStatus::from($validated['status']);
 
         if ($status === EnquiryCustomerStatus::Fixed) {
+            if (
+                ! $enquiryCustomer->credit_terms?->isCashPayment()
+                && CreditService::hasExceededEnquiryCreditThreshold($enquiryCustomer->customer_id)
+            ) {
+                return $this->toast(
+                    'The customer has exceeded the credit limit threshold. Select CIA or COD to continue.',
+                    'error',
+                );
+            }
+
             $enquiry = $enquiryCustomer->enquiry;
             $missingRateProducts = collect(FuelGrade::cases())
                 ->filter(function (FuelGrade $product) use ($enquiry, $enquiryCustomer): bool {

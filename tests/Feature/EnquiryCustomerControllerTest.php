@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\CreditTerms;
 use App\Enums\EnquiryCustomerStatus;
 use App\Enums\EnquiryStatus;
 use App\Enums\UserType;
@@ -84,29 +85,17 @@ test('store adds a customer to an enquiry', function () {
         ->status->toBe(EnquiryCustomerStatus::Pending);
 });
 
-test('store blocks a customer below the enquiry credit threshold', function () {
+test('store allows a customer below the enquiry credit threshold before fixing', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $enquiry = Enquiry::factory()->create();
     $customer = Customer::factory()->create(['credit_limit' => -100000.01]);
 
-    $firstResponse = $this->post(route('enquiries.customers.store', $enquiry), [
-        'customer_id' => $customer->sap_id,
-    ]);
-    $firstResponse->assertRedirect()
-        ->assertSessionHas('toast.id')
-        ->assertSessionHas('toast.type', 'error')
-        ->assertSessionHas('toast.message', 'The customer has exceeded the credit limit threshold.');
-    $firstToastId = session('toast.id');
-
     $this->post(route('enquiries.customers.store', $enquiry), [
         'customer_id' => $customer->sap_id,
-    ])->assertRedirect()
-        ->assertSessionHas('toast.id', fn (string $id): bool => $id !== $firstToastId)
-        ->assertSessionHas('toast.type', 'error')
-        ->assertSessionHas('toast.message', 'The customer has exceeded the credit limit threshold.');
+    ])->assertRedirect()->assertSessionHasNoErrors();
 
-    expect($enquiry->enquiryCustomers()->count())->toBe(0);
+    expect($enquiry->enquiryCustomers()->sole()->customer_id)->toBe($customer->sap_id);
 });
 
 test('store allows a customer exactly at the enquiry credit threshold', function () {
@@ -184,6 +173,63 @@ test('marking a customer fixed requires a fixing rate for each selected product'
     expect($winner->refresh()->status)->toBe(EnquiryCustomerStatus::Pending)
         ->and($enquiry->refresh()->status)->toBe(EnquiryStatus::Open);
 });
+
+test('a customer below the credit threshold can be fixed with cash payment terms', function (CreditTerms $creditTerms) {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $customer = Customer::factory()->create(['credit_limit' => -100000.01]);
+    $enquiry = Enquiry::factory()->create(['status' => EnquiryStatus::Open]);
+    $winner = $enquiry->enquiryCustomers()->create([
+        'customer_id' => $customer->sap_id,
+        'credit_terms' => $creditTerms,
+    ]);
+
+    $this->patch(route('enquiry-customers.update-status', $winner), [
+        'status' => 'fixed',
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($winner->refresh()->status)->toBe(EnquiryCustomerStatus::Fixed)
+        ->and($enquiry->refresh()->status)->toBe(EnquiryStatus::Completing);
+})->with([CreditTerms::Cia, CreditTerms::Cod]);
+
+test('a customer below the credit threshold cannot be fixed without cash payment terms', function (?CreditTerms $creditTerms) {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $customer = Customer::factory()->create(['credit_limit' => -100000.01]);
+    $enquiry = Enquiry::factory()->create(['status' => EnquiryStatus::Open]);
+    $winner = $enquiry->enquiryCustomers()->create([
+        'customer_id' => $customer->sap_id,
+        'credit_terms' => $creditTerms,
+    ]);
+
+    $firstResponse = $this->patch(route('enquiry-customers.update-status', $winner), [
+        'status' => 'fixed',
+    ]);
+    $firstResponse->assertRedirect()
+        ->assertSessionHas('toast.id')
+        ->assertSessionHas('toast.type', 'error')
+        ->assertSessionHas(
+            'toast.message',
+            'The customer has exceeded the credit limit threshold. Select CIA or COD to continue.',
+        );
+    $firstToastId = session('toast.id');
+
+    $this->patch(route('enquiry-customers.update-status', $winner), [
+        'status' => 'fixed',
+    ])->assertRedirect()
+        ->assertSessionHas('toast.id', fn (string $id): bool => $id !== $firstToastId)
+        ->assertSessionHas('toast.type', 'error');
+
+    expect($winner->refresh()->status)->toBe(EnquiryCustomerStatus::Pending)
+        ->and($enquiry->refresh()->status)->toBe(EnquiryStatus::Open);
+})->with([
+    CreditTerms::Days7,
+    CreditTerms::Days14,
+    CreditTerms::Days30,
+    CreditTerms::Days45,
+    CreditTerms::Days60,
+    null,
+]);
 
 test('marking a customer lost only affects that customer', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
@@ -272,7 +318,7 @@ test('update saves credit terms and price fields', function () {
         ->vlsfo_fixing_counter->toEqual('490.00');
 });
 
-test('update blocks reassignment to a customer below the enquiry credit threshold', function () {
+test('update allows reassignment to a customer below the enquiry credit threshold before fixing', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $enquiry = Enquiry::factory()->create();
@@ -284,12 +330,10 @@ test('update blocks reassignment to a customer below the enquiry credit threshol
 
     $this->patch(route('enquiry-customers.update', $enquiryCustomer), [
         'customer_id' => $blockedCustomer->sap_id,
-    ])->assertRedirect()
-        ->assertSessionHas('toast.id')
-        ->assertSessionHas('toast.type', 'error')
-        ->assertSessionHas('toast.message', 'The customer has exceeded the credit limit threshold.');
+        'credit_terms' => CreditTerms::Days30->value,
+    ])->assertRedirect()->assertSessionHasNoErrors();
 
-    expect($enquiryCustomer->refresh()->customer_id)->toBe($currentCustomer->sap_id);
+    expect($enquiryCustomer->refresh()->customer_id)->toBe($blockedCustomer->sap_id);
 });
 
 test('update clears a price field when set to null', function () {
