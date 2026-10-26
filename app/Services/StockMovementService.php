@@ -178,6 +178,7 @@ class StockMovementService
                                 $isIncoming => 'Transfer from '.($movement->barge?->name ?? $movement->barge_id),
                                 default => 'Transfer to '.($movement->destinationBarge?->name ?? $movement->destination_barge_id),
                             },
+                            'notes' => $movement->notes,
                             'direction' => $isLoading || $isIncoming ? 1 : -1,
                             'quantities' => collect($products)->mapWithKeys(fn (string $product): array => [
                                 $product => (float) $movement->{"{$product}_qty"},

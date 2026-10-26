@@ -78,6 +78,7 @@ interface BargeRow {
     movement_entries: {
         id: number;
         label: string;
+        notes: string | null;
         direction: 1 | -1;
         quantities: ProductTotals;
     }[];
@@ -155,7 +156,7 @@ const MOVEMENT_OPTIONS = [
     },
     {
         key: 'barge-transfer',
-        label: 'Barge transfer',
+        label: 'B-to-B transfer',
         scope: 'barge',
         type: 'barge_transfer',
     },
@@ -1393,6 +1394,7 @@ function TerminalProductCells({
 interface BargeMovementRow extends BargeRow {
     key: string;
     order_number: string;
+    notes: string | null;
     vessel_name: string | null;
 }
 
@@ -1421,6 +1423,7 @@ function bargeMovementRows(
                     ...row,
                     key: `${row.date}-${row.barge_id}-movement-${entry.id}-${entry.direction}`,
                     order_number: entry.label,
+                    notes: entry.notes,
                     vessel_name: null,
                     opening: balance,
                     opening_entries: zeroTotals(),
@@ -1439,6 +1442,7 @@ function bargeMovementRows(
                     ...row,
                     key: `${row.date}-${row.barge_id}-opening`,
                     order_number: 'Opening balance',
+                    notes: null,
                     vessel_name: null,
                     opening: balance,
                     opening_entries: zeroTotals(),
@@ -1457,6 +1461,7 @@ function bargeMovementRows(
                     ...row,
                     key: `${row.date}-${row.barge_id}-${delivery.id}`,
                     order_number: delivery.order_number ?? '-',
+                    notes: null,
                     vessel_name: delivery.vessel_name,
                     opening: balance,
                     opening_entries: zeroTotals(),
@@ -1513,8 +1518,15 @@ function BargeTable({ rows, bargeId }: { rows: BargeRow[]; bargeId: string }) {
                             <TableCell className="font-semibold whitespace-nowrap text-[#172033]">
                                 {formatReportDate(row.date)}
                             </TableCell>
-                            <TableCell className="text-xs font-semibold whitespace-nowrap text-[#172033]">
-                                {row.order_number}
+                            <TableCell className="max-w-64 min-w-40 text-xs text-[#172033]">
+                                <div className="font-semibold whitespace-nowrap">
+                                    {row.order_number}
+                                </div>
+                                {row.notes && (
+                                    <div className="mt-0.5 text-[11px] leading-4 font-normal whitespace-normal text-slate-500">
+                                        {row.notes}
+                                    </div>
+                                )}
                             </TableCell>
                             <TableCell className="max-w-64 min-w-40 text-sm whitespace-normal text-slate-900">
                                 {row.vessel_name ?? '—'}

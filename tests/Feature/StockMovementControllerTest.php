@@ -490,6 +490,7 @@ test('barge transfers reduce the source and increase the destination without cha
         'mgo_qty' => 30,
         'vlsfo_qty' => 0,
         'hsfo_qty' => 0,
+        'notes' => 'Transferred for scheduled delivery',
     ]);
 
     $report = app(StockMovementService::class)->report(
@@ -508,10 +509,12 @@ test('barge transfers reduce the source and increase the destination without cha
     expect($sourceRow['opening']['mgo'])->toBe(100.0)
         ->and($sourceRow['closing']['mgo'])->toBe(70.0)
         ->and($sourceRow['movement_entries'][0]['label'])->toBe('Transfer to Destination Barge')
+        ->and($sourceRow['movement_entries'][0]['notes'])->toBe('Transferred for scheduled delivery')
         ->and($sourceRow['movement_entries'][0]['direction'])->toBe(-1)
         ->and($destinationRow['opening']['mgo'])->toBe(20.0)
         ->and($destinationRow['closing']['mgo'])->toBe(50.0)
         ->and($destinationRow['movement_entries'][0]['label'])->toBe('Transfer from Source Barge')
+        ->and($destinationRow['movement_entries'][0]['notes'])->toBe('Transferred for scheduled delivery')
         ->and($destinationRow['movement_entries'][0]['direction'])->toBe(1)
         ->and($report['totals']['barge_closing']['mgo'])->toBe(120.0)
         ->and($report['totals']['terminal_closing']['mgo'])->toBe(-120.0)
