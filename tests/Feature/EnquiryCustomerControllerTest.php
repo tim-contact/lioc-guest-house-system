@@ -134,6 +134,7 @@ test('marking a customer fixed does not touch the others, and moves the enquiry 
     ]);
     $winner = $enquiry->enquiryCustomers()->create([
         'customer_id' => 'AAA',
+        'credit_terms' => CreditTerms::Days30,
         'vlsfo_fixing_counter' => 650,
     ]);
     $otherA = $enquiry->enquiryCustomers()->create(['customer_id' => 'BBB']);
@@ -159,6 +160,7 @@ test('marking a customer fixed requires a fixing rate for each selected product'
     ]);
     $winner = $enquiry->enquiryCustomers()->create([
         'customer_id' => 'AAA',
+        'credit_terms' => CreditTerms::Days30,
         'vlsfo_fixing_counter' => 650,
     ]);
 
@@ -192,7 +194,7 @@ test('a customer below the credit threshold can be fixed with cash payment terms
         ->and($enquiry->refresh()->status)->toBe(EnquiryStatus::Completing);
 })->with([CreditTerms::Cia, CreditTerms::Cod]);
 
-test('a customer below the credit threshold cannot be fixed without cash payment terms', function (?CreditTerms $creditTerms) {
+test('a customer below the credit threshold cannot be fixed with credit payment terms', function (CreditTerms $creditTerms) {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $customer = Customer::factory()->create(['credit_limit' => -100000.01]);
@@ -228,8 +230,29 @@ test('a customer below the credit threshold cannot be fixed without cash payment
     CreditTerms::Days30,
     CreditTerms::Days45,
     CreditTerms::Days60,
-    null,
 ]);
+
+test('fixing reports missing credit terms and all missing product rates', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    $enquiry = Enquiry::factory()->create([
+        'status' => EnquiryStatus::Open,
+        'vlsfo_quantity_low' => 100,
+        'mgo_quantity_high' => 50,
+    ]);
+    $winner = $enquiry->enquiryCustomers()->create(['customer_id' => 'AAA']);
+
+    $this->patch(route('enquiry-customers.update-status', $winner), ['status' => 'fixed'])
+        ->assertRedirect()
+        ->assertSessionHasErrors([
+            'credit_terms' => 'Credit terms required.',
+            'vlsfo_fixing_counter' => 'VLSFO rate required.',
+            'mgo_fixing_counter' => 'MGO rate required.',
+        ]);
+
+    expect($winner->refresh()->status)->toBe(EnquiryCustomerStatus::Pending)
+        ->and($enquiry->refresh()->status)->toBe(EnquiryStatus::Open);
+});
 
 test('marking a customer lost only affects that customer', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
@@ -251,7 +274,7 @@ test('un-fixing a fixed customer reverts only that customer to pending', functio
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $enquiry = Enquiry::factory()->create(['status' => EnquiryStatus::Open]);
-    $winner = $enquiry->enquiryCustomers()->create(['customer_id' => 'AAA']);
+    $winner = $enquiry->enquiryCustomers()->create(['customer_id' => 'AAA', 'credit_terms' => CreditTerms::Cia]);
     $other = $enquiry->enquiryCustomers()->create(['customer_id' => 'BBB']);
 
     $this->patch(route('enquiry-customers.update-status', $winner), ['status' => 'fixed']);
@@ -268,7 +291,7 @@ test('un-fixing the fixed customer drops the enquiry back to open', function () 
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
     $enquiry = Enquiry::factory()->create(['status' => EnquiryStatus::Open]);
-    $winner = $enquiry->enquiryCustomers()->create(['customer_id' => 'AAA']);
+    $winner = $enquiry->enquiryCustomers()->create(['customer_id' => 'AAA', 'credit_terms' => CreditTerms::Cia]);
     $enquiry->enquiryCustomers()->create(['customer_id' => 'BBB']);
 
     $this->patch(route('enquiry-customers.update-status', $winner), ['status' => 'fixed']);

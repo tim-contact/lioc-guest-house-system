@@ -92,16 +92,6 @@ class EnquiryCustomerController extends Controller
         $status = EnquiryCustomerStatus::from($validated['status']);
 
         if ($status === EnquiryCustomerStatus::Fixed) {
-            if (
-                ! $enquiryCustomer->credit_terms?->isCashPayment()
-                && CreditService::hasExceededEnquiryCreditThreshold($enquiryCustomer->customer_id)
-            ) {
-                return $this->toast(
-                    'The customer has exceeded the credit limit threshold. Select CIA or COD to continue.',
-                    'error',
-                );
-            }
-
             $enquiry = $enquiryCustomer->enquiry;
             $missingRateProducts = collect(FuelGrade::cases())
                 ->filter(function (FuelGrade $product) use ($enquiry, $enquiryCustomer): bool {
@@ -112,13 +102,28 @@ class EnquiryCustomerController extends Controller
                     return $hasQuantity && $enquiryCustomer->{"{$key}_fixing_counter"} === null;
                 });
 
-            if ($missingRateProducts->isNotEmpty()) {
-                throw ValidationException::withMessages(
-                    $missingRateProducts->mapWithKeys(fn (FuelGrade $product): array => [
-                        "{$product->value}_fixing_counter" => "{$product->label()} rate required.",
-                    ])->all(),
+            $errors = $missingRateProducts->mapWithKeys(fn (FuelGrade $product): array => [
+                "{$product->value}_fixing_counter" => "{$product->label()} rate required.",
+            ])->all();
+
+            if ($enquiryCustomer->credit_terms === null) {
+                $errors['credit_terms'] = 'Credit terms required.';
+            }
+
+            if ($errors !== []) {
+                throw ValidationException::withMessages($errors);
+            }
+
+            if (
+                ! $enquiryCustomer->credit_terms?->isCashPayment()
+                && CreditService::hasExceededEnquiryCreditThreshold($enquiryCustomer->customer_id)
+            ) {
+                return $this->toast(
+                    'The customer has exceeded the credit limit threshold. Select CIA or COD to continue.',
+                    'error',
                 );
             }
+
         }
 
         DB::transaction(function () use ($enquiryCustomer, $status) {

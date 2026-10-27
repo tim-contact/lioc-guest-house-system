@@ -44,6 +44,8 @@ test('index renders pending and last thirty days completed orders grouped by por
 
     createOrder([
         'vessel_name' => 'MV Pending',
+        'vlsfo_rate' => 520,
+        'mgo_rate' => 650.25,
         'compliance_checked' => true,
         'nomination_received' => false,
         'status' => OrderStatus::Pending,
@@ -55,6 +57,7 @@ test('index renders pending and last thirty days completed orders grouped by por
         'invoice_date' => now(),
         'vlsfo_final_qty' => 375,
         'vlsfo_bdn_qty' => 360,
+        'vlsfo_rate' => 510,
     ]);
     $recent->bdn()->create(['delivery_date' => now()->toDateString()]);
 
@@ -76,12 +79,16 @@ test('index renders pending and last thirty days completed orders grouped by por
             ->component('orders/dashboard')
             ->has('pendingOrders', 1)
             ->where('pendingOrders.0.vessel_name', 'MV Pending')
+            ->where('pendingOrders.0.vlsfo_rate', '520.00')
+            ->where('pendingOrders.0.mgo_rate', '650.25')
+            ->where('pendingOrders.0.hsfo_rate', null)
             ->where('pendingOrders.0.compliance_checked', true)
             ->where('pendingOrders.0.nomination_received', false)
             ->has('completedOrders', 1)
             ->where('completedOrders.0.vessel_name', 'MV Delivered Recently')
             ->where('completedOrders.0.port', 'Colombo')
             ->where('completedOrders.0.vlsfo_final_qty', '375.000')
+            ->where('completedOrders.0.vlsfo_rate', '510.00')
             ->where('completedOrders.0.vlsfo_bdn_qty', '360.000'));
 });
 

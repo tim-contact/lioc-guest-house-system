@@ -13,6 +13,7 @@ import {
     CheckCircle2,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import {
     update,
     updateCompliance as updateEnquiryCompliance,
@@ -373,14 +374,18 @@ function CustomerBlock({
                 form.data[priceField(product.key, 'fixing_counter')] === '',
         );
 
-        if (missingRateProducts.length > 0) {
-            missingRateProducts.forEach((product) => {
-                form.setError(
-                    priceField(product.key, 'fixing_counter'),
-                    `${product.label} rate required.`,
-                );
-            });
+        missingRateProducts.forEach((product) => {
+            form.setError(
+                priceField(product.key, 'fixing_counter'),
+                `${product.label} rate required.`,
+            );
+        });
 
+        if (!form.data.credit_terms) {
+            form.setError('credit_terms', 'Credit terms required.');
+        }
+
+        if (missingRateProducts.length > 0 || !form.data.credit_terms) {
             return;
         }
 
@@ -448,6 +453,7 @@ function CustomerBlock({
                         }
                         options={creditTermsOptions}
                     />
+                    <InputError message={form.errors.credit_terms} />
                 </div>
                 <div className="grid content-end">
                     <DetailRow
@@ -800,7 +806,12 @@ export function EnquiryCard({
         router.patch(
             updateStatus(row.id).url,
             { status },
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                onError: (errors) => {
+                    toast.error(Object.values(errors).join(' '));
+                },
+            },
         );
     }
 

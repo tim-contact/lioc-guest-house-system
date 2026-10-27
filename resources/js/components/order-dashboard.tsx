@@ -19,7 +19,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSortable } from '@/hooks/use-sortable';
 import { FUEL_GRADES } from '@/lib/domain';
-import { shortDate, shortDateTime } from '@/lib/utils';
+import { formatMoney, shortDate, shortDateTime } from '@/lib/utils';
 import { ebdn } from '@/routes/bdns';
 
 export const PORTS = ['Colombo', 'Trincomalee', 'Galle', 'Hambantota'] as const;
@@ -38,6 +38,9 @@ export interface OrderRow {
     vlsfo_qty: string | null;
     mgo_qty: string | null;
     hsfo_qty: string | null;
+    vlsfo_rate?: string | null;
+    mgo_rate?: string | null;
+    hsfo_rate?: string | null;
     vlsfo_final_qty: string | null;
     mgo_final_qty: string | null;
     hsfo_final_qty: string | null;
@@ -371,6 +374,7 @@ function PortTable<T extends OrderRow>({
                                             grade.key,
                                             quantitySource,
                                         )}
+                                        rate={row[`${grade.key}_rate`] ?? null}
                                         productType={row.product_type ?? null}
                                     />
                                 </TableCell>
@@ -536,19 +540,28 @@ function quantityValueFor(
 
 function ProductQuantityCell({
     quantity,
+    rate,
     productType,
 }: {
     quantity: string | null;
+    rate: string | null;
     productType: string | null;
 }) {
     const showProductType = productType && hasOrderedQuantity(quantity);
 
     return (
         <div className="grid gap-1">
-            <span>{quantity ?? '-'}</span>
-            {showProductType && (
-                <span className="w-fit rounded-full bg-blue-50 px-1.5 py-px text-[9px] leading-none font-bold tracking-[0.08em] text-blue-600 uppercase">
-                    {productTypeLabelFor(productType)}
+            <div className="flex flex-wrap items-center gap-1">
+                <span>{quantity ?? '-'}</span>
+                {showProductType && (
+                    <span className="w-fit rounded-full bg-blue-50 px-1 py-px text-[9px] leading-none font-bold text-blue-600 uppercase">
+                        {productTypeLabelFor(productType)}
+                    </span>
+                )}
+            </div>
+            {hasOrderedQuantity(quantity) && rate !== null && rate !== '' && (
+                <span className="text-[10px] font-normal whitespace-nowrap text-slate-500">
+                    USD {formatMoney(rate)} / MT
                 </span>
             )}
         </div>

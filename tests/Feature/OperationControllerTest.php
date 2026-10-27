@@ -83,6 +83,9 @@ test('operations includes assigned barge names and vessel IMOs for pending and c
             'invoice_date' => now(),
             'barge_id' => $barge->imo,
             'vessel_id' => '1234567',
+            'vlsfo_rate' => 520,
+            'mgo_rate' => 650.25,
+            'hsfo_rate' => null,
         ]);
         if ($status === OrderStatus::Delivered) {
             $order->bdn()->create(['delivery_date' => now()->toDateString()]);
@@ -94,8 +97,13 @@ test('operations includes assigned barge names and vessel IMOs for pending and c
             ->where('pendingOrders.0.barge_name', $barge->name)
             ->where('pendingOrders.0.barge_id', $barge->imo)
             ->where('pendingOrders.0.vessel_id', '1234567')
+            ->where('pendingOrders.0.vlsfo_rate', '520.00')
+            ->where('pendingOrders.0.mgo_rate', '650.25')
+            ->where('pendingOrders.0.hsfo_rate', null)
             ->where('completedOrders.0.barge_name', $barge->name)
             ->where('completedOrders.0.barge_id', $barge->imo)
+            ->where('completedOrders.0.vlsfo_rate', '520.00')
+            ->where('completedOrders.0.mgo_rate', '650.25')
             ->where('completedOrders.0.vessel_id', '1234567'));
 });
 

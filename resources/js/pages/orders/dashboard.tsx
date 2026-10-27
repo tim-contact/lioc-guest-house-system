@@ -136,7 +136,6 @@ export default function OrdersDashboard({
             variant: 'destructive',
             onClick: setCancelling,
         },
-        disputeAction,
     ];
 
     const completedActions: RowAction<OrderEditRow>[] = [disputeAction];
