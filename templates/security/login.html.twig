@@ -27,8 +27,7 @@
     ) }}
     {% endif %}
     >
-    <div class="logo-icon-stack mb-4"><img src="{{ app.request.basepath }}/img/logo-fewohbee.png"></div>
-    <h1 class="h3 mb-3 fw-normal"><span class="fewohbee-wordmark-blue">Fewoh</span><span class="fewohbee-wordmark-orange">Bee</span></h1>
+    <div class="logo-icon-stack logo-full mb-4"><img src="{{ app.request.basepath }}/img/lanka-ioc-logo.png"></div>
 
     {% if error %}
         <div class="alert alert-danger">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
@@ -62,7 +61,7 @@
     <div class="row mt-3">
         <div class="col text-end"><a href="{{ path('app_forgot_password_request') }}">{{ 'login.pwforgotten.link'|trans }}</a></div>
     </div>
-    <p class="mt-4 mb-3 text-muted">&copy; Copyright {{ "now"|date("Y") }} - <a class="text-muted" href="https://www.fewohbee.app" target="_blank" style="text-decoration:none;" onmouseover="this.style.textDecoration='underline';" onmouseout="this.style.textDecoration='none';">{{ 'login.copy'|trans }}</a></p>
+    <p class="mt-4 mb-3 text-muted">&copy; Copyright {{ "now"|date("Y") }} - <a class="text-muted" href="https://www.lankaioc.com" target="_blank" style="text-decoration:none;" onmouseover="this.style.textDecoration='underline';" onmouseout="this.style.textDecoration='none';">LankaIOC</a></p>
   </form>
 </main>
 {% endblock %}

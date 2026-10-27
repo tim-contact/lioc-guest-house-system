@@ -9,6 +9,9 @@
     {% block stylesheets %}
         <link rel="stylesheet" href="{{ app.request.basepath }}/resources/css/bootstrap.materia.min.5.3.8.css">
         <link rel="stylesheet" href="{{ app.request.basepath }}/resources/css/autocompletejs/autoComplete.custom.css">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&amp;family=Radio+Canada+Big:wght@600;700&amp;family=Radio+Canada:wght@400;500;600&amp;display=swap" rel="stylesheet">
     {% endblock %}
     {% block javascripts %}
             {% block importmap %}{{ importmap('app') }}{% endblock %}
@@ -18,7 +21,7 @@
         <script type="text/javascript" src="{{ app.request.basepath }}/resources/js/bootstrap.min.5.3.8.js" defer></script>
         <script type="text/javascript" src="{{ app.request.basepath }}/resources/js/autoComplete.min.10.2.7.js" defer></script>
     {% endblock %}
-    <link rel="icon" type="image/png" href="{{ app.request.basepath }}/img/favicon.png" />
+    <link rel="icon" type="image/x-icon" href="{{ app.request.basepath }}/img/favicon.ico" />
 </head>
 <body>
 {% block body %}
@@ -26,12 +29,20 @@
         {% set activeRouteName = getActiveRouteName() %}
         {% set showReservations = is_granted('ROLE_RESERVATIONS') %}
         {% set showReservationsRO = is_granted('ROLE_RESERVATIONS_RO') %}
-        <nav class="navbar navbar-expand-md bg-primary">
-            <div class="container-fluid">
+        <nav class="navbar navbar-expand-xl lioc-header lioc-app-header" aria-label="{{ 'reservation.overview.primary_navigation'|trans }}">
+            <div class="container-fluid px-3 px-xl-4">
                 {% if showReservations or showReservationsRO %}
-                <a class="navbar-brand" href="{{ path('start') }}">{{ 'nav.reservation.overview'|trans }}</a>
+                <a class="lioc-brand" href="{{ path('start') }}" aria-label="{{ 'reservation.overview.brand'|trans }}">
+                    <img src="{{ asset('img/lanka-ioc-logo.png') }}" alt="" class="lioc-brand-logo">
+                    <span>{{ 'reservation.overview.brand'|trans }}</span>
+                </a>
+                {% else %}
+                <span class="lioc-brand">
+                    <img src="{{ asset('img/lanka-ioc-logo.png') }}" alt="" class="lioc-brand-logo">
+                    <span>{{ 'reservation.overview.brand'|trans }}</span>
+                </span>
                 {% endif %}
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <button class="navbar-toggler lioc-nav-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="{{ 'reservation.overview.toggle_navigation'|trans }}">
                     <span class="navbar-toggler-icon"></span>
                 </button>                
             
@@ -42,10 +53,12 @@
                     {% set showCustomers = is_granted('ROLE_CUSTOMERS') %}
                     {% set showInvoices = is_granted('ROLE_INVOICES') %}
                     {% set showRegistrationbook = is_granted('ROLE_REGISTRATIONBOOK') %}
-                    {% set showStatistics = is_granted('ROLE_STATISTICS') %}
                     {% set showCashjournal = is_granted('ROLE_CASHJOURNAL') %}
-                    {% if showOperations or showCustomers or showInvoices or showRegistrationbook or showStatistics or showCashjournal %}
-                    <ul class="navbar-nav me-auto">
+                    {% if showReservations or showReservationsRO or showOperations or showCustomers or showInvoices or showRegistrationbook or showCashjournal %}
+                    <ul class="navbar-nav lioc-primary-nav mx-xl-auto">
+                        {% if showReservations or showReservationsRO %}
+                        <li class="nav-item{% if activeRouteName == 'start' or activeRouteName starts with 'reservations.' %} active{% endif %}"><a class="nav-link" href="{{ path('start') }}">{{ 'reservation.overview.nav.reservations'|trans }}</a></li>
+                        {% endif %}
                         {% if showOperations %}
                         <li class="nav-item dropdown{% if activeRouteName starts with "operations." %} active{% endif %}">
                             <a class="nav-link dropdown-toggle" href="#" id="operationsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -54,6 +67,9 @@
                             <div class="dropdown-menu" aria-labelledby="operationsDropdown">
                                 <a class="dropdown-item{% if activeRouteName starts with "operations.frontdesk" %} active{% endif %}" href="{{ path('operations.frontdesk') }}">{{ 'nav.operations.frontdesk'|trans }}</a>
                                 <a class="dropdown-item{% if activeRouteName starts with "operations.housekeeping" %} active{% endif %}" href="{{ path('operations.housekeeping') }}">{{ 'nav.housekeeping'|trans }}</a>
+                                {% if is_granted('ROLE_ADMIN') %}
+                                    <a class="dropdown-item{% if activeRouteName starts with "operations.inventory" %} active{% endif %}" href="{{ path('operations.inventory') }}">{{ 'inventory.nav'|trans({}, 'Inventory') }}</a>
+                                {% endif %}
                                 <a class="dropdown-item{% if activeRouteName starts with "operations.reports" %} active{% endif %}" href="{{ path('operations.reports') }}">{{ 'nav.operations.reports'|trans }}</a>
                             </div>
                         </li>
@@ -67,19 +83,6 @@
                         {% if showRegistrationbook %}
                         <li class="nav-item{% if activeRouteName starts with "registrationbook" %} active{% endif %}"><a class="nav-link" href="{{ path('registrationbook.overview') }}">{{ 'nav.registrationbook'|trans }}</a></li>
                         {% endif %}
-                        {% if showStatistics %}
-                        <li class="nav-item dropdown{% if activeRouteName starts with "statistics" %} active{% endif %}">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                {{ 'nav.statistics'|trans }}
-                            </a>
-                            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                <a class="dropdown-item{% if activeRouteName starts with "statistics.utilization" %} active{% endif %}" href="{{ path('statistics.utilization') }}">{{ 'nav.utilization'|trans }}</a>
-                                <a class="dropdown-item{% if activeRouteName starts with "statistics.origin" %} active{% endif %}" href="{{ path('statistics.origin') }}">{{ 'nav.origin'|trans }}</a>
-                                <a class="dropdown-item{% if activeRouteName starts with "statistics.turnover" %} active{% endif %}" href="{{ path('statistics.turnover') }}">{{ 'nav.turnover'|trans }}</a>
-                                <a class="dropdown-item{% if activeRouteName starts with "statistics.tourism" %} active{% endif %}" href="{{ path('statistics.tourism') }}">{{ 'nav.tourism'|trans }}</a>
-                            </div>
-                        </li>
-                        {% endif %}
                         {% if showCashjournal %}
                         <li class="nav-item{% if activeRouteName starts with "journal" %} active{% endif %}">
                             <a class="nav-link" href="{{ path('journal.overview') }}">{{ 'nav.journal'|trans }}</a>
@@ -87,13 +90,13 @@
                         {% endif %}
                     </ul>
                     {% endif %}
-                    <ul class="navbar-nav d-flex ms-auto">
+                    <ul class="navbar-nav lioc-shell-actions ms-xl-auto">
                         {% if is_granted('ROLE_ADMIN') %}
                             <li class="nav-item dropdown{% if activeRouteName starts with "settings" %} active{% endif %}">
                                 <a class="nav-link dropdown-toggle" href="#"  id="navbarDropdown2" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="fas fa-tools"></i> {{ 'nav.settings'|trans }}
                                 </a>
-                                <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                <div class="dropdown-menu" aria-labelledby="navbarDropdown2">
                                     <a class="dropdown-item{% if activeRouteName starts with "settings.general" %} active{% endif %}" href="{{ path('settings.general.index') }}"><i class="fas fa-cog text-secondary"></i> {{ 'app_settings.nav.label'|trans }}</a>
                                     <div class="dropdown-divider"></div>
                                     <a class="dropdown-item{% if activeRouteName starts with "users" %} active{% endif %}" href="{{ path('users.overview') }}"><i class="fas fa-users text-secondary"></i> {{ 'nav.user'|trans }}</a>
@@ -113,10 +116,11 @@
                             </li>
                         {% endif %}
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown3" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                {{ 'nav.welcome'|trans({ '%user%': app.user.getUsername() }) }}
+                            <a class="nav-link dropdown-toggle lioc-shell-user" href="#" id="navbarDropdown3" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span class="lioc-avatar" aria-hidden="true">{{ app.user.firstname|default('')|first|upper }}{{ app.user.lastname|default('')|first|upper }}</span>
+                                <span>{{ app.user.firstname|default('') }} {{ app.user.lastname|default('') }}</span>
                             </a>
-                            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                            <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown3">
                                 <a class="dropdown-item" href="{{ path('profile') }}"><i class="fas fa-user"></i> {{ 'nav.profile'|trans }}</a>
                                 <div class="dropdown-divider"></div>
                                 <a class="dropdown-item" href="{{ path('logout') }}"><i class="fas fa-sign-out-alt"></i> {{ 'nav.logout'|trans }}</a>

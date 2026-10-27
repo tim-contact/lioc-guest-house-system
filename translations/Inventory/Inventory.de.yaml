@@ -1,0 +1,85 @@
+inventory.nav: Lagerbestand
+inventory.title: Lager und Einkauf
+inventory.kicker: Betrieb
+inventory.intro: Behalte Vorräte in deinen Unterkünften im Blick.
+inventory.actions.title: Schnellaktionen
+inventory.actions.hint: Erfasse einen Einkauf oder Verbrauch in wenigen Schritten.
+inventory.actions.hint_empty: Lege zuerst einen Artikel an, um Einkäufe und Verbrauch zu erfassen.
+inventory.summary.title: Lagerübersicht
+inventory.summary.items: Artikel prüfen
+inventory.summary.lots: Chargen prüfen
+inventory.stock.eyebrow: Auf einen Blick
+inventory.stock.count: '%count% Artikel'
+inventory.expiry.eyebrow: Handlungsbedarf
+inventory.purchases.eyebrow: Verlauf
+inventory.purchases.count: '%count% Chargen'
+inventory.close: Schließen
+inventory.cancel: Abbrechen
+inventory.property: Unterkunft
+inventory.all_properties: Alle Unterkünfte
+inventory.select_property: Unterkunft auswählen
+inventory.select_item: Artikel auswählen
+inventory.apply: Anwenden
+inventory.item: Artikel
+inventory.sku: Artikelcode
+inventory.unit: Einheit
+inventory.quantity: Menge
+inventory.on_hand: Bestand
+inventory.usable: Verwendbar
+inventory.reorder_level: Meldebestand
+inventory.status: Status
+inventory.status.ok: OK
+inventory.currency: Währungscode
+inventory.unit_cost: Stückpreis
+inventory.purchase_date: Einkaufsdatum
+inventory.issue_date: Verbrauchsdatum
+inventory.expiry_date: Ablaufdatum (optional)
+inventory.supplier: Lieferant (optional)
+inventory.reference: Einkaufsreferenz (optional)
+inventory.reason: Grund für den Verbrauch
+inventory.stock.title: Lagerbestand
+inventory.purchases.title: Einkaufschargen
+inventory.cost.total: Einkaufskosten
+inventory.alerts.low_stock: Niedriger Bestand
+inventory.alerts.expiring: Bald ablaufend oder abgelaufen
+inventory.expiry.title: Ablaufwarnungen
+inventory.expiry.hint: Chargen mit Restbestand, die innerhalb von 30 Tagen ablaufen oder bereits abgelaufen sind.
+inventory.expiry.expired: Abgelaufen
+inventory.expiry.soon: Läuft bald ab
+inventory.cost.purchased_month: Diesen Monat eingekauft
+inventory.cost.used_month: Diesen Monat verbraucht
+inventory.form.item: Artikel hinzufügen
+inventory.form.add_item: Artikel speichern
+inventory.form.purchase: Einkauf erfassen
+inventory.form.record_purchase: Einkauf speichern
+inventory.form.issue: Verbrauch erfassen
+inventory.form.record_issue: Verbrauch speichern
+inventory.form.purchase_hint: Erfasse die gelieferte Menge und ihren Preis. Nach dem Speichern ist der Bestand verfügbar.
+inventory.form.issue_hint: Erfasse Vorräte, die in dieser Unterkunft verbraucht wurden. Chargen mit dem frühesten Ablaufdatum werden zuerst verwendet.
+inventory.form.issue_reason_hint: Zum Beispiel Housekeeping oder Küchenbedarf.
+inventory.form.item_hint: Lege einen Artikel einmal an und erfasse danach Einkäufe für jede Unterkunft.
+inventory.form.sku_hint: Ein eindeutiger Code, den du später wiedererkennst.
+inventory.form.unit_hint: Zum Beispiel Flasche, Packung oder Stück.
+inventory.form.reorder_hint: Bei diesem Bestand oder darunter erscheint eine Warnung.
+inventory.form.optional_details: Weitere Angaben
+inventory.empty.items: Noch keine Lagerartikel vorhanden.
+inventory.empty.items_hint: Lege einen Artikel an, um Vorräte zu verwalten.
+inventory.empty.expiry: Keine Ablaufwarnungen.
+inventory.empty.expiry_hint: Für den aktuellen Bestand stehen keine Ablaufdaten bevor.
+inventory.empty.purchases: Noch keine Einkäufe erfasst.
+inventory.empty.purchases_hint: Erfasste Lieferungen erscheinen hier.
+inventory.flash.item_created: Artikel hinzugefügt.
+inventory.flash.purchase_recorded: Einkauf erfasst.
+inventory.flash.issue_recorded: Verbrauch erfasst.
+inventory.error.item_invalid: Gib einen gültigen Artikelcode, Namen, eine Einheit und einen Meldebestand ein.
+inventory.error.sku_exists: Dieser Artikelcode existiert bereits.
+inventory.error.item_inactive: Dieser Artikel ist inaktiv.
+inventory.error.purchase_invalid: Gib eine positive Menge, einen gültigen Preis und einen dreibuchstabigen Währungscode ein.
+inventory.error.expiry_before_purchase: Das Ablaufdatum darf nicht vor dem Einkaufsdatum liegen.
+inventory.error.issue_invalid: Gib eine positive Menge und einen Grund für den Verbrauch ein.
+inventory.error.insufficient_stock: In dieser Unterkunft ist nicht genug unverfallener Bestand vorhanden.
+inventory.error.alert_period_invalid: Ungültiger Zeitraum für Ablaufwarnungen.
+inventory.error.item_required: Wähle einen gültigen Artikel aus.
+inventory.error.subsidiary_required: Wähle eine gültige Unterkunft aus.
+inventory.error.cost_invalid: Gib einen gültigen Stückpreis mit höchstens zwei Nachkommastellen ein.
+inventory.error.date_invalid: Gib ein gültiges Datum ein.

@@ -734,6 +734,56 @@
                 <source>roomblock.error.rooms</source>
                 <target>Bitte mindestens ein Zimmer auswählen.</target>
             </trans-unit>
+            <trans-unit id="reservation.overview.page_title"><source>reservation.overview.page_title</source><target>LIOC GÃ¤stehausbetrieb</target></trans-unit>
+            <trans-unit id="reservation.overview.page_description"><source>reservation.overview.page_description</source><target>Aufenthalte und ZimmerverfÃ¼gbarkeit verwalten.</target></trans-unit>
+            <trans-unit id="reservation.overview.primary_navigation"><source>reservation.overview.primary_navigation</source><target>Hauptnavigation</target></trans-unit>
+            <trans-unit id="reservation.overview.brand"><source>reservation.overview.brand</source><target>LIOC GÃ¤stehÃ¤user</target></trans-unit>
+            <trans-unit id="reservation.overview.toggle_navigation"><source>reservation.overview.toggle_navigation</source><target>Navigation umschalten</target></trans-unit>
+            <trans-unit id="reservation.overview.nav.overview"><source>reservation.overview.nav.overview</source><target>Ãœbersicht</target></trans-unit>
+            <trans-unit id="reservation.overview.nav.reservations"><source>reservation.overview.nav.reservations</source><target>Reservierungen</target></trans-unit>
+            <trans-unit id="reservation.overview.nav.guests"><source>reservation.overview.nav.guests</source><target>GÃ¤ste</target></trans-unit>
+            <trans-unit id="reservation.overview.nav.operations"><source>reservation.overview.nav.operations</source><target>Betrieb</target></trans-unit>
+            <trans-unit id="reservation.overview.location"><source>reservation.overview.location</source><target>GÃ¤stehausstandort</target></trans-unit>
+            <trans-unit id="reservation.overview.operations"><source>reservation.overview.operations</source><target>Betrieb</target></trans-unit>
+            <trans-unit id="reservation.overview.hero_prefix"><source>reservation.overview.hero_prefix</source><target>Jeder Aufenthalt im Blick</target></trans-unit>
+            <trans-unit id="reservation.overview.hero_subtitle"><source>reservation.overview.hero_subtitle</source><target>Aufenthalte und ZimmerverfÃ¼gbarkeit auf einen Blick verwalten.</target></trans-unit>
+            <trans-unit id="reservation.overview.new_reservation"><source>reservation.overview.new_reservation</source><target>Neue Reservierung</target></trans-unit>
+            <trans-unit id="reservation.overview.loading"><source>reservation.overview.loading</source><target>Zimmerplan wird geladenâ€¦</target></trans-unit>
+            <trans-unit id="reservation.overview.metrics.label"><source>reservation.overview.metrics.label</source><target>TagesÃ¼bersicht</target></trans-unit>
+            <trans-unit id="reservation.overview.metrics.rooms"><source>reservation.overview.metrics.rooms</source><target>Zimmer</target></trans-unit>
+            <trans-unit id="reservation.overview.metrics.in_house"><source>reservation.overview.metrics.in_house</source><target>Im Haus</target></trans-unit>
+            <trans-unit id="reservation.overview.metrics.available"><source>reservation.overview.metrics.available</source><target>VerfÃ¼gbar</target></trans-unit>
+            <trans-unit id="reservation.overview.metrics.arriving"><source>reservation.overview.metrics.arriving</source><target>Anreisen</target></trans-unit>
+            <trans-unit id="reservation.overview.ledger.kicker"><source>reservation.overview.ledger.kicker</source><target>Live-VerfÃ¼gbarkeit</target></trans-unit>
+            <trans-unit id="reservation.overview.ledger.title"><source>reservation.overview.ledger.title</source><target>Der Zimmerplan</target></trans-unit>
+            <trans-unit id="reservation.overview.today"><source>reservation.overview.today</source><target>Heute</target></trans-unit>
+            <trans-unit id="reservation.overview.range"><source>reservation.overview.range</source><target>Zeitraum</target></trans-unit>
+            <trans-unit id="reservation.overview.range_14"><source>reservation.overview.range_14</source><target>14 Tage</target></trans-unit>
+            <trans-unit id="reservation.overview.range_30"><source>reservation.overview.range_30</source><target>30 Tage</target></trans-unit>
+            <trans-unit id="reservation.overview.range_60"><source>reservation.overview.range_60</source><target>60 Tage</target></trans-unit>
+            <trans-unit id="reservation.overview.range_custom"><source>reservation.overview.range_custom</source><target>%count% Tage</target></trans-unit>
+            <trans-unit id="reservation.overview.legend.label"><source>reservation.overview.legend.label</source><target>Legende der Reservierungsstatus</target></trans-unit>
+            <trans-unit id="reservation.overview.legend.checked_in"><source>reservation.overview.legend.checked_in</source><target>Eingecheckt</target></trans-unit>
+            <trans-unit id="reservation.overview.legend.confirmed"><source>reservation.overview.legend.confirmed</source><target>BestÃ¤tigt</target></trans-unit>
+            <trans-unit id="reservation.overview.legend.request"><source>reservation.overview.legend.request</source><target>Anfrage</target></trans-unit>
+            <trans-unit id="reservation.overview.legend.maintenance"><source>reservation.overview.legend.maintenance</source><target>Wartung</target></trans-unit>
+            <trans-unit id="reservation.overview.briefing.kicker"><source>reservation.overview.briefing.kicker</source><target>Tagesbriefing</target></trans-unit>
+            <trans-unit id="reservation.overview.briefing.arrivals"><source>reservation.overview.briefing.arrivals</source><target>DemnÃ¤chst</target></trans-unit>
+            <trans-unit id="reservation.overview.briefing.no_arrivals"><source>reservation.overview.briefing.no_arrivals</source><target>FÃ¼r dieses Datum sind keine Anreisen geplant.</target></trans-unit>
+            <trans-unit id="reservation.overview.briefing.arriving"><source>reservation.overview.briefing.arriving</source><target>Anreise</target></trans-unit>
+            <trans-unit id="reservation.overview.briefing.operations"><source>reservation.overview.briefing.operations</source><target>Zimmerbereitschaft</target></trans-unit>
+            <trans-unit id="reservation.overview.briefing.housekeeping"><source>reservation.overview.briefing.housekeeping</source><target>Housekeeping</target></trans-unit>
+            <trans-unit id="reservation.overview.briefing.no_rooms"><source>reservation.overview.briefing.no_rooms</source><target>FÃ¼r diesen Standort sind keine Zimmer eingerichtet.</target></trans-unit>
+            <trans-unit id="reservation.overview.unnamed_guest"><source>reservation.overview.unnamed_guest</source><target>Gastname nicht verfÃ¼gbar</target></trans-unit>
+            <trans-unit id="reservation.overview.guests_count"><source>reservation.overview.guests_count</source><target>%count% GÃ¤ste</target></trans-unit>
+            <trans-unit id="reservation.overview.handover.kicker"><source>reservation.overview.handover.kicker</source><target>Betrieb</target></trans-unit>
+            <trans-unit id="reservation.overview.handover.title"><source>reservation.overview.handover.title</source><target>Heutige Ãœbergabe</target></trans-unit>
+            <trans-unit id="reservation.overview.handover.open_housekeeping"><source>reservation.overview.handover.open_housekeeping</source><target>Housekeeping Ã¶ffnen</target></trans-unit>
+            <trans-unit id="reservation.overview.handover.empty"><source>reservation.overview.handover.empty</source><target>Keine betrieblichen Hinweise fÃ¼r dieses Datum. Gespeicherte Aufgaben werden im Housekeeping verwaltet.</target></trans-unit>
+            <trans-unit id="reservation.overview.handover.arrival"><source>reservation.overview.handover.arrival</source><target>Anreise von %guest% in %room% bestÃ¤tigen</target></trans-unit>
+            <trans-unit id="reservation.overview.handover.prepare"><source>reservation.overview.handover.prepare</source><target>%room% nach der Abreise vorbereiten</target></trans-unit>
+            <trans-unit id="reservation.overview.handover.housekeeping"><source>reservation.overview.handover.housekeeping</source><target>Housekeeping fÃ¼r %room% prÃ¼fen</target></trans-unit>
+            <trans-unit id="reservation.overview.handover.derived_hint"><source>reservation.overview.handover.derived_hint</source><target>Aus Live-Reservierungen und Housekeeping-Status abgeleitet.</target></trans-unit>
         </body>
     </file>
 </xliff>

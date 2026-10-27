@@ -56,7 +56,8 @@ class CSRFProtectionService
     {
         $savedToken = $this->requestStack->getSession()->get('_csrf_token');
         $submittedToken = $request->request->get($fieldName);
-        $result = ($savedToken == $submittedToken);
+        $result = is_string($savedToken) && '' !== $savedToken
+            && is_string($submittedToken) && hash_equals($savedToken, $submittedToken);
 
         // generate and save new token
         // token is only valid for one submit

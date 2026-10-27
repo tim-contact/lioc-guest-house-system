@@ -189,3 +189,53 @@ calendar_entry.delete: Delete
 calendar_entry.unconfirm: Undo confirmation
 calendar_entry.flash.saved: Calendar entry saved.
 calendar_entry.flash.deleted: Calendar entry deleted.
+reservation.overview.page_title: LIOC Guest House Operations
+reservation.overview.page_description: Manage guest stays and room availability.
+reservation.overview.primary_navigation: Primary navigation
+reservation.overview.brand: LIOC Guest Houses
+reservation.overview.toggle_navigation: Toggle navigation
+reservation.overview.nav.overview: Overview
+reservation.overview.nav.reservations: Reservations
+reservation.overview.nav.guests: Guests
+reservation.overview.nav.operations: Operations
+reservation.overview.location: Guest house location
+reservation.overview.operations: Operations
+reservation.overview.hero_prefix: Every stay, in view
+reservation.overview.hero_subtitle: Manage stays and room availability at a glance.
+reservation.overview.new_reservation: New reservation
+reservation.overview.loading: Loading the room ledger…
+reservation.overview.metrics.label: Daily summary
+reservation.overview.metrics.rooms: Rooms
+reservation.overview.metrics.in_house: In house
+reservation.overview.metrics.available: Available
+reservation.overview.metrics.arriving: Arriving
+reservation.overview.ledger.kicker: Live availability
+reservation.overview.ledger.title: The room ledger
+reservation.overview.today: Today
+reservation.overview.range: Date range
+reservation.overview.range_14: 14 days
+reservation.overview.range_30: 30 days
+reservation.overview.range_60: 60 days
+reservation.overview.range_custom: "%count% days"
+reservation.overview.legend.label: Reservation status legend
+reservation.overview.legend.checked_in: Checked in
+reservation.overview.legend.confirmed: Confirmed
+reservation.overview.legend.request: Request
+reservation.overview.legend.maintenance: Maintenance
+reservation.overview.briefing.kicker: Daily briefing
+reservation.overview.briefing.arrivals: On the horizon
+reservation.overview.briefing.no_arrivals: No arrivals are scheduled for this date.
+reservation.overview.briefing.arriving: Arriving
+reservation.overview.briefing.operations: Room readiness
+reservation.overview.briefing.housekeeping: Housekeeping
+reservation.overview.briefing.no_rooms: No rooms are configured for this location.
+reservation.overview.unnamed_guest: Guest name unavailable
+reservation.overview.guests_count: "%count% guests"
+reservation.overview.handover.kicker: Operations
+reservation.overview.handover.title: Today’s handover
+reservation.overview.handover.open_housekeeping: Open housekeeping
+reservation.overview.handover.empty: No operational prompts for this date. Saved tasks are managed in Housekeeping.
+reservation.overview.handover.arrival: Confirm arrival for %guest% in %room%
+reservation.overview.handover.prepare: Prepare %room% after departure
+reservation.overview.handover.housekeeping: Review housekeeping for %room%
+reservation.overview.handover.derived_hint: Derived from live reservations and housekeeping status.

@@ -43,6 +43,7 @@ use App\Service\EInvoice\EInvoiceReadinessService;
 use App\Service\InvoiceService;
 use App\Service\PriceService;
 use App\Service\ReservationObject;
+use App\Service\ReservationOverviewService;
 use App\Service\ReservationService;
 use App\Service\ReservationTableService;
 use App\Service\TemplatesService;
@@ -84,10 +85,9 @@ class ReservationServiceController extends AbstractController
         $objects = $em->getRepository(Subsidiary::class)->findAll();
 
         $todayDate = new \DateTimeImmutable('today', new \DateTimeZone('UTC'));
-        $daysSinceMonday = ((int) $todayDate->format('N')) - 1;
-        $today = $todayDate->modify('-'.$daysSinceMonday.' days')->getTimestamp();
+        $today = $todayDate->getTimestamp();
         $start = $requestStack->getSession()->get('reservation-overview-start', $today);
-        $interval = $requestStack->getSession()->get('reservation-overview-interval', 30);
+        $interval = $requestStack->getSession()->get('reservation-overview-interval', 13);
 
         $year = $requestStack->getSession()->get('reservation-overview-year', date('Y'));
 
@@ -155,11 +155,20 @@ class ReservationServiceController extends AbstractController
      * Gets the reservation overview.
      */
     #[Route('/table', name: 'reservations.get.table', methods: ['GET'])]
-    public function getTableAction(ManagerRegistry $doctrine, RequestStack $requestStack, Request $request, ReservationTableService $tableService, CalendarEntryRepository $calendarEntryRepository, ReservationTableDecorationService $decorationService): Response
+    public function getTableAction(
+        ManagerRegistry $doctrine,
+        RequestStack $requestStack,
+        Request $request,
+        ReservationTableService $tableService,
+        CalendarEntryRepository $calendarEntryRepository,
+        ReservationTableDecorationService $decorationService,
+        ReservationOverviewService $overviewService,
+        CalendarService $calendarService,
+    ): Response
     {
         $year = $request->query->get('year', null);
         if (null === $year) {
-            return $this->_handleTableRequest($doctrine, $requestStack, $request, $tableService, $calendarEntryRepository, $decorationService);
+            return $this->_handleTableRequest($doctrine, $requestStack, $request, $tableService, $calendarEntryRepository, $decorationService, $overviewService, $calendarService);
         } else {
             return $this->_handleTableYearlyRequest($doctrine, $requestStack, $request, $calendarEntryRepository);
         }
@@ -168,7 +177,16 @@ class ReservationServiceController extends AbstractController
     /**
      * Displays the regular table overview based on a start date and a period.
      */
-    private function _handleTableRequest(ManagerRegistry $doctrine, RequestStack $requestStack, Request $request, ReservationTableService $tableService, CalendarEntryRepository $calendarEntryRepository, ReservationTableDecorationService $decorationService): Response
+    private function _handleTableRequest(
+        ManagerRegistry $doctrine,
+        RequestStack $requestStack,
+        Request $request,
+        ReservationTableService $tableService,
+        CalendarEntryRepository $calendarEntryRepository,
+        ReservationTableDecorationService $decorationService,
+        ReservationOverviewService $overviewService,
+        CalendarService $calendarService,
+    ): Response
     {
         $em = $doctrine->getManager();
         $date = $request->query->get('start');
@@ -181,14 +199,13 @@ class ReservationServiceController extends AbstractController
 
         if (null == $date) {
             $dateRef = new \DateTimeImmutable('today', new \DateTimeZone('UTC'));
-            $daysSinceMonday = ((int) $dateRef->format('N')) - 1;
-            $date = $dateRef->modify('-'.$daysSinceMonday.' days')->getTimestamp();
+            $date = $dateRef->getTimestamp();
         } else {
             $date = strtotime($date.' UTC');   // set timezone to UTC to ignore daylight saving changes
         }
 
         if (null == $interval) {
-            $interval = 30;
+            $interval = 13;
         } elseif ($interval < 8) {
             $interval = 8;
         } elseif ($interval > 180) {
@@ -198,6 +215,13 @@ class ReservationServiceController extends AbstractController
         }
 
         $appartments = $em->getRepository(Appartment::class)->findAllByProperty($objectId ?? 'all');
+        $subsidiary = null;
+        if (null !== $objectId && 'all' !== $objectId) {
+            $candidate = $em->getRepository(Subsidiary::class)->find((int) $objectId);
+            if ($candidate instanceof Subsidiary) {
+                $subsidiary = $candidate;
+            }
+        }
 
         $requestStack->getSession()->set('reservation-overview-start', $date);
         $requestStack->getSession()->set('reservation-overview-interval', $interval);
@@ -243,6 +267,8 @@ class ReservationServiceController extends AbstractController
                 $this->isGranted('ROLE_RESERVATIONS'),
             ),
         );
+        $activeConflictCount = $em->getRepository(Reservation::class)->countActiveConflicts();
+        $reviewCount = $em->getRepository(Reservation::class)->countImportedWithoutBooker();
 
         return $this->render('Reservations/reservation_table.html.twig', [
             'grid' => $grid,
@@ -250,10 +276,17 @@ class ReservationServiceController extends AbstractController
             'today' => $date,
             'interval' => $interval,
             'holidayCountry' => $holidayCountry,
+            'holidayCountries' => $calendarService->getHolidayCountries($request->getLocale()),
+            'selectedCountry' => $holidayCountry,
             'selectedSubdivision' => $selectedSubdivision,
             'objectId' => $objectId,
+            'showCanceled' => $showCanceled,
             'showCalendarEntries' => $showCalendarEntries,
             'calendarReminderCount' => $showCalendarEntries ? $calendarEntryRepository->countPendingReminders() : 0,
+            'overview' => $overviewService->build($startDate, $subsidiary),
+            'objects' => $em->getRepository(Subsidiary::class)->findAll(),
+            'conflictCount' => $activeConflictCount + $reviewCount,
+            'hasConflicts' => $activeConflictCount > 0,
         ]);
     }
 
@@ -697,6 +730,9 @@ class ReservationServiceController extends AbstractController
     #[IsGranted('ROLE_RESERVATIONS')]
     public function createNewCustomerAction(ManagerRegistry $doctrine, HttpKernelInterface $kernel, CSRFProtectionService $csrf, CustomerService $cs, Request $request)
     {
+        if (!$csrf->validateCSRFToken($request)) {
+            throw $this->createAccessDeniedException();
+        }
         $em = $doctrine->getManager();
 
         $customer = $cs->getCustomerFromForm($request);

@@ -1,0 +1,221 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'inventory.title'|trans({}, 'Inventory') }}{% endblock %}
+
+{% block content %}
+<main class="lioc-inventory">
+    <header class="inventory-header">
+        <div class="inventory-heading">
+            <h1>{{ 'inventory.title'|trans({}, 'Inventory') }}</h1>
+            <p>{{ 'inventory.intro'|trans({}, 'Inventory') }}</p>
+        </div>
+        <form method="get" action="{{ path('operations.inventory') }}" class="inventory-property-filter">
+            <label for="inventory-subsidiary">{{ 'inventory.property'|trans({}, 'Inventory') }}</label>
+            <div class="inventory-filter-controls">
+                <select id="inventory-subsidiary" name="subsidiary" class="form-select">
+                    <option value="all"{{ selectedSubsidiary is null ? ' selected' : '' }}>{{ 'inventory.all_properties'|trans({}, 'Inventory') }}</option>
+                    {% for subsidiary in subsidiaries %}
+                        <option value="{{ subsidiary.id }}"{{ selectedSubsidiary and selectedSubsidiary.id == subsidiary.id ? ' selected' : '' }}>{{ subsidiary.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="inventory-button inventory-button--quiet">{{ 'inventory.apply'|trans({}, 'Inventory') }}</button>
+            </div>
+        </form>
+    </header>
+
+    <div class="inventory-action-bar">
+        <div class="inventory-action-copy">
+            <strong>{{ 'inventory.actions.title'|trans({}, 'Inventory') }}</strong>
+            <span>{{ (items is empty ? 'inventory.actions.hint_empty' : 'inventory.actions.hint')|trans({}, 'Inventory') }}</span>
+        </div>
+        <div class="inventory-actions">
+            <button type="button" class="inventory-button inventory-button--primary" data-bs-toggle="offcanvas" data-bs-target="#inventoryPurchasePanel" aria-controls="inventoryPurchasePanel"{{ items is empty ? ' disabled' : '' }}>
+                <i class="fas fa-plus" aria-hidden="true"></i> {{ 'inventory.form.purchase'|trans({}, 'Inventory') }}
+            </button>
+            <button type="button" class="inventory-button inventory-button--outline" data-bs-toggle="offcanvas" data-bs-target="#inventoryIssuePanel" aria-controls="inventoryIssuePanel"{{ items is empty ? ' disabled' : '' }}>
+                {{ 'inventory.form.issue'|trans({}, 'Inventory') }}
+            </button>
+            <button type="button" class="inventory-button inventory-button--text" data-bs-toggle="offcanvas" data-bs-target="#inventoryItemPanel" aria-controls="inventoryItemPanel">
+                {{ 'inventory.form.item'|trans({}, 'Inventory') }}
+            </button>
+        </div>
+    </div>
+
+    <section class="inventory-summary" aria-label="{{ 'inventory.summary.title'|trans({}, 'Inventory') }}">
+        <div class="inventory-stat inventory-stat--attention">
+            <span class="inventory-stat-label">{{ 'inventory.alerts.low_stock'|trans({}, 'Inventory') }}</span>
+            <strong class="inventory-stat-number">{{ overview.rows|filter(row => row.low)|length }}</strong>
+            <span class="inventory-stat-note">{{ 'inventory.summary.items'|trans({}, 'Inventory') }}</span>
+        </div>
+        <div class="inventory-stat inventory-stat--expiry">
+            <span class="inventory-stat-label">{{ 'inventory.alerts.expiring'|trans({}, 'Inventory') }}</span>
+            <strong class="inventory-stat-number">{{ overview.expiring|length }}</strong>
+            <span class="inventory-stat-note">{{ 'inventory.summary.lots'|trans({}, 'Inventory') }}</span>
+        </div>
+        <div class="inventory-stat">
+            <span class="inventory-stat-label">{{ 'inventory.cost.purchased_month'|trans({}, 'Inventory') }}</span>
+            <strong class="inventory-stat-amount">
+                {% for code, minor in overview.purchases %}<span>{{ minor|inventory_money(code, app.request.locale) }}</span>{% else %}<span>—</span>{% endfor %}
+            </strong>
+        </div>
+        <div class="inventory-stat">
+            <span class="inventory-stat-label">{{ 'inventory.cost.used_month'|trans({}, 'Inventory') }}</span>
+            <strong class="inventory-stat-amount">
+                {% for code, minor in overview.usage %}<span>{{ minor|inventory_money(code, app.request.locale) }}</span>{% else %}<span>—</span>{% endfor %}
+            </strong>
+        </div>
+    </section>
+
+    <div class="inventory-workspace">
+        <section class="inventory-panel inventory-stock" aria-labelledby="inventory-stock-title">
+            <div class="inventory-panel-heading">
+                <div>
+                    <h2 id="inventory-stock-title">{{ 'inventory.stock.title'|trans({}, 'Inventory') }}</h2>
+                </div>
+                <span class="inventory-panel-count">{{ 'inventory.stock.count'|trans({'%count%': overview.rows|length}, 'Inventory') }}</span>
+            </div>
+            <div class="inventory-table-wrap">
+                <table class="inventory-table">
+                    <thead><tr>
+                        <th scope="col">{{ 'inventory.item'|trans({}, 'Inventory') }}</th>
+                        <th scope="col">{{ 'inventory.usable'|trans({}, 'Inventory') }}</th>
+                        <th scope="col">{{ 'inventory.on_hand'|trans({}, 'Inventory') }}</th>
+                        <th scope="col">{{ 'inventory.reorder_level'|trans({}, 'Inventory') }}</th>
+                        <th scope="col">{{ 'inventory.status'|trans({}, 'Inventory') }}</th>
+                    </tr></thead>
+                    <tbody>
+                    {% for row in overview.rows %}
+                        <tr>
+                            <th scope="row"><span class="inventory-item-name">{{ row.item.name }}</span><span class="inventory-item-code">{{ row.item.sku }}</span></th>
+                            <td class="inventory-quantity"><strong>{{ row.usable }}</strong> <span>{{ row.item.unit }}</span></td>
+                            <td class="inventory-quantity">{{ row.onHand }} <span>{{ row.item.unit }}</span></td>
+                            <td>{{ row.item.reorderLevel }}</td>
+                            <td><span class="inventory-status{{ row.low ? ' inventory-status--low' : ' inventory-status--ok' }}">{{ (row.low ? 'inventory.alerts.low_stock' : 'inventory.status.ok')|trans({}, 'Inventory') }}</span></td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="5" class="inventory-empty-cell">
+                            <strong>{{ 'inventory.empty.items'|trans({}, 'Inventory') }}</strong>
+                            <span>{{ 'inventory.empty.items_hint'|trans({}, 'Inventory') }}</span>
+                            <button type="button" class="inventory-inline-link" data-bs-toggle="offcanvas" data-bs-target="#inventoryItemPanel" aria-controls="inventoryItemPanel">{{ 'inventory.form.item'|trans({}, 'Inventory') }}</button>
+                        </td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="inventory-panel inventory-expiry" aria-labelledby="inventory-expiry-title">
+            <div class="inventory-panel-heading">
+                <div>
+                    <h2 id="inventory-expiry-title">{{ 'inventory.expiry.title'|trans({}, 'Inventory') }}</h2>
+                </div>
+            </div>
+            <p class="inventory-panel-hint">{{ 'inventory.expiry.hint'|trans({}, 'Inventory') }}</p>
+            <div class="inventory-alert-list">
+                {% for alert in overview.expiring %}
+                    <div class="inventory-alert">
+                        <div class="inventory-alert-main">
+                            <strong>{{ alert.lot.item.name }}</strong>
+                            <span>{{ alert.lot.subsidiary.name }} · {{ alert.remaining }} {{ alert.lot.item.unit }}</span>
+                        </div>
+                        <div class="inventory-alert-side">
+                            <span class="inventory-status{{ alert.expired ? ' inventory-status--expired' : ' inventory-status--soon' }}">{{ (alert.expired ? 'inventory.expiry.expired' : 'inventory.expiry.soon')|trans({}, 'Inventory') }}</span>
+                            <time datetime="{{ alert.lot.expiresAt|date('Y-m-d') }}">{{ getLocalizedDate(alert.lot.expiresAt, 'dd MMM yyyy', app.request.locale) }}</time>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="inventory-empty-state"><span class="inventory-empty-icon" aria-hidden="true">✓</span><strong>{{ 'inventory.empty.expiry'|trans({}, 'Inventory') }}</strong><span>{{ 'inventory.empty.expiry_hint'|trans({}, 'Inventory') }}</span></div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <section class="inventory-panel inventory-purchases" aria-labelledby="inventory-purchases-title">
+        <div class="inventory-panel-heading">
+            <div>
+                <h2 id="inventory-purchases-title">{{ 'inventory.purchases.title'|trans({}, 'Inventory') }}</h2>
+            </div>
+            <span class="inventory-panel-count">{{ 'inventory.purchases.count'|trans({'%count%': overview.lots|length}, 'Inventory') }}</span>
+        </div>
+        <div class="inventory-table-wrap">
+            <table class="inventory-table">
+                <thead><tr>
+                    <th scope="col">{{ 'inventory.purchase_date'|trans({}, 'Inventory') }}</th>
+                    <th scope="col">{{ 'inventory.item'|trans({}, 'Inventory') }}</th>
+                    <th scope="col">{{ 'inventory.property'|trans({}, 'Inventory') }}</th>
+                    <th scope="col">{{ 'inventory.quantity'|trans({}, 'Inventory') }}</th>
+                    <th scope="col">{{ 'inventory.usable'|trans({}, 'Inventory') }}</th>
+                    <th scope="col">{{ 'inventory.cost.total'|trans({}, 'Inventory') }}</th>
+                    <th scope="col">{{ 'inventory.expiry_date'|trans({}, 'Inventory') }}</th>
+                    <th scope="col">{{ 'inventory.reference'|trans({}, 'Inventory') }}</th>
+                </tr></thead>
+                <tbody>
+                {% for row in overview.lots %}
+                    <tr>
+                        <td><time datetime="{{ row.lot.purchasedAt|date('Y-m-d') }}">{{ getLocalizedDate(row.lot.purchasedAt, 'dd MMM yyyy', app.request.locale) }}</time></td>
+                        <th scope="row"><span class="inventory-item-name">{{ row.lot.item.name }}</span><span class="inventory-item-code">{{ row.lot.item.sku }}</span></th>
+                        <td>{{ row.lot.subsidiary.name }}</td>
+                        <td>{{ row.lot.quantity }} {{ row.lot.item.unit }}</td>
+                        <td>{{ row.remaining }} {{ row.lot.item.unit }}</td>
+                        <td class="inventory-cost">{{ (row.lot.quantity * row.lot.unitCostMinor)|inventory_money(row.lot.currency, app.request.locale) }}</td>
+                        <td>{{ row.lot.expiresAt ? getLocalizedDate(row.lot.expiresAt, 'dd MMM yyyy', app.request.locale) : '—' }}</td>
+                        <td>{{ row.lot.reference ?: '—' }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="8" class="inventory-empty-cell"><strong>{{ 'inventory.empty.purchases'|trans({}, 'Inventory') }}</strong><span>{{ 'inventory.empty.purchases_hint'|trans({}, 'Inventory') }}</span></td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+<div class="offcanvas offcanvas-end inventory-drawer" tabindex="-1" id="inventoryPurchasePanel" aria-labelledby="inventory-purchase-title">
+    <form method="post" action="{{ path('operations.inventory.purchase.create') }}" class="inventory-drawer-form">
+        <div class="offcanvas-header"><div><h2 class="offcanvas-title" id="inventory-purchase-title">{{ 'inventory.form.purchase'|trans({}, 'Inventory') }}</h2></div><button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="{{ 'inventory.close'|trans({}, 'Inventory') }}"></button></div>
+        <div class="offcanvas-body">
+            <p class="inventory-form-intro">{{ 'inventory.form.purchase_hint'|trans({}, 'Inventory') }}</p>
+            <input type="hidden" name="_token" value="{{ csrf_token('inventory_purchase') }}">
+            <div class="inventory-field"><label for="purchase-item" class="form-label">{{ 'inventory.item'|trans({}, 'Inventory') }}</label><select id="purchase-item" name="item" class="form-select" required><option value="">{{ 'inventory.select_item'|trans({}, 'Inventory') }}</option>{% for item in items %}<option value="{{ item.id }}">{{ item.name }} · {{ item.sku }}</option>{% endfor %}</select></div>
+            <div class="inventory-field"><label for="purchase-property" class="form-label">{{ 'inventory.property'|trans({}, 'Inventory') }}</label><select id="purchase-property" name="subsidiary" class="form-select" required><option value="">{{ 'inventory.select_property'|trans({}, 'Inventory') }}</option>{% for subsidiary in subsidiaries %}<option value="{{ subsidiary.id }}"{{ selectedSubsidiary and selectedSubsidiary.id == subsidiary.id ? ' selected' : '' }}>{{ subsidiary.name }}</option>{% endfor %}</select></div>
+            <div class="inventory-form-grid"><div class="inventory-field"><label for="purchase-quantity" class="form-label">{{ 'inventory.quantity'|trans({}, 'Inventory') }}</label><input id="purchase-quantity" name="quantity" type="number" class="form-control" min="1" required></div><div class="inventory-field"><label for="purchase-cost" class="form-label">{{ 'inventory.unit_cost'|trans({}, 'Inventory') }}</label><input id="purchase-cost" name="unitCost" type="number" class="form-control" min="0" step="0.01" required></div></div>
+            <div class="inventory-form-grid"><div class="inventory-field"><label for="purchase-currency" class="form-label">{{ 'inventory.currency'|trans({}, 'Inventory') }}</label><input id="purchase-currency" name="currency" class="form-control" maxlength="3" placeholder="ISO" required></div><div class="inventory-field"><label for="purchase-date" class="form-label">{{ 'inventory.purchase_date'|trans({}, 'Inventory') }}</label><input id="purchase-date" name="purchasedAt" type="date" class="form-control" max="{{ today|date('Y-m-d') }}" value="{{ today|date('Y-m-d') }}" required></div></div>
+            <div class="inventory-field"><label for="purchase-expiry" class="form-label">{{ 'inventory.expiry_date'|trans({}, 'Inventory') }}</label><input id="purchase-expiry" name="expiresAt" type="date" class="form-control"></div>
+            <div class="inventory-form-divider"></div>
+            <p class="inventory-form-subheading">{{ 'inventory.form.optional_details'|trans({}, 'Inventory') }}</p>
+            <div class="inventory-field"><label for="purchase-supplier" class="form-label">{{ 'inventory.supplier'|trans({}, 'Inventory') }}</label><input id="purchase-supplier" name="supplier" class="form-control" maxlength="120"></div>
+            <div class="inventory-field"><label for="purchase-reference" class="form-label">{{ 'inventory.reference'|trans({}, 'Inventory') }}</label><input id="purchase-reference" name="reference" class="form-control" maxlength="120"></div>
+        </div>
+        <div class="inventory-drawer-footer"><button type="button" class="inventory-button inventory-button--quiet" data-bs-dismiss="offcanvas">{{ 'inventory.cancel'|trans({}, 'Inventory') }}</button><button type="submit" class="inventory-button inventory-button--primary">{{ 'inventory.form.record_purchase'|trans({}, 'Inventory') }}</button></div>
+    </form>
+</div>
+
+<div class="offcanvas offcanvas-end inventory-drawer" tabindex="-1" id="inventoryIssuePanel" aria-labelledby="inventory-issue-title">
+    <form method="post" action="{{ path('operations.inventory.issue.create') }}" class="inventory-drawer-form">
+        <div class="offcanvas-header"><div><h2 class="offcanvas-title" id="inventory-issue-title">{{ 'inventory.form.issue'|trans({}, 'Inventory') }}</h2></div><button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="{{ 'inventory.close'|trans({}, 'Inventory') }}"></button></div>
+        <div class="offcanvas-body">
+            <p class="inventory-form-intro">{{ 'inventory.form.issue_hint'|trans({}, 'Inventory') }}</p>
+            <input type="hidden" name="_token" value="{{ csrf_token('inventory_issue') }}">
+            <div class="inventory-field"><label for="issue-item" class="form-label">{{ 'inventory.item'|trans({}, 'Inventory') }}</label><select id="issue-item" name="item" class="form-select" required><option value="">{{ 'inventory.select_item'|trans({}, 'Inventory') }}</option>{% for item in items %}<option value="{{ item.id }}">{{ item.name }} · {{ item.sku }}</option>{% endfor %}</select></div>
+            <div class="inventory-field"><label for="issue-property" class="form-label">{{ 'inventory.property'|trans({}, 'Inventory') }}</label><select id="issue-property" name="subsidiary" class="form-select" required><option value="">{{ 'inventory.select_property'|trans({}, 'Inventory') }}</option>{% for subsidiary in subsidiaries %}<option value="{{ subsidiary.id }}"{{ selectedSubsidiary and selectedSubsidiary.id == subsidiary.id ? ' selected' : '' }}>{{ subsidiary.name }}</option>{% endfor %}</select></div>
+            <div class="inventory-form-grid"><div class="inventory-field"><label for="issue-quantity" class="form-label">{{ 'inventory.quantity'|trans({}, 'Inventory') }}</label><input id="issue-quantity" name="quantity" type="number" class="form-control" min="1" required></div><div class="inventory-field"><label for="issue-date" class="form-label">{{ 'inventory.issue_date'|trans({}, 'Inventory') }}</label><input id="issue-date" name="issuedAt" type="date" class="form-control" max="{{ today|date('Y-m-d') }}" value="{{ today|date('Y-m-d') }}" required></div></div>
+            <div class="inventory-field"><label for="issue-reason" class="form-label">{{ 'inventory.reason'|trans({}, 'Inventory') }}</label><input id="issue-reason" name="reason" class="form-control" maxlength="255" required><div class="form-text">{{ 'inventory.form.issue_reason_hint'|trans({}, 'Inventory') }}</div></div>
+        </div>
+        <div class="inventory-drawer-footer"><button type="button" class="inventory-button inventory-button--quiet" data-bs-dismiss="offcanvas">{{ 'inventory.cancel'|trans({}, 'Inventory') }}</button><button type="submit" class="inventory-button inventory-button--primary">{{ 'inventory.form.record_issue'|trans({}, 'Inventory') }}</button></div>
+    </form>
+</div>
+
+<div class="offcanvas offcanvas-end inventory-drawer" tabindex="-1" id="inventoryItemPanel" aria-labelledby="inventory-new-item-title">
+    <form method="post" action="{{ path('operations.inventory.item.create') }}" class="inventory-drawer-form">
+        <div class="offcanvas-header"><div><h2 class="offcanvas-title" id="inventory-new-item-title">{{ 'inventory.form.item'|trans({}, 'Inventory') }}</h2></div><button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="{{ 'inventory.close'|trans({}, 'Inventory') }}"></button></div>
+        <div class="offcanvas-body">
+            <p class="inventory-form-intro">{{ 'inventory.form.item_hint'|trans({}, 'Inventory') }}</p>
+            <input type="hidden" name="_token" value="{{ csrf_token('inventory_item') }}">
+            <div class="inventory-field"><label for="item-name" class="form-label">{{ 'inventory.item'|trans({}, 'Inventory') }}</label><input id="item-name" name="name" class="form-control" maxlength="120" required></div>
+            <div class="inventory-field"><label for="item-sku" class="form-label">{{ 'inventory.sku'|trans({}, 'Inventory') }}</label><input id="item-sku" name="sku" class="form-control" maxlength="40" required><div class="form-text">{{ 'inventory.form.sku_hint'|trans({}, 'Inventory') }}</div></div>
+            <div class="inventory-form-grid"><div class="inventory-field"><label for="item-unit" class="form-label">{{ 'inventory.unit'|trans({}, 'Inventory') }}</label><input id="item-unit" name="unit" class="form-control" maxlength="30" required><div class="form-text">{{ 'inventory.form.unit_hint'|trans({}, 'Inventory') }}</div></div><div class="inventory-field"><label for="item-reorder" class="form-label">{{ 'inventory.reorder_level'|trans({}, 'Inventory') }}</label><input id="item-reorder" name="reorderLevel" type="number" class="form-control" min="0" value="0" required><div class="form-text">{{ 'inventory.form.reorder_hint'|trans({}, 'Inventory') }}</div></div></div>
+        </div>
+        <div class="inventory-drawer-footer"><button type="button" class="inventory-button inventory-button--quiet" data-bs-dismiss="offcanvas">{{ 'inventory.cancel'|trans({}, 'Inventory') }}</button><button type="submit" class="inventory-button inventory-button--primary">{{ 'inventory.form.add_item'|trans({}, 'Inventory') }}</button></div>
+    </form>
+</div>
+{% endblock %}

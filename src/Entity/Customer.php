@@ -27,6 +27,10 @@ class Customer
     private $birthday;
     #[ORM\Column(type: 'string', length: 255, nullable: true)]
     private ?string $remark = null;
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $dietaryPreference = null;
+    #[ORM\Column(length: 1000, nullable: true)]
+    private ?string $dietaryNotes = null;
     #[ORM\ManyToMany(targetEntity: 'Reservation', mappedBy: 'customers')]
     private Collection $reservations;
     #[ORM\OneToMany(mappedBy: 'customer', targetEntity: 'RegistrationBookEntry')]
@@ -136,6 +140,26 @@ class Customer
     public function setRemark($remark): void
     {
         $this->remark = $remark;
+    }
+
+    public function getDietaryPreference(): ?string
+    {
+        return $this->dietaryPreference;
+    }
+
+    public function setDietaryPreference(?string $dietaryPreference): void
+    {
+        $this->dietaryPreference = $dietaryPreference;
+    }
+
+    public function getDietaryNotes(): ?string
+    {
+        return $this->dietaryNotes;
+    }
+
+    public function setDietaryNotes(?string $dietaryNotes): void
+    {
+        $this->dietaryNotes = $dietaryNotes;
     }
 
     public function getRegistrationBookEntries(): ArrayCollection|Collection

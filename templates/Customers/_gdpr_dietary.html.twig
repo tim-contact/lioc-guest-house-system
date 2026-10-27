@@ -1,0 +1,5 @@
+<section>
+    <h2>{{ 'customer.dietary.export_heading'|trans }}</h2>
+    <p><strong>{{ 'customer.dietary.preference'|trans }}:</strong> {{ customer.dietaryPreference ?: '—' }}</p>
+    <p><strong>{{ 'customer.dietary.notes'|trans }}:</strong> {{ customer.dietaryNotes ? customer.dietaryNotes|nl2br : '—' }}</p>
+</section>

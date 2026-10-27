@@ -22,6 +22,7 @@ use App\Repository\PostalCodeDataRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 class CustomerService
 {
@@ -33,6 +34,8 @@ class CustomerService
 
     public function getCustomerFromForm(Request $request, $id = 'new')
     {
+        $dietaryPreference = $this->optionalDietaryField($request, 'dietary-preference-'.$id, 100);
+        $dietaryNotes = $this->optionalDietaryField($request, 'dietary-notes-'.$id, 1000);
         $customer = null;
 
         if ('new' === $id) {
@@ -85,6 +88,13 @@ class CustomerService
         $customer->setIDNumber($request->request->get('id-'.$id));
         $customer->setIDNumber($request->request->get('id-'.$id));
         $customer->setRemark($request->request->get('remark-'.$id));
+        // Older callers may omit these fields; omission must not erase saved preferences.
+        if ($request->request->has('dietary-preference-'.$id)) {
+            $customer->setDietaryPreference($dietaryPreference);
+        }
+        if ($request->request->has('dietary-notes-'.$id)) {
+            $customer->setDietaryNotes($dietaryNotes);
+        }
 
         // first remove all old addresses
         $oldAddresses = clone $customer->getCustomerAddresses();
@@ -108,6 +118,17 @@ class CustomerService
         }
 
         return $customer;
+    }
+
+    /** Normalize an optional field and reject values that exceed its database limit. */
+    private function optionalDietaryField(Request $request, string $name, int $maxLength): ?string
+    {
+        $value = trim($request->request->getString($name));
+        if (mb_strlen($value) > $maxLength) {
+            throw new BadRequestHttpException('Dietary information exceeds the permitted length.');
+        }
+
+        return '' === $value ? null : $value;
     }
 
     public function deleteCustomer($id)

@@ -1,35 +1,27 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}
-    {{ parent() }} -  Reservierungsverwaltung
-{% endblock %}
-
-{% block description %}
-    {{ parent() }} -  Reservierungsverwaltung
-{% endblock %}
+{% block title %}{{ 'reservation.overview.page_title'|trans }}{% endblock %}
+{% block description %}{{ 'reservation.overview.page_description'|trans }}{% endblock %}
 
 {% block flashMessage %}
-    <div class="container-fluid mt-3">
-        <div class="row" id="flash-message-container">
-            {% for type, flashMessages in app.flashes %}
-                {% for flashMessage in flashMessages %}
-                    <div class="col">
-                        <div class="alert alert-{{ type }} alert-dismissible fade show" role="alert">
-                            {{ flashMessage|trans }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>                            
-                        </div>
-                    </div>
-                {% endfor %}
+    <div class="container-fluid lioc-flash-wrap" id="flash-message-container">
+        {% for type, flashMessages in app.flashes %}
+            {% for flashMessage in flashMessages %}
+                <div class="alert alert-{{ type }} alert-dismissible fade show" role="alert">
+                    {{ flashMessage|trans }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
             {% endfor %}
-        </div>
+        {% endfor %}
     </div>
 {% endblock %}
+
 {% block content %}
-<div class="container-fluid"
-     data-controller="reservations"
-     data-reservations-can-select-value="{{ is_granted('ROLE_RESERVATIONS') ? 'true' : 'false' }}"
-     data-reservations-start-url="{{ path('start') }}"
-     data-reservations-translations-value="{{
+<main class="lioc-reservations"
+      data-controller="reservations"
+      data-reservations-can-select-value="{{ is_granted('ROLE_RESERVATIONS') ? 'true' : 'false' }}"
+      data-reservations-start-url="{{ path('start') }}"
+      data-reservations-translations-value="{{
         {
             'templates.select.reservations': 'templates.select.reservations'|trans,
             'nav.reservation.add': 'nav.reservation.add'|trans,
@@ -51,85 +43,20 @@
             'templates.editor.toolbar.font_family': 'templates.editor.toolbar.font_family'|trans,
             'templates.editor.toolbar.font_size': 'templates.editor.toolbar.font_size'|trans,
         }|json_encode|e('html_attr')
-     }}">
-    <form id="table-filter" role="form"
+      }}">
+    <form id="table-filter" role="search"
           data-reservations-table-url="{{ path('reservations.get.table') }}"
           data-reservations-table-settings-url="{{ path('reservations.table.settings') }}"
-                    data-reservations-explicit-yearly-apartment-requested="{{ hasExplicitYearlyApartmentRequested ? 'true' : 'false' }}"
+          data-reservations-explicit-yearly-apartment-requested="{{ hasExplicitYearlyApartmentRequested ? 'true' : 'false' }}"
           data-action="submit->reservations#getNewTableAction">
-        <div class="row">
-            {% if show == 'table' %}
-                {% include 'Reservations/_index_table_form.html.twig' %}
-            {% else %}
-                {% include 'Reservations/_index_yearly_form.html.twig' %}
-            {% endif %}
-            <div class="col-md-auto">
-                {% if is_granted('ROLE_RESERVATIONS') %}
-                <a href="#" class="me-3" data-action="click->reservations#getNewTableAction" title="{{ 'reservation.table.reload'|trans }}" data-url="{{ path('reservations.get.table') }}"><i class="fas fa-sync-alt" data-reservations-table-spinner></i></a>
-                {% if conflictCount > 0 %}
-                    {% set alertClass = hasConflicts ? 'btn-outline-danger' : 'btn-outline-warning' %}
-                    {% set alertBadge = hasConflicts ? 'bg-danger' : 'bg-warning' %}
-                    {% set alertIcon = hasConflicts ? 'fa-exclamation-triangle' : 'fa-triangle-exclamation' %}
-                    <a href="#" class="btn {{ alertClass }} mb-2 me-sm-2"
-                       data-action="click->reservations#openConflictsAction"
-                       data-url="{{ path('reservations.conflicts') }}"
-                       data-bs-toggle="modal" data-bs-target="#modalCenter"
-                       data-conflict-button>
-                        <i class="fas {{ alertIcon }}"></i>
-                        {{ 'reservation.conflict.button'|trans }}
-                        <span class="badge {{ alertBadge }} ms-1" data-conflict-count-badge>{{ conflictCount }}</span>
-                    </a>
-                {% endif %}
-                {% endif %}
-                {# Outside the write gate on purpose: read-only staff should see
-                   which entries still need confirming today, they just can't
-                   tick them off (the confirm button inside the modal is gated
-                   separately). #}
-                <a href="#" class="btn btn-outline-warning mb-2 me-sm-2{{ calendarReminderCount > 0 ? '' : ' d-none' }}"
-                   data-action="click->reservations#openCalendarReminderAction"
-                   data-url="{{ path('reservations.calendar_reminder') }}"
-                   data-bs-toggle="modal" data-bs-target="#modalCenter"
-                   data-calendar-reminder-button>
-                    <i class="fas fa-calendar-check"></i>
-                    {{ 'reservation.calendar_reminder.button'|trans }}
-                    <span class="badge bg-warning ms-1" data-calendar-reminder-count-badge>{{ calendarReminderCount }}</span>
-                </a>
-                {% if is_granted('ROLE_RESERVATIONS') %}
-                <button type="button" class="btn btn-secondary mb-2 me-sm-2"
-                        data-action="click->reservations#selectAppartmentAction"
-                        data-reservations-create-new="true"
-                        data-url="{{ path('reservations.select.appartment') }}"
-                        data-bs-toggle="modal" data-bs-target="#modalCenter">
-                    <i class="fas fa-plus"></i> {{ 'nav.reservation.add'|trans }}
-                </button>
-                {% endif %}
-            </div>
-            <div class="col-auto text-end ms-auto">
-                {% if is_granted('ROLE_RESERVATIONS') %}
-                <a href="#" class="fs-5 text-secondary me-2" role="button"
-                   data-action="click->reservations#openBlockFormAction"
-                   data-url="{{ path('reservations.blocks.form') }}"
-                   title="{{ 'roomblock.title'|trans }}">
-                    <i class="fas fa-ban"></i></a>
-                {% endif %}
-                <a href="#" class="fs-5 text-secondary" role="button"
-                   data-action="click->reservations#openBlockListAction"
-                   data-url="{{ path('reservations.blocks.list') }}"
-                   title="{{ 'roomblock.list.title'|trans }}">
-                    <i class="fas fa-lock"></i></a>
-                <span class="vr mx-3 align-middle"></span>
-                <a href="{{ path('start.toggle.view', {show: 'table'}) }}" class="fs-5 {% if show == 'table' %}text-primary{% else %}text-secondary{% endif %}" title="{{ 'reservation.table.view.table'|trans }}">
-                    <i class="fas fa-list"></i></a>
-                <a href="{{ path('start.toggle.view', {show: 'yearly'}) }}" class="fs-5 me-4 ms-2 {% if show == 'yearly' %}text-primary{% else %}text-secondary{% endif %}" title="{{ 'reservation.table.view.yearly'|trans }}">
-                    <i class="far fa-calendar-alt"></i></a>
-
-                {% include 'Reservations/reservation_table_settings.html.twig' %}
+        <div id="table-ajax"
+             data-reservations-add-appartment-selectable-url="{{ path('reservations.add.appartment.to.reservation.selectable') }}"
+             aria-live="polite" aria-busy="true">
+            <div class="lioc-loading" role="status">
+                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                <span>{{ 'reservation.overview.loading'|trans }}</span>
             </div>
         </div>
     </form>
-    <div class="row mt-2" >
-        <div class="col" id="table-ajax" data-reservations-add-appartment-selectable-url="{{ path('reservations.add.appartment.to.reservation.selectable') }}">
-        </div>
-    </div>
-</div>
+</main>
 {% endblock %}

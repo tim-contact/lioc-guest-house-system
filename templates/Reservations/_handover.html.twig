@@ -1,0 +1,32 @@
+<section class="lioc-handover" aria-labelledby="handover-title">
+    <div class="lioc-handover-heading">
+        <div>
+            <h2 id="handover-title">{{ 'reservation.overview.handover.title'|trans }}</h2>
+        </div>
+        {% if is_granted('ROLE_OPERATIONS') %}
+            <a href="{{ path('operations.housekeeping') }}" class="lioc-text-link">
+                {{ 'reservation.overview.handover.open_housekeeping'|trans }} <span aria-hidden="true">↗</span>
+            </a>
+        {% endif %}
+    </div>
+
+    {% if overview.handoverItems is empty %}
+        <p class="lioc-empty-state mb-0">{{ 'reservation.overview.handover.empty'|trans }}</p>
+    {% else %}
+        <div class="lioc-handover-list">
+            {% for item in overview.handoverItems %}
+                <article class="lioc-handover-item">
+                    <span class="lioc-handover-icon" aria-hidden="true">
+                        {% if item.type == 'arrival' %}<i class="fa-solid fa-arrow-right-to-bracket"></i>
+                        {% elseif item.type == 'prepare' %}<i class="fa-solid fa-broom"></i>
+                        {% else %}<i class="fa-solid fa-bed"></i>{% endif %}
+                    </span>
+                    <div>
+                        <strong>{{ ('reservation.overview.handover.' ~ item.type)|trans({'%room%': item.roomNumber, '%guest%': item.guestName|default('')}) }}</strong>
+                        <span>{{ 'reservation.overview.handover.derived_hint'|trans }}</span>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% endif %}
+</section>

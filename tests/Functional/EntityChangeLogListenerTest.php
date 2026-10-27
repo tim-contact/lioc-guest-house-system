@@ -130,6 +130,22 @@ final class EntityChangeLogListenerTest extends KernelTestCase
             'The raw ID card number must never be persisted in the audit log.');
     }
 
+    public function testDietaryInformationIsRedactedFromAuditLog(): void
+    {
+        $customer = $this->newCustomer('Dietary', 'Redact');
+        $customer->setDietaryPreference('Vegetarian');
+        $customer->setDietaryNotes('Private dietary detail');
+        $this->em->persist($customer);
+        $this->em->flush();
+
+        $rows = $this->fetchLog();
+        self::assertCount(1, $rows);
+        $changes = $this->decode($rows[0]['changes']);
+        self::assertSame(['***redacted***', '***redacted***'], $changes['dietaryPreference']);
+        self::assertSame(['***redacted***', '***redacted***'], $changes['dietaryNotes']);
+        self::assertStringNotContainsString('Private dietary detail', $rows[0]['changes']);
+    }
+
     public function testLastActionUpdatesAreFilteredOutOfTheDiff(): void
     {
         $user = $this->em->getRepository(User::class)->findOneBy(['username' => 'test-admin']);

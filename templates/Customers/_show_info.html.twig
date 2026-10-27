@@ -15,6 +15,11 @@
         </dd>
         <dt>{{ 'customer.remark'|trans }}</dt>
         <dd>{% if customer.remark %}{{ customer.remark|nl2br }}{% else %} -{% endif %}</dd>
+        {% if customer.dietaryPreference or customer.dietaryNotes %}
+            <dt>{{ 'customer.dietary.preference'|trans }}</dt>
+            <dd>{{ customer.dietaryPreference ?: '—' }}</dd>
+            {% if customer.dietaryNotes %}<dt>{{ 'customer.dietary.notes'|trans }}</dt><dd>{{ customer.dietaryNotes|nl2br }}</dd>{% endif %}
+        {% endif %}
     </dl>
 </div>
 <div class="col-sm-6">

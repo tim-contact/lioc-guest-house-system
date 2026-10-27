@@ -3,6 +3,14 @@ CUSTOMER_ADDRESS_TYPE_BUSINESS: Business
 CUSTOMER_ADDRESS_TYPE_PRIVATE: Private
 customer.action: Action
 customer.additional: Additional
+customer.dietary.preference: Dietary preference
+customer.dietary.export_heading: Dietary information
+customer.dietary.preference_hint: Choose a suggestion or enter another preference.
+customer.dietary.notes: Dietary notes
+customer.dietary.notes_hint: Add details the kitchen needs to know, if provided by the guest.
+customer.dietary.vegetarian: Vegetarian
+customer.dietary.non_vegetarian: Non-vegetarian
+customer.dietary.jain: Jain
 customer.address: Address
 customer.address.add: Add new address
 customer.address.delete: Remove Address

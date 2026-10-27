@@ -1,0 +1,85 @@
+inventory.nav: Inventory
+inventory.title: Inventory and purchasing
+inventory.kicker: Operations
+inventory.intro: Keep supplies in view across your guest houses.
+inventory.actions.title: Quick actions
+inventory.actions.hint: Record a delivery or usage in a few steps.
+inventory.actions.hint_empty: Add your first item to start recording purchases and usage.
+inventory.summary.title: Inventory summary
+inventory.summary.items: items to review
+inventory.summary.lots: lots to review
+inventory.stock.eyebrow: At a glance
+inventory.stock.count: '%count% items'
+inventory.expiry.eyebrow: Attention needed
+inventory.purchases.eyebrow: History
+inventory.purchases.count: '%count% lots'
+inventory.close: Close
+inventory.cancel: Cancel
+inventory.property: Guest house
+inventory.all_properties: All guest houses
+inventory.select_property: Select a guest house
+inventory.select_item: Select an item
+inventory.apply: Apply
+inventory.item: Item
+inventory.sku: Item code
+inventory.unit: Unit
+inventory.quantity: Quantity
+inventory.on_hand: On hand
+inventory.usable: Usable
+inventory.reorder_level: Reorder level
+inventory.status: Status
+inventory.status.ok: OK
+inventory.currency: Currency code
+inventory.unit_cost: Unit cost
+inventory.purchase_date: Purchase date
+inventory.issue_date: Usage date
+inventory.expiry_date: Expiry date (optional)
+inventory.supplier: Supplier (optional)
+inventory.reference: Purchase reference (optional)
+inventory.reason: Usage reason
+inventory.stock.title: Stock balance
+inventory.purchases.title: Purchase lots
+inventory.cost.total: Purchase cost
+inventory.alerts.low_stock: Low stock
+inventory.alerts.expiring: Expiring or expired
+inventory.expiry.title: Expiry alerts
+inventory.expiry.hint: Lots expiring within 30 days, including expired lots with stock remaining.
+inventory.expiry.expired: Expired
+inventory.expiry.soon: Expiring soon
+inventory.cost.purchased_month: Purchased this month
+inventory.cost.used_month: Used this month
+inventory.form.item: Add item
+inventory.form.add_item: Save item
+inventory.form.purchase: Record purchase
+inventory.form.record_purchase: Save purchase
+inventory.form.issue: Record usage
+inventory.form.record_issue: Save usage
+inventory.form.purchase_hint: Add the quantity received and its cost. Stock is available as soon as you save.
+inventory.form.issue_hint: Record supplies used at this guest house. The earliest expiring stock is used first.
+inventory.form.issue_reason_hint: For example, housekeeping or kitchen supplies.
+inventory.form.item_hint: Create an item once, then record purchases for each guest house.
+inventory.form.sku_hint: A unique code you will recognize later.
+inventory.form.unit_hint: For example, bottle, pack, or piece.
+inventory.form.reorder_hint: A low-stock alert appears at or below this amount.
+inventory.form.optional_details: Additional details
+inventory.empty.items: No inventory items yet.
+inventory.empty.items_hint: Add an item to start tracking supplies.
+inventory.empty.expiry: No expiry alerts.
+inventory.empty.expiry_hint: Your current stock has no upcoming expiry dates.
+inventory.empty.purchases: No purchases recorded yet.
+inventory.empty.purchases_hint: Recorded deliveries will appear here.
+inventory.flash.item_created: Item added.
+inventory.flash.purchase_recorded: Purchase recorded.
+inventory.flash.issue_recorded: Stock usage recorded.
+inventory.error.item_invalid: Enter a valid item code, name, unit and reorder level.
+inventory.error.sku_exists: This item code already exists.
+inventory.error.item_inactive: This item is inactive.
+inventory.error.purchase_invalid: Enter a positive quantity, valid cost and three-letter currency code.
+inventory.error.expiry_before_purchase: Expiry date cannot be before the purchase date.
+inventory.error.issue_invalid: Enter a positive quantity and a usage reason.
+inventory.error.insufficient_stock: There is not enough unexpired stock at this guest house.
+inventory.error.alert_period_invalid: Invalid expiry alert period.
+inventory.error.item_required: Select a valid item.
+inventory.error.subsidiary_required: Select a valid guest house.
+inventory.error.cost_invalid: Enter a valid unit cost with at most two decimal places.
+inventory.error.date_invalid: Enter a valid date.

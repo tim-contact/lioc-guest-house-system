@@ -215,6 +215,25 @@
         </h2>
         <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#accordion">
             <div class="accordion-body">
+                <div class="row mb-3">
+                    <label for="dietary-preference-{{ customer.id }}" class="col-sm-4 col-form-label text-end">{{ 'customer.dietary.preference'|trans }}</label>
+                    <div class="col-sm-8">
+                        <input type="text" class="form-control" id="dietary-preference-{{ customer.id }}" name="dietary-preference-{{ customer.id }}" list="dietary-options-{{ customer.id }}" maxlength="100" value="{{ customer.dietaryPreference }}">
+                        <datalist id="dietary-options-{{ customer.id }}">
+                            <option value="{{ 'customer.dietary.vegetarian'|trans }}"></option>
+                            <option value="{{ 'customer.dietary.non_vegetarian'|trans }}"></option>
+                            <option value="{{ 'customer.dietary.jain'|trans }}"></option>
+                        </datalist>
+                        <div class="form-text">{{ 'customer.dietary.preference_hint'|trans }}</div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <label for="dietary-notes-{{ customer.id }}" class="col-sm-4 col-form-label text-end">{{ 'customer.dietary.notes'|trans }}</label>
+                    <div class="col-sm-8">
+                        <textarea class="form-control" id="dietary-notes-{{ customer.id }}" name="dietary-notes-{{ customer.id }}" maxlength="1000" rows="3">{{ customer.dietaryNotes }}</textarea>
+                        <div class="form-text">{{ 'customer.dietary.notes_hint'|trans }}</div>
+                    </div>
+                </div>
                 <div class="row">
                     <label for="birthday-{{ customer.id }}"
                            class="col-sm-4 col-form-label text-end">{{ 'customer.birthday'|trans }}</label>

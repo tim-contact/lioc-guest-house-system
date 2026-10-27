@@ -106,7 +106,12 @@ export default class extends Controller {
             if (!target) {
                 return;
             }
-            const selectors = ['#start', '#year', 'input[name="interval"]', 'select[name="apartment"]', 'select[name="object"]', '#holidayCountry', '#holidaySubdivision'];
+            if (target.matches('#holidayCountry')) {
+                this.modalSettingsContainer = document.getElementById('modal-content-settings');
+                this.loadTableSettings(this.tableSettingsUrl);
+                return;
+            }
+            const selectors = ['#start', '#year', '[name="interval"]', 'select[name="apartment"]', 'select[name="object"]', '#holidayCountry', '#holidaySubdivision'];
             if (selectors.some((s) => target.matches(s))) {
                 if(target.matches('select[name="object"]')) {
                     this.setLocalTableSetting('object', 'reservation-settings-show-object');
@@ -1051,11 +1056,19 @@ export default class extends Controller {
         if (spinner) {
             spinner.classList.add('fa-spin');
         }
+        this.tableContainer?.setAttribute('aria-busy', 'true');
+
+        const filterData = new URLSearchParams(httpSerializeForm(this.tableFilter));
+        // The selector lives in the first table fragment, so use the saved
+        // property for the initial request before that fragment exists.
+        if (!filterData.has('object')) {
+            filterData.set('object', getLocalStorageItem('reservation-settings-show-object') || 'all');
+        }
 
         httpRequest({
             url: targetUrl,
             method: 'GET',
-            data: httpSerializeForm(this.tableFilter),
+            data: filterData.toString(),
             target: this.tableContainer,
             loader: false,  // we handle the spinner ourselves
             onSuccess: (data) => {
@@ -1063,6 +1076,8 @@ export default class extends Controller {
                     this.disposeTablePopovers();
                     this.tableContainer.innerHTML = data;
                     this.addAppartmentSelectableUrl = this.tableContainer.dataset.reservationsAddAppartmentSelectableUrl || this.addAppartmentSelectableUrl;
+                    this.modalSettingsContainer = document.getElementById('modal-content-settings');
+                    this.updateDisplaySettingsOnChange();
                 }
                 this.updateCalendarReminderBadgeFromTable();
                 this.toggleDisplayTableRows();
@@ -1076,6 +1091,7 @@ export default class extends Controller {
                 if (spinnerEl) {
                     spinnerEl.classList.remove('fa-spin');
                 }
+                this.tableContainer?.setAttribute('aria-busy', 'false');
             }
         });
 
@@ -1132,6 +1148,16 @@ export default class extends Controller {
             data: httpSerializeForm(this.tableFilter),
             target: this.modalSettingsContainer,
             loader: false,
+            // The settings container is part of the table fragment and is not
+            // present during the first page load. Handle the response here so
+            // the shared request helper does not fall back to reloading the
+            // whole page when its target is temporarily unavailable.
+            onSuccess: (data) => {
+                this.modalSettingsContainer = document.getElementById('modal-content-settings');
+                if (this.modalSettingsContainer) {
+                    this.modalSettingsContainer.innerHTML = data;
+                }
+            },
             onComplete: () => { 
                 if (initial) {
                     this.getLocalTableSetting('holidaySubdivision', 'reservations-table-holidaysubdivision');
@@ -1146,7 +1172,7 @@ export default class extends Controller {
 
     shiftStartDate(direction) {
         const startInput = document.getElementById('start');
-        const intervalInput = this.tableFilter ? this.tableFilter.querySelector('input[name="interval"]') : null;
+        const intervalInput = this.tableFilter ? this.tableFilter.querySelector('[name="interval"]') : null;
         if (!startInput || !intervalInput) {
             return;
         }
@@ -1159,6 +1185,16 @@ export default class extends Controller {
         const offset = direction === 'forward' ? interval : -interval;
         currentDate.setDate(currentDate.getDate() + offset);
         startInput.value = this.formatDateInputValue(currentDate);
+        startInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    goToTodayAction(event) {
+        event.preventDefault();
+        const startInput = document.getElementById('start');
+        if (!startInput) {
+            return;
+        }
+        startInput.value = this.formatDateInputValue(new Date());
         startInput.dispatchEvent(new Event('change', { bubbles: true }));
     }
 

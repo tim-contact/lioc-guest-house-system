@@ -33,6 +33,7 @@
    one string, because that is what Bootstrap reads out of data-bs-content. #}
 {% macro dayHeaderCell(col, label) %}
     {% set weekendCss = col.isWeekend ? ' reservation-table-weekend' : '' %}
+    {% set todayCss = col.date == 'now'|date('Y-m-d', 'UTC') ? ' lioc-calendar-today' : '' %}
     {% set holidayText = col.holidays|join('<br />') %}
     {% set entriesText = "" %}
     {% for entry in col.calendarEntries %}
@@ -67,22 +68,139 @@
     {% if holidayText|length == 0 and entriesText|length == 0 and col.newEntryUrl %}
         {# Nothing to show but the "add new" link - skip the popover
            step and let the cell link straight to the new-entry form. #}
-        <th class="text-center{{ weekendCss }}{{ headerCss }}" colspan="2" data-day="{{ col.date }}">
-            <a href="{{ col.newEntryUrl }}" class="text-reset text-decoration-none d-block js-calendar-entry-link" title="{{ 'calendar_entry.popover.new'|trans }}">{{ label }}</a>
+        <th class="text-center{{ weekendCss }}{{ todayCss }}{{ headerCss }}" colspan="2" data-day="{{ col.date }}">
+            <a href="{{ col.newEntryUrl }}" class="text-reset text-decoration-none d-block js-calendar-entry-link" title="{{ 'calendar_entry.popover.new'|trans }}"><span class="lioc-day-label">{{ label }}</span></a>
         </th>
     {% else %}
-        <th class="text-center{{ weekendCss }}{{ headerCss }}" colspan="2" data-day="{{ col.date }}"
+        <th class="text-center{{ weekendCss }}{{ todayCss }}{{ headerCss }}" colspan="2" data-day="{{ col.date }}"
             style="{{ calendar_accent_marker_style(col.accentColors) }}"
             {% if popoverText|length > 0 %}
                 data-bs-container="body" data-bs-toggle="popover" data-bs-placement="top"
                 data-bs-content="{{ popoverText }}" data-bs-trigger="{{ hasInteractiveContent ? 'click' : 'hover' }}" data-bs-html="true"
             {% endif %}
-        >{{ label }}</th>
+        ><span class="lioc-day-label">{{ label }}</span></th>
     {% endif %}
 {% endmacro %}
 {% import _self as calendarMacros %}
 
-<div class="table-responsive js-fit-vh" data-min-height="200">
+<div class="d-none" data-reservations-calendar-reminder-count="{{ calendarReminderCount|default(0) }}"></div>
+
+<header class="lioc-summary-row">
+    <h1>{{ 'reservation.overview.hero_prefix'|trans }}<span class="lioc-orange">.</span></h1>
+    <section class="lioc-metrics" aria-label="{{ 'reservation.overview.metrics.label'|trans }}">
+        {% set metrics = [
+            {label: 'reservation.overview.metrics.rooms', value: overview.roomCount},
+            {label: 'reservation.overview.metrics.in_house', value: overview.inHouseCount},
+            {label: 'reservation.overview.metrics.available', value: overview.availableCount},
+            {label: 'reservation.overview.metrics.arriving', value: overview.arrivingCount},
+        ] %}
+        {% for metric in metrics %}
+            <div class="lioc-metric">
+                <span class="lioc-metric-value">{{ metric.value }}</span>
+                <span class="lioc-metric-label">{{ metric.label|trans }}</span>
+            </div>
+        {% endfor %}
+    </section>
+    {% if is_granted('ROLE_RESERVATIONS') %}
+        <button type="button" class="btn lioc-new-reservation"
+                data-action="click->reservations#selectAppartmentAction"
+                data-reservations-create-new="true"
+                data-url="{{ path('reservations.select.appartment', {object: objectId}) }}"
+                data-bs-toggle="modal" data-bs-target="#modalCenter">
+            <span aria-hidden="true">+</span> {{ 'reservation.overview.new_reservation'|trans }}
+        </button>
+    {% endif %}
+</header>
+
+<div class="lioc-workspace">
+<section class="lioc-ledger" aria-labelledby="room-ledger-title">
+    <div class="lioc-ledger-toolbar">
+        <div class="lioc-ledger-heading">
+            <h2 id="room-ledger-title">{{ 'reservation.overview.ledger.title'|trans }}</h2>
+            <label for="lioc-location" class="visually-hidden">{{ 'reservation.overview.location'|trans }}</label>
+            <select id="lioc-location" name="object" class="form-select lioc-location-select"
+                    aria-label="{{ 'reservation.overview.location'|trans }}">
+                <option value="all"{% if objectId == 'all' %} selected{% endif %}>{{ 'reservation.objects.all'|trans }}</option>
+                {% for object in objects %}
+                    <option value="{{ object.id }}"{% if object.id == objectId %} selected{% endif %}>{{ object.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="lioc-calendar-controls">
+            <span class="lioc-ledger-month">{{ getLocalizedMonth(overview.date|date('n'), 'MMMM', app.request.locale) }} {{ overview.date|date('Y') }}</span>
+            <button type="button" class="lioc-icon-button js-shift-date" data-direction="backward"
+                    title="{{ 'button.back'|trans }}" aria-label="{{ 'button.back'|trans }}">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <button type="button" class="lioc-icon-button js-shift-date" data-direction="forward"
+                    title="{{ 'button.next'|trans }}" aria-label="{{ 'button.next'|trans }}">
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+            <button type="button" class="lioc-control-button" data-action="click->reservations#goToTodayAction">
+                {{ 'reservation.overview.today'|trans }}
+            </button>
+            <label for="start" class="visually-hidden">{{ 'reservation.startdate'|trans }}</label>
+            <input type="date" class="form-control lioc-date-control" id="start" name="start" value="{{ today|date('Y-m-d') }}">
+            <label for="ledger-range" class="visually-hidden">{{ 'reservation.overview.range'|trans }}</label>
+            <select id="ledger-range" name="interval" class="form-select lioc-range-control">
+                <option value="13"{% if interval == 13 %} selected{% endif %}>{{ 'reservation.overview.range_14'|trans }}</option>
+                <option value="29"{% if interval == 29 %} selected{% endif %}>{{ 'reservation.overview.range_30'|trans }}</option>
+                <option value="59"{% if interval == 59 %} selected{% endif %}>{{ 'reservation.overview.range_60'|trans }}</option>
+                {% if interval not in [13, 29, 59] %}
+                    <option value="{{ interval }}" selected>{{ 'reservation.overview.range_custom'|trans({'%count%': interval + 1}) }}</option>
+                {% endif %}
+            </select>
+            <button type="button" class="lioc-icon-button" title="{{ 'reservation.table.reload'|trans }}"
+                    aria-label="{{ 'reservation.table.reload'|trans }}"
+                    data-action="click->reservations#getNewTableAction" data-url="{{ path('reservations.get.table') }}">
+                <i class="fas fa-sync-alt" data-reservations-table-spinner></i>
+            </button>
+            {% include 'Reservations/reservation_table_settings.html.twig' %}
+        </div>
+    </div>
+
+    <div class="lioc-ledger-actions">
+        <div class="lioc-status-legend" aria-label="{{ 'reservation.overview.legend.label'|trans }}">
+            <span><i class="lioc-legend-swatch lioc-legend-swatch--checked-in"></i>{{ 'reservation.overview.legend.checked_in'|trans }}</span>
+            <span><i class="lioc-legend-swatch lioc-legend-swatch--confirmed"></i>{{ 'reservation.overview.legend.confirmed'|trans }}</span>
+            <span><i class="lioc-legend-swatch lioc-legend-swatch--request"></i>{{ 'reservation.overview.legend.request'|trans }}</span>
+            <span><i class="lioc-legend-swatch lioc-legend-swatch--maintenance"></i>{{ 'reservation.overview.legend.maintenance'|trans }}</span>
+        </div>
+        <div class="lioc-ledger-tools">
+            {% if is_granted('ROLE_RESERVATIONS') %}
+                <button type="button" class="lioc-text-button"
+                        data-action="click->reservations#openBlockFormAction"
+                        data-url="{{ path('reservations.blocks.form') }}">
+                    <i class="fas fa-ban"></i> {{ 'roomblock.title'|trans }}
+                </button>
+            {% endif %}
+            <button type="button" class="lioc-text-button"
+                    data-action="click->reservations#openBlockListAction"
+                    data-url="{{ path('reservations.blocks.list') }}">
+                <i class="fas fa-lock"></i> {{ 'roomblock.list.title'|trans }}
+            </button>
+            {% if conflictCount > 0 and is_granted('ROLE_RESERVATIONS') %}
+                <button type="button" class="lioc-text-button lioc-text-button--alert"
+                        data-action="click->reservations#openConflictsAction"
+                        data-url="{{ path('reservations.conflicts') }}"
+                        data-conflict-button>
+                    <i class="fas fa-triangle-exclamation"></i>
+                    {{ 'reservation.conflict.button'|trans }}
+                    <span data-conflict-count-badge>{{ conflictCount }}</span>
+                </button>
+            {% endif %}
+            <button type="button" class="lioc-text-button{{ calendarReminderCount > 0 ? '' : ' d-none' }}"
+                    data-action="click->reservations#openCalendarReminderAction"
+                    data-url="{{ path('reservations.calendar_reminder') }}"
+                    data-calendar-reminder-button>
+                <i class="fas fa-calendar-check"></i>
+                {{ 'reservation.calendar_reminder.button'|trans }}
+                <span data-calendar-reminder-count-badge>{{ calendarReminderCount }}</span>
+            </button>
+        </div>
+    </div>
+
+<div class="table-responsive lioc-ledger-scroll">
     <table class="table table-hover table-bordered table-reservation m-0 table-sticky mb-2" id="reservation-table"
            data-reservation-move-token="{{ csrf_token('reservation_move') }}"
            style="--reservation-name-col: {{ nameColumnChars }}ch; --reservation-day-count: {{ grid.dayColumns|length }};">
@@ -160,7 +278,8 @@
                 {% if row.isSubRow %}
                     <td></td>
                 {% else %}
-                    <td class="text-center room-info"
+                    {% set roomNumberParts = row.apartment.number|split('-') %}
+                    <td class="room-info"
                         data-bs-container="body" data-bs-toggle="popover" data-bs-placement="right"
                         data-bs-content="{{ roomInfo }}" data-bs-trigger="hover"
                     >
@@ -168,7 +287,11 @@
                             show: 'yearly',
                             apartmentId: row.apartment.id
                         }) }}" title="{{ 'reservation.table.view.yearly'|trans }}">
-                            {{ row.apartmentLabel }}
+                            <span class="lioc-room-number">{{ roomNumberParts|last }}</span>
+                            <span class="lioc-room-meta">
+                                <strong>{{ row.apartment.number }}</strong>
+                                <small>{{ row.apartment.roomCategory ? row.apartment.roomCategory.name : row.apartment.description }}</small>
+                            </span>
                         </a>
                     </td>
                 {% endif %}
@@ -181,7 +304,7 @@
                         <td class="reservation text-center cell-{{ cell.position }}{{ cell.startsAtDayBoundary ? ' day-start' : '' }}"
                             colspan="{{ cell.span }}"
                         >
-                            <div data-action="click->reservations#openReservationAction"
+                            <div data-action="click->reservations#openReservationAction keydown.enter->reservations#openReservationAction keydown.space->reservations#openReservationAction"
                                  data-reservation-id="{{ cell.reservationId }}"
                                  data-url="{{ path('reservations.get.reservation', {'id': cell.reservationId}) }}"
                                  {% if is_granted('ROLE_RESERVATIONS') %}
@@ -189,25 +312,33 @@
                                      data-move-url="{{ path('reservations.move', {'id': cell.reservationId}) }}"
                                      aria-description="{{ 'reservation.move.hint'|trans }}"
                                  {% endif %}
-                                 style="background-color: {{ cell.color }};{% if cell.originColor %} --feb-reservation-origin-color: {{ cell.originColor }};{% endif %} color: {{ cell.contrastColor }}"
-                                 class="reservation-inner text-center"
+                                 style="{% if cell.originColor %}--feb-reservation-origin-color: {{ cell.originColor }};{% endif %}"
+                                 class="reservation-inner"
+                                 role="button" tabindex="0"
+                                 data-reservation-state="{{ reservation.reservationStatus.name|default('')|lower }}"
+                                 aria-label="{{ cell.displayName }}, {{ reservation.reservationStatus|display_name }}, {{ reservation.startDate|date('d M') }}–{{ reservation.endDate|date('d M') }}"
                                  title="{{ block('popTitle') }}"
                                  data-bs-content="{{ block('popBody') }}"
-                            >{{ cell.displayName }}</div>
+                            >
+                                <span class="lioc-reservation-name">{{ cell.displayName }}</span>
+                                <span class="lioc-reservation-detail">{{ reservation.reservationStatus|display_name }} · {{ reservation.startDate|date('d M') }}–{{ reservation.endDate|date('d M') }}</span>
+                            </div>
                         </td>
                     {% elseif cell.type == 'blocked' %}
                         {# Blocked cell (room block / out of order) #}
                         <td class="td-blocked cell-{{ cell.position }}{{ cell.startsAtDayBoundary ? ' day-start' : '' }}" colspan="{{ cell.span }}">
                             <div class="blocked-inner"
-                                 data-action="click->reservations#openBlockAction"
+                                 data-action="click->reservations#openBlockAction keydown.enter->reservations#openBlockAction keydown.space->reservations#openBlockAction"
                                  data-url="{{ path('reservations.blocks.get', {'id': cell.blockId}) }}"
                                  data-bs-container="body" data-bs-toggle="popover" data-bs-placement="top"
                                  data-bs-trigger="hover" data-bs-content="{{ cell.displayName }}"
-                                 title="{{ cell.displayName }}"></div>
+                                 title="{{ cell.displayName }}" role="button" tabindex="0">
+                                <span>{{ cell.displayName ?: 'reservation.overview.legend.maintenance'|trans }}</span>
+                            </div>
                         </td>
                     {% else %}
                         {# Empty half-day cell #}
-                        <td class="td-empty td-half td-half-{{ cell.side }}{{ cell.startsAtDayBoundary ? ' day-start' : '' }}"
+                        <td class="td-empty td-half td-half-{{ cell.side }}{{ cell.startsAtDayBoundary ? ' day-start' : '' }}{{ cell.date|date('N') >= 6 ? ' reservation-table-weekend' : '' }}{{ cell.date == 'now'|date('Y-m-d', 'UTC') and cell.startsAtDayBoundary ? ' lioc-today-line' : '' }}"
                             data-day="{{ cell.date }}" data-appartment="{{ row.apartment.id }}"
                             data-tdnumber="{{ emptyTdNr }}"
                         ></td>
@@ -219,3 +350,9 @@
         </tbody>
     </table>
 </div>
+</section>
+
+{% include 'Reservations/_daily_briefing.html.twig' %}
+</div>
+
+{% include 'Reservations/_handover.html.twig' %}

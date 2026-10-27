@@ -177,6 +177,8 @@ class GdprTemplatePreviewProvider implements ITemplatePreviewProvider
             'lastname' => 'Mustermann',
             'birthday' => new \DateTime('1985-03-19'),
             'remarkF' => 'Beispielkunde fuer die DSGVO-Vorschau',
+            'dietaryPreference' => 'Vegetarisch',
+            'dietaryNotes' => 'Beispielhinweis',
             'customerAddresses' => [
                 [
                     'type' => 'private',

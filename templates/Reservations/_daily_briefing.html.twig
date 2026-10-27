@@ -1,0 +1,56 @@
+<aside class="lioc-briefing" aria-labelledby="daily-briefing-title">
+    <div class="lioc-date-lockup">
+        <span class="lioc-date-number">{{ overview.date|date('d') }}</span>
+        <span class="lioc-date-copy">
+            <strong>{{ weekdayLabels[overview.date|date('N')] }}</strong>
+            <span>{{ getLocalizedMonth(overview.date|date('n'), 'MMMM', app.request.locale) }} {{ overview.date|date('Y') }}</span>
+        </span>
+    </div>
+
+    <section class="lioc-briefing-section" aria-labelledby="daily-briefing-title">
+        <h3 id="daily-briefing-title">{{ 'reservation.overview.briefing.arrivals'|trans }}</h3>
+        {% if overview.arrivals is empty %}
+            <p class="lioc-empty-state">{{ 'reservation.overview.briefing.no_arrivals'|trans }}</p>
+        {% else %}
+            <div class="lioc-arrival-list">
+                {% for arrival in overview.arrivals %}
+                    <button type="button" class="lioc-arrival"
+                            data-action="click->reservations#openReservationAction"
+                            data-reservation-id="{{ arrival.reservationId }}"
+                            data-url="{{ path('reservations.get.reservation', {id: arrival.reservationId}) }}">
+                        <span class="lioc-arrival-time">{{ 'reservation.overview.briefing.arriving'|trans }}</span>
+                        <span class="lioc-arrival-main">
+                            <strong>{{ arrival.guestName ?: 'reservation.overview.unnamed_guest'|trans }}</strong>
+                            <span>{{ arrival.roomNumber }} · {{ 'reservation.overview.guests_count'|trans({'%count%': arrival.guestCount}) }}</span>
+                        </span>
+                        <span class="lioc-status-pill">{{ arrival.statusName }}</span>
+                    </button>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="lioc-briefing-section lioc-housekeeping" aria-labelledby="housekeeping-title">
+        <h3 id="housekeeping-title">{{ 'reservation.overview.briefing.housekeeping'|trans }}</h3>
+        {% if overview.housekeepingRooms is empty %}
+            <p class="lioc-empty-state">{{ 'reservation.overview.briefing.no_rooms'|trans }}</p>
+        {% else %}
+            <ul class="lioc-housekeeping-list">
+                {% for room in overview.housekeepingRooms %}
+                    {% set state = room.housekeepingStatus ?: room.occupancyType %}
+                    {% set stateKey = room.housekeepingStatus
+                        ? 'housekeeping.status.' ~ room.housekeepingStatus|lower
+                        : 'housekeeping.occupancy.' ~ room.occupancyType|lower %}
+                    <li>
+                        <span class="lioc-room-dot lioc-room-dot--{{ state|lower|replace({'_': '-'}) }}" aria-hidden="true"></span>
+                        <span class="lioc-housekeeping-room">
+                            <strong>{{ room.roomNumber }}</strong>
+                            <span>{{ room.roomType }}</span>
+                        </span>
+                        <span class="lioc-housekeeping-state">{{ stateKey|trans({}, 'Housekeeping') }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </section>
+</aside>

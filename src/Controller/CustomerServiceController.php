@@ -291,6 +291,14 @@ class CustomerServiceController extends AbstractController
         $templateId = $defaultTemplate->getId();
 
         $templateOutput = $ts->renderTemplate($templateId, $customer);
+        if (null !== $customer->getDietaryPreference() || null !== $customer->getDietaryNotes()) {
+            // Include these fields even when an older, user-edited GDPR template does not contain them.
+            $dietaryDetails = $this->renderView('Customers/_gdpr_dietary.html.twig', ['customer' => $customer]);
+            $bodyEnd = strripos($templateOutput, '</body>');
+            $templateOutput = false === $bodyEnd
+                ? $templateOutput.$dietaryDetails
+                : substr_replace($templateOutput, $dietaryDetails, $bodyEnd, 0);
+        }
 
         $template = $em->getRepository(Template::class)->find($templateId);
 

@@ -48,3 +48,18 @@ body {
     background-color: #bfe5dc !important;
     color: #00ac69 !important;
 }
+
+.logo-icon-stack.logo-full {
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    background-color: transparent !important;
+}
+
+.logo-icon-stack.logo-full img {
+    display: block;
+    width: auto;
+    max-width: 9rem;
+    max-height: 7rem;
+    object-fit: contain;
+}
