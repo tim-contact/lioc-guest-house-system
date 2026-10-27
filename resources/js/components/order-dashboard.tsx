@@ -30,6 +30,7 @@ export interface OrderRow {
     vessel_id?: string | null;
     barge_id?: string | null;
     barge_name?: string | null;
+    delivery_location?: string | null;
     customer_name: string | null;
     port: string | null;
     pic?: string | null;
@@ -287,6 +288,10 @@ function PortTable<T extends OrderRow>({
         ? [
               ...baseColumns.slice(0, 2),
               { header: 'Barge', sortKey: 'barge_name' },
+              {
+                  header: 'Supply Location',
+                  sortKey: 'delivery_location',
+              },
               ...baseColumns.slice(2),
           ]
         : baseColumns;
@@ -343,9 +348,14 @@ function PortTable<T extends OrderRow>({
                                 </div>
                             </TableCell>
                             {showOperationsDetails && (
-                                <TableCell className="px-3 py-3 text-[#334155]">
-                                    {row.barge_name ?? row.barge_id ?? '-'}
-                                </TableCell>
+                                <>
+                                    <TableCell className="px-3 py-3 text-[#334155]">
+                                        {row.barge_name ?? row.barge_id ?? '-'}
+                                    </TableCell>
+                                    <TableCell className="px-3 py-3 text-[#334155]">
+                                        {row.delivery_location ?? '-'}
+                                    </TableCell>
+                                </>
                             )}
                             <TableCell className="px-3 py-3 text-[#334155]">
                                 {picLabel(row)}

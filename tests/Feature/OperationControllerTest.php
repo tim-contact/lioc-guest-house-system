@@ -20,11 +20,17 @@ test('guests are redirected from the operations page', function () {
 test('index exposes barge, agency and PIC options alongside the edit fields', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 
-    Port::factory()->create(['name' => 'Dynamic Operations Port']);
+    $port = Port::factory()->create(['name' => 'Dynamic Operations Port']);
+    $supplyLocation = SupplyLocation::factory()->create([
+        'port_id' => $port->id,
+        'name' => 'INNER ANCHORAGE',
+    ]);
     AgentPic::factory()->create();
 
     Order::factory()->create([
         'order_number' => 'ORD-OPS',
+        'port_id' => $port->id,
+        'delivery_location_id' => $supplyLocation->id,
         'agent_name' => 'Direct Agent',
         'delivery_mode' => DeliveryMode::Pipeline,
         'product_type' => ProductType::Bonded,
@@ -47,7 +53,7 @@ test('index exposes barge, agency and PIC options alongside the edit fields', fu
             ->where('pendingOrders.0.compliance_checked', true)
             ->where('pendingOrders.0.nomination_received', false)
             ->has('pendingOrders.0.agent_pic_id')
-            ->has('pendingOrders.0.delivery_location')
+            ->where('pendingOrders.0.delivery_location', 'INNER ANCHORAGE')
             ->has('pendingOrders.0.mgo_final_qty'));
 });
 
