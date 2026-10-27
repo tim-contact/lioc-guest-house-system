@@ -44,6 +44,7 @@ interface OperationsDashboardProps {
     pendingOrders: OpsEditRow[];
     completedOrders: OpsEditRow[];
     summaryPendingOrders: OpsEditRow[];
+    summaryNextMonthPendingOrders: OpsEditRow[];
     summaryCompletedOrders: OpsEditRow[];
     ports: string[];
     barges: BargeOption[];
@@ -89,6 +90,7 @@ export default function OperationsDashboard({
     pendingOrders,
     completedOrders,
     summaryPendingOrders,
+    summaryNextMonthPendingOrders,
     summaryCompletedOrders,
     ports,
     barges,
@@ -129,6 +131,10 @@ export default function OperationsDashboard({
         () => filterPortScopedRows(summaryPendingOrders, filters),
         [filters, summaryPendingOrders],
     );
+    const filteredSummaryNextMonthPendingOrders = useMemo(
+        () => filterPortScopedRows(summaryNextMonthPendingOrders, filters),
+        [filters, summaryNextMonthPendingOrders],
+    );
     const filteredSummaryCompletedOrders = useMemo(
         () => filterPortScopedRows(summaryCompletedOrders, filters),
         [filters, summaryCompletedOrders],
@@ -152,6 +158,9 @@ export default function OperationsDashboard({
                     <PortSummaryCards
                         ports={visiblePorts}
                         pendingOrders={filteredSummaryPendingOrders}
+                        nextMonthPendingOrders={
+                            filteredSummaryNextMonthPendingOrders
+                        }
                         completedOrders={filteredSummaryCompletedOrders}
                     />
 

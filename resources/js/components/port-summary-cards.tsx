@@ -167,10 +167,12 @@ function CommandSummaryStats({
 export function PortSummaryCards({
     ports,
     pendingOrders,
+    nextMonthPendingOrders,
     completedOrders,
 }: {
     ports: string[];
     pendingOrders: OrderRow[];
+    nextMonthPendingOrders: OrderRow[];
     completedOrders: OrderRow[];
 }) {
     const total = {
@@ -182,6 +184,10 @@ export function PortSummaryCards({
         label: port,
         pending: summarise(
             pendingOrders.filter((order) => order.port === port),
+            'ordered',
+        ),
+        nextMonthPending: summarise(
+            nextMonthPendingOrders.filter((order) => order.port === port),
             'ordered',
         ),
         completed: summarise(
@@ -227,6 +233,7 @@ export function PortSummaryCards({
                 {byPort.map((summary) => {
                     const hasActivity =
                         summary.pending.count > 0 ||
+                        summary.nextMonthPending.count > 0 ||
                         summary.completed.count > 0;
 
                     return (
@@ -304,6 +311,11 @@ export function PortSummaryCards({
                                             label="Completed"
                                             summary={summary.completed}
                                             tone="completed"
+                                        />
+                                        <CompactStatusRow
+                                            label="Next Month"
+                                            summary={summary.nextMonthPending}
+                                            tone="pending"
                                         />
                                     </TableBody>
                                 </Table>

@@ -230,6 +230,8 @@ test('sales and operations summaries use pending fallbacks and BDN completion da
             ->has('pendingOrders', 4)
             ->has('completedOrders', 4)
             ->has('summaryPendingOrders', 2)
+            ->has('summaryNextMonthPendingOrders', 1)
+            ->where('summaryNextMonthPendingOrders.0.vessel_name', 'MV Pending Next Month')
             ->where('summaryPendingOrders', fn ($orders): bool => collect($orders)
                 ->pluck('vessel_name')
                 ->sort()
@@ -249,6 +251,37 @@ test('sales and operations summaries use pending fallbacks and BDN completion da
                     && $rows['MV Completed By Hose']['delivery_date'] === now()->subDays(2)->toDateString()
                     && $rows['MV Completed By Delivery Fallback']['delivery_date'] === now()->subDay()->toDateString();
             }));
+})->with(['sales' => 'orders', 'operations' => 'operations']);
+
+test('next month pending summary uses ETA or laycan across the year boundary', function (string $routeName) {
+    $this->travelTo(now()->setDate(2026, 12, 31)->setTime(12, 0));
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    foreach ([
+        ['Start ETA', '2027-01-01 00:00:00', null],
+        ['End ETA', '2027-01-31 23:59:59', null],
+        ['Laycan fallback', null, '2027-01-15'],
+        ['ETA takes precedence', '2026-12-31 12:00:00', '2027-01-15'],
+        ['Following month', '2027-02-01 00:00:00', null],
+        ['No date', null, null],
+    ] as [$name, $eta, $laycanFrom]) {
+        createOrder([
+            'vessel_name' => $name,
+            'eta' => $eta,
+            'laycan_from' => $laycanFrom,
+            'vlsfo_quantity_high' => 250,
+        ]);
+    }
+
+    $this->get(route($routeName))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('summaryNextMonthPendingOrders', 3)
+            ->where('summaryNextMonthPendingOrders', fn ($orders): bool => collect($orders)
+                ->pluck('vessel_name')
+                ->sort()
+                ->values()
+                ->all() === ['End ETA', 'Laycan fallback', 'Start ETA'])
+            ->where('summaryNextMonthPendingOrders.0.vlsfo_quantity_high', '250.000'));
 })->with(['sales' => 'orders', 'operations' => 'operations']);
 
 test('old delivered orders stay on the completed list while a dispute is open', function () {

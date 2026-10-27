@@ -47,6 +47,7 @@ interface OrdersDashboardProps {
     pendingOrders: OrderEditRow[];
     completedOrders: OrderEditRow[];
     summaryPendingOrders: OrderEditRow[];
+    summaryNextMonthPendingOrders: OrderEditRow[];
     summaryCompletedOrders: OrderEditRow[];
     customers: CustomerOption[];
     ports: PortOption[];
@@ -96,6 +97,7 @@ export default function OrdersDashboard({
     pendingOrders,
     completedOrders,
     summaryPendingOrders,
+    summaryNextMonthPendingOrders,
     summaryCompletedOrders,
     customers,
     ports,
@@ -150,6 +152,7 @@ export default function OrdersDashboard({
                 <PortSummaryCards
                     ports={portNames}
                     pendingOrders={summaryPendingOrders}
+                    nextMonthPendingOrders={summaryNextMonthPendingOrders}
                     completedOrders={summaryCompletedOrders}
                 />
             </div>

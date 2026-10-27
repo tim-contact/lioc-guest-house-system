@@ -18,6 +18,8 @@ class OperationController extends Controller
     {
         $monthStart = now()->startOfMonth();
         $monthEnd = now()->endOfMonth();
+        $nextMonthStart = $monthStart->copy()->addMonthNoOverflow();
+        $nextMonthEnd = $nextMonthStart->copy()->endOfMonth();
         $mapOrder = fn (Order $order): array => [
             ...OrderService::toRow($order),
             'product_type' => $order->product_type?->value,
@@ -41,6 +43,10 @@ class OperationController extends Controller
             'completedOrders' => $completedOrders->map($mapOrder),
             'summaryPendingOrders' => $pendingOrders
                 ->filter(fn (Order $order): bool => ($order->eta ?? $order->laycan_from)?->betweenIncluded($monthStart, $monthEnd) === true)
+                ->map($mapOrder)
+                ->values(),
+            'summaryNextMonthPendingOrders' => $pendingOrders
+                ->filter(fn (Order $order): bool => ($order->eta ?? $order->laycan_from)?->betweenIncluded($nextMonthStart, $nextMonthEnd) === true)
                 ->map($mapOrder)
                 ->values(),
             'summaryCompletedOrders' => $completedOrders
