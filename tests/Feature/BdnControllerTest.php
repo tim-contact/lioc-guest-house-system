@@ -22,6 +22,27 @@ test('guests are redirected from the bdns page', function () {
     $this->get(route('bdns.index'))->assertRedirect(route('login'));
 });
 
+test('bdn export includes all matching deliveries and applies vessel search', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    foreach (range(1, 26) as $index) {
+        $order = Order::factory()->create(['vessel_name' => 'Export Vessel']);
+        Bdn::factory()->create(['order_id' => $order->id, 'delivery_date' => '2026-10-15']);
+    }
+    $other = Order::factory()->create(['vessel_name' => 'Other Vessel']);
+    Bdn::factory()->create(['order_id' => $other->id, 'delivery_date' => '2026-10-15']);
+
+    $this->getJson(route('bdns.export', ['date_from' => '2026-10-01', 'date_to' => '2026-10-31', 'vessel' => 'Export']))
+        ->assertOk()->assertJsonCount(26, 'rows');
+});
+
+test('unassigned surveyors cannot export other deliveries', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Surveyor]));
+    Bdn::factory()->create(['delivery_date' => '2026-10-15']);
+
+    $this->getJson(route('bdns.export', ['date_from' => '2026-10-01', 'date_to' => '2026-10-31']))
+        ->assertOk()->assertJsonCount(0, 'rows');
+});
+
 test('index lists bdns with their order, agent and barge details', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 

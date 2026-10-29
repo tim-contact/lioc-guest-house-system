@@ -9,6 +9,7 @@ use App\Enums\ProposedActionPlan;
 use App\Models\Dispute;
 use App\Models\Order;
 use App\Services\DisputeService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -32,6 +33,20 @@ class DisputeController extends Controller
             'disputes' => $this->rows(),
             ...$this->enumOptionProps(),
         ]);
+    }
+
+    public function export(Request $request): JsonResponse
+    {
+        $dates = $request->validate([
+            'date_from' => ['required', 'date_format:Y-m-d'],
+            'date_to' => ['required', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+        ]);
+
+        return response()->json(['rows' => Dispute::with('order.customer', 'order.port', 'order.deliveryLocation')
+            ->whereDate('created_at', '>=', $dates['date_from'])
+            ->whereDate('created_at', '<=', $dates['date_to'])
+            ->latest()->get()
+            ->map(fn (Dispute $dispute): array => DisputeService::toRow($dispute, $dispute->order))->values()]);
     }
 
     public function store(Request $request, Order $order): RedirectResponse

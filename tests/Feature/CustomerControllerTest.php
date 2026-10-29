@@ -7,6 +7,15 @@ use App\Models\Order;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
+test('customer export filters by customer creation date', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    Customer::factory()->create(['created_at' => '2026-10-15 12:00:00']);
+    Customer::factory()->create(['created_at' => '2026-09-15 12:00:00']);
+
+    $this->getJson(route('customers.export', ['date_from' => '2026-10-01', 'date_to' => '2026-10-31']))
+        ->assertOk()->assertJsonCount(1, 'rows');
+});
+
 test('guests are redirected from the customers page', function () {
     $this->get(route('customers.index'))->assertRedirect(route('login'));
 });

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\PaymentType;
 use App\Models\Payment;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -12,7 +13,7 @@ use Inertia\Response;
 
 class PaymentController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request): Response|JsonResponse
     {
         $perPage = (int) $request->input('per_page', 25);
         $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 25;
@@ -25,7 +26,7 @@ class PaymentController extends Controller
             $direction = 'desc';
         }
 
-        $payments = Payment::with(['order.customer', 'order.port'])
+        $query = Payment::with(['order.customer', 'order.port'])
             ->select('payments.*')
             ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
                 $searchPattern = "%{$search}%";
@@ -36,19 +37,32 @@ class PaymentController extends Controller
                         ->whereRaw('LOWER(vessel_name) LIKE ?', [$searchPattern])
                         ->orWhereHas('customer', fn ($customer) => $customer->whereRaw('LOWER(name) LIKE ?', [$searchPattern])));
             }))
-            ->tap(fn (Builder $query) => self::applySort($query, $sortKey, $direction))
-            ->paginate($perPage)
-            ->withQueryString()
-            ->through(fn (Payment $payment): array => [
-                'id' => $payment->id,
-                'order_number' => $payment->order_number,
-                'customer_name' => $payment->order?->customer?->name,
-                'vessel_name' => $payment->order?->vessel_name,
-                'port_name' => $payment->order?->port?->name,
-                'amount' => $payment->amount,
-                'date' => $payment->date?->toDateString(),
-                'type' => $payment->type->value,
+            ->tap(fn (Builder $query) => self::applySort($query, $sortKey, $direction));
+
+        $toRow = fn (Payment $payment): array => [
+            'id' => $payment->id,
+            'order_number' => $payment->order_number,
+            'customer_name' => $payment->order?->customer?->name,
+            'vessel_name' => $payment->order?->vessel_name,
+            'port_name' => $payment->order?->port?->name,
+            'amount' => $payment->amount,
+            'date' => $payment->date?->toDateString(),
+            'type' => $payment->type->value,
+        ];
+
+        if ($request->routeIs('payments.export')) {
+            $dates = $request->validate([
+                'date_from' => ['required', 'date_format:Y-m-d'],
+                'date_to' => ['required', 'date_format:Y-m-d', 'after_or_equal:date_from'],
             ]);
+
+            return response()->json(['rows' => $query->whereHas('order.bdn', fn (Builder $bdn) => $bdn
+                ->whereDate('delivery_date', '>=', $dates['date_from'])
+                ->whereDate('delivery_date', '<=', $dates['date_to']))
+                ->get()->map($toRow)->values()]);
+        }
+
+        $payments = $query->paginate($perPage)->withQueryString()->through($toRow);
 
         return Inertia::render('payments/index', [
             'payments' => $payments,

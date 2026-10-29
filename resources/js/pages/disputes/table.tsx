@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { CrudColumn, CrudConfig } from '@/components/crud/crud-types';
 import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
+import { DateRangeExport } from '@/components/date-range-export';
 import { DisputeEditDialog } from '@/components/dispute-edit-dialog';
 import type { DisputeRow } from '@/components/dispute-edit-dialog';
 import { Button } from '@/components/ui/button';
@@ -74,6 +75,14 @@ export default function DisputesTable({
         canEdit: false,
         canDelete: false,
         exportColumns,
+        exportControl: (
+            <DateRangeExport
+                url="/disputes/all/export"
+                columns={exportColumns}
+                filename="disputes"
+                dateLabel="dispute creation date"
+            />
+        ),
         rowActions: (dispute) => (
             <Button
                 variant="outline"

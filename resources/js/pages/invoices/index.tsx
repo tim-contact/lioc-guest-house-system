@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import type { CrudConfig } from '@/components/crud/crud-types';
 import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
+import { DateRangeExport } from '@/components/date-range-export';
 import type { PaginationMeta } from '@/components/pagination-controls';
 import type { SortDir } from '@/hooks/use-sortable';
 import type { ExportColumn } from '@/lib/export-xlsx';
@@ -61,6 +62,14 @@ const config: CrudConfig<Invoice> = {
     canCreate: false,
     canDelete: false,
     exportColumns: invoiceColumns,
+    exportControl: (
+        <DateRangeExport
+            url="/invoices/export"
+            columns={invoiceColumns}
+            filename="invoices"
+            dateLabel="delivery date"
+        />
+    ),
     editTitle: (invoice) => invoice.order_number ?? 'Invoice',
     columns: [
         {

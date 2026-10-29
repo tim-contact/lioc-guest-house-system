@@ -219,6 +219,16 @@ test('finance dashboard paginates completed orders', function () {
             ->where('completedOrders.data.0.order_number', 'ORD-FIN-026'));
 });
 
+test('finance export applies the current vessel search', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Finance]));
+    Order::factory()->create(['status' => OrderStatus::Delivered, 'vessel_name' => 'MV Searchable']);
+    Order::factory()->create(['status' => OrderStatus::Delivered, 'vessel_name' => 'MV Other']);
+
+    $this->getJson(route('finance.export', ['search' => 'searchable']))
+        ->assertOk()->assertJsonCount(1, 'rows')
+        ->assertJsonPath('rows.0.vessel_name', 'MV Searchable');
+});
+
 test('finance export returns all matching rows filtered by order and eta date ranges', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::Finance]));
 

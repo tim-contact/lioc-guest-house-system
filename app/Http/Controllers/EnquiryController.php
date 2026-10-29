@@ -20,6 +20,7 @@ use App\Models\Order;
 use App\Models\Port;
 use App\Services\CreditService;
 use App\Services\OrderService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -178,6 +179,26 @@ class EnquiryController extends Controller
             'productTypeOptions' => $this->enumOptions(ProductType::cases()),
             'deliveryModeOptions' => $this->enumOptions(DeliveryMode::cases()),
         ]);
+    }
+
+    public function export(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'date_from' => ['required', 'date_format:Y-m-d'],
+            'date_to' => ['required', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+        ]);
+
+        $rows = Enquiry::with('supplyLocation')
+            ->whereDate('created_at', '>=', $validated['date_from'])
+            ->whereDate('created_at', '<=', $validated['date_to'])
+            ->latest()
+            ->get()
+            ->map(fn (Enquiry $enquiry): array => [
+                ...$enquiry->toArray(),
+                'supply_location' => $enquiry->supplyLocation?->name,
+            ]);
+
+        return response()->json(['rows' => $rows]);
     }
 
     public function editStore(Request $request): RedirectResponse

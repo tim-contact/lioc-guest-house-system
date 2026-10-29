@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -11,7 +12,7 @@ use Inertia\Response;
 
 class InvoiceController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request): Response|JsonResponse
     {
         $perPage = (int) $request->input('per_page', 25);
         $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 25;
@@ -23,24 +24,37 @@ class InvoiceController extends Controller
             $direction = 'asc';
         }
 
-        $invoices = Order::with('customer')
+        $query = Order::with('customer')
             ->select('orders.*')
             ->whereNotNull('invoice_date')
-            ->tap(fn (Builder $query) => self::applySort($query, $sortKey, $direction))
-            ->paginate($perPage)
-            ->withQueryString()
-            ->through(fn (Order $order): array => [
-                'id' => $order->id,
-                'order_number' => $order->order_number,
-                'customer_name' => $order->customer?->name,
-                'vessel_name' => $order->vessel_name,
-                'invoice_value' => $order->invoice_value,
-                'invoice_date' => $order->invoice_date,
-                'payment_due_date' => $order->payment_due_date,
-                'amount_received' => $order->amount_received,
-                'balance_amount' => $order->balance_amount,
-                'status' => $order->status->label(),
+            ->tap(fn (Builder $query) => self::applySort($query, $sortKey, $direction));
+
+        $toRow = fn (Order $order): array => [
+            'id' => $order->id,
+            'order_number' => $order->order_number,
+            'customer_name' => $order->customer?->name,
+            'vessel_name' => $order->vessel_name,
+            'invoice_value' => $order->invoice_value,
+            'invoice_date' => $order->invoice_date,
+            'payment_due_date' => $order->payment_due_date,
+            'amount_received' => $order->amount_received,
+            'balance_amount' => $order->balance_amount,
+            'status' => $order->status->label(),
+        ];
+
+        if ($request->routeIs('invoices.export')) {
+            $dates = $request->validate([
+                'date_from' => ['required', 'date_format:Y-m-d'],
+                'date_to' => ['required', 'date_format:Y-m-d', 'after_or_equal:date_from'],
             ]);
+
+            return response()->json(['rows' => $query->whereHas('bdn', fn (Builder $bdn) => $bdn
+                ->whereDate('delivery_date', '>=', $dates['date_from'])
+                ->whereDate('delivery_date', '<=', $dates['date_to']))
+                ->get()->map($toRow)->values()]);
+        }
+
+        $invoices = $query->paginate($perPage)->withQueryString()->through($toRow);
 
         return Inertia::render('invoices/index', [
             'invoices' => $invoices,

@@ -50,14 +50,17 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
 
         // Enquiry edit (admin).
         Route::get('enquiries/edit', [EnquiryController::class, 'edit'])->name('enquiries.edit');
+        Route::get('enquiries/edit/export', [EnquiryController::class, 'export'])->name('enquiries.edit.export');
         Route::post('enquiries/edit', [EnquiryController::class, 'editStore'])->name('enquiries.edit.store');
         Route::patch('enquiries/edit/{enquiry}', [EnquiryController::class, 'editUpdate'])->name('enquiries.edit.update');
         Route::delete('enquiries/edit/{enquiry}', [EnquiryController::class, 'destroy'])->name('enquiries.edit.destroy');
 
         // Dispute table (all disputes).
         Route::get('disputes/all', [DisputeController::class, 'table'])->name('disputes.table');
+        Route::get('disputes/all/export', [DisputeController::class, 'export'])->name('disputes.table.export');
 
         // CRUD management.
+        Route::get('customers/export', [CustomerController::class, 'export'])->name('customers.export');
         Route::resource('customers', CustomerController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('ports', PortController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::post('ports/{port}/supply-locations', [SupplyLocationController::class, 'store'])->name('ports.supply-locations.store');
@@ -109,6 +112,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::patch('surveyor/{order}/complete', [SurveyingController::class, 'complete'])->name('surveyor.complete');
         Route::put('surveyor/{order}/bdn', [BdnController::class, 'update'])->name('surveyor.bdn.update');
         Route::get('bdns', [BdnController::class, 'index'])->name('bdns.index');
+        Route::get('bdns/export', [BdnController::class, 'index'])->name('bdns.export');
     });
 
     Route::get('bdns/{order}/ebdn', [BdnController::class, 'ebdn'])
@@ -123,10 +127,12 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::post('finance/{order}/payments', [FinanceController::class, 'storePayment'])->name('finance.payments.store');
         Route::patch('finance/{order}/close', [FinanceController::class, 'close'])->name('finance.close');
         Route::resource('payments', PaymentController::class)->only(['index', 'update', 'destroy']);
+        Route::get('payments/export', [PaymentController::class, 'index'])->name('payments.export');
     });
 
     Route::middleware('role:super_admin,master')->group(function () {
         Route::resource('invoices', InvoiceController::class)->only(['index', 'update'])->parameters(['invoices' => 'order']);
+        Route::get('invoices/export', [InvoiceController::class, 'index'])->name('invoices.export');
     });
 });
 

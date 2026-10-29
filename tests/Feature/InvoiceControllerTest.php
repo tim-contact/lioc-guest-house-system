@@ -12,6 +12,19 @@ test('guests are redirected from the invoices page', function () {
     $this->get(route('invoices.index'))->assertRedirect(route('login'));
 });
 
+test('invoice export filters by BDN delivery date across all pages', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    foreach (range(1, 26) as $index) {
+        $order = Order::factory()->create(['invoice_date' => '2026-09-01']);
+        $order->bdn()->create(['delivery_date' => '2026-10-15']);
+    }
+    $other = Order::factory()->create(['invoice_date' => '2026-10-15']);
+    $other->bdn()->create(['delivery_date' => '2026-09-15']);
+
+    $this->getJson(route('invoices.export', ['date_from' => '2026-10-01', 'date_to' => '2026-10-31']))
+        ->assertOk()->assertJsonCount(26, 'rows');
+});
+
 test('index lists only orders that have been invoiced', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 

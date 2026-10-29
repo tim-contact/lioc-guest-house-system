@@ -621,6 +621,7 @@ export default function FinanceDashboard({
             <FinanceExportDialog
                 open={exportDialogOpen}
                 onOpenChange={setExportDialogOpen}
+                search={filters.search}
             />
         </>
     );
@@ -649,9 +650,11 @@ interface ExportFilters {
 function FinanceExportDialog({
     open,
     onOpenChange,
+    search,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    search: string;
 }) {
     const [filters, setFilters] = useState<ExportFilters>({
         order_date_from: '',
@@ -672,6 +675,7 @@ function FinanceExportDialog({
         setExporting(true);
 
         const params = new URLSearchParams();
+        if (search) params.set('search', search);
 
         Object.entries(filters).forEach(([key, value]) => {
             if (value) {

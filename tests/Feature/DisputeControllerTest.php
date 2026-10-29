@@ -17,6 +17,15 @@ test('guests are redirected from the disputes page', function () {
     $this->get(route('disputes'))->assertRedirect(route('login'));
 });
 
+test('dispute export filters by dispute creation date', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+    Dispute::factory()->create(['created_at' => '2026-10-15 12:00:00']);
+    Dispute::factory()->create(['created_at' => '2026-09-15 12:00:00']);
+
+    $this->getJson(route('disputes.table.export', ['date_from' => '2026-10-01', 'date_to' => '2026-10-31']))
+        ->assertOk()->assertJsonCount(1, 'rows');
+});
+
 test('index renders disputes with their order details', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 

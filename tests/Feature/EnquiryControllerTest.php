@@ -24,6 +24,28 @@ test('guests are redirected from the enquiries page', function () {
     $this->get(route('enquiries.index'))->assertRedirect(route('login'));
 });
 
+test('enquiry export returns all records in the date range regardless of pagination', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
+
+    Enquiry::factory()->count(30)->create(['created_at' => '2026-10-15 12:00:00']);
+    Enquiry::factory()->create(['created_at' => '2026-11-01 00:00:00']);
+
+    $this->getJson(route('enquiries.edit.export', ['date_from' => '2026-10-01', 'date_to' => '2026-10-31']))
+        ->assertOk()
+        ->assertJsonCount(30, 'rows');
+
+    $this->get(route('enquiries.edit.export', ['date_from' => '2026-11-01', 'date_to' => '2026-10-01']))
+        ->assertRedirect()
+        ->assertSessionHasErrors('date_to');
+});
+
+test('enquiry export is restricted to administrators', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Sales]));
+
+    $this->getJson(route('enquiries.edit.export', ['date_from' => '2026-10-01', 'date_to' => '2026-10-31']))
+        ->assertRedirect();
+});
+
 test('index lists enquiries with their customers and product details', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 

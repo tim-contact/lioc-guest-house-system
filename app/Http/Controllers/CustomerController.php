@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\EnquiryCustomer;
 use App\Models\Order;
 use Closure;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,20 @@ class CustomerController extends Controller
                 'contact_person', 'contact_phone', 'mail_id', 'invoice_mail_ids',
             ]),
         ]);
+    }
+
+    public function export(Request $request): JsonResponse
+    {
+        $dates = $request->validate([
+            'date_from' => ['required', 'date_format:Y-m-d'],
+            'date_to' => ['required', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+        ]);
+
+        return response()->json(['rows' => Customer::query()
+            ->whereDate('created_at', '>=', $dates['date_from'])
+            ->whereDate('created_at', '<=', $dates['date_to'])
+            ->orderBy('name')
+            ->get(['sap_id', 'name', 'address', 'credit_limit', 'country', 'account_type', 'contact_person', 'contact_phone', 'mail_id', 'invoice_mail_ids'])]);
     }
 
     public function store(Request $request): RedirectResponse

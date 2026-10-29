@@ -1,7 +1,10 @@
 import type { CrudConfig } from '@/components/crud/crud-types';
 import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
+import { ExportButton } from '@/components/export-button';
+import { Input } from '@/components/ui/input';
 import type { ExportColumn } from '@/lib/export-xlsx';
 import { formatMoney } from '@/lib/utils';
+import { useState } from 'react';
 
 // ---- Shape of one customer, matching what CreditManagementController@index sends ----
 interface Customer {
@@ -82,7 +85,59 @@ const config: CrudConfig<Customer> = {
 };
 
 export default function CreditManagement({ customers }: CreditManagementProps) {
-    return <ResourceCrudPage rows={customers} config={config} />;
+    const [minimum, setMinimum] = useState('');
+    const [maximum, setMaximum] = useState('');
+    const invalidRange =
+        minimum !== '' && maximum !== '' && Number(minimum) > Number(maximum);
+    const exportRows = customers.filter((customer) => {
+        const limit = Number(customer.credit_limit);
+
+        return (
+            Number.isFinite(limit) &&
+            (minimum === '' || limit >= Number(minimum)) &&
+            (maximum === '' || limit <= Number(maximum))
+        );
+    });
+
+    return (
+        <ResourceCrudPage
+            rows={customers}
+            config={{
+                ...config,
+                exportControl: (
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                        <Input
+                            type="number"
+                            aria-label="Minimum credit limit"
+                            placeholder="Min credit limit"
+                            className="w-36"
+                            value={minimum}
+                            onChange={(event) => setMinimum(event.target.value)}
+                        />
+                        <Input
+                            type="number"
+                            aria-label="Maximum credit limit"
+                            placeholder="Max credit limit"
+                            className="w-36"
+                            value={maximum}
+                            onChange={(event) => setMaximum(event.target.value)}
+                        />
+                        {invalidRange ? (
+                            <span className="text-sm text-destructive">
+                                Invalid credit limit range.
+                            </span>
+                        ) : (
+                            <ExportButton
+                                rows={exportRows}
+                                columns={customerColumns}
+                                filename="credit-management"
+                            />
+                        )}
+                    </div>
+                ),
+            }}
+        />
+    );
 }
 
 CreditManagement.layout = {

@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\OrderService;
 use App\Services\SurveyorAssignment;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -25,7 +26,7 @@ use Spatie\LaravelPdf\PdfBuilder;
 
 class BdnController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request): Response|JsonResponse
     {
         /** @var User $user */
         $user = request()->user();
@@ -64,17 +65,31 @@ class BdnController extends Controller
 
         self::applySort($query, $sortKey, $direction);
 
+        $toRow = fn (Bdn $bdn): array => [
+            ...$bdn->toArray(),
+            'order_number' => $bdn->order?->order_number,
+            'customer_name' => $bdn->order?->customer?->name,
+            'vessel_name' => $bdn->order?->vessel_name,
+            'delivery_location' => $bdn->deliveryLocation?->name,
+            'agent_name' => $bdn->agent?->name,
+            'barge_name' => $bdn->barge?->name,
+        ];
+
+        if ($request->routeIs('bdns.export')) {
+            $dates = $request->validate([
+                'date_from' => ['required', 'date_format:Y-m-d'],
+                'date_to' => ['required', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+            ]);
+
+            return response()->json(['rows' => $query
+                ->whereDate('bdns.delivery_date', '>=', $dates['date_from'])
+                ->whereDate('bdns.delivery_date', '<=', $dates['date_to'])
+                ->get()->map($toRow)->values()]);
+        }
+
         $bdns = $query->paginate($perPage)
             ->withQueryString()
-            ->through(fn (Bdn $bdn): array => [
-                ...$bdn->toArray(),
-                'order_number' => $bdn->order?->order_number,
-                'customer_name' => $bdn->order?->customer?->name,
-                'vessel_name' => $bdn->order?->vessel_name,
-                'delivery_location' => $bdn->deliveryLocation?->name,
-                'agent_name' => $bdn->agent?->name,
-                'barge_name' => $bdn->barge?->name,
-            ]);
+            ->through($toRow);
 
         return Inertia::render('bdns/index', [
             'bdns' => $bdns,

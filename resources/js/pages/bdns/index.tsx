@@ -3,6 +3,7 @@ import { Search, X } from 'lucide-react';
 import { useState } from 'react';
 import type { CrudConfig } from '@/components/crud/crud-types';
 import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
+import { DateRangeExport } from '@/components/date-range-export';
 import type { PaginationMeta } from '@/components/pagination-controls';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -177,6 +178,15 @@ export default function BdnsIndex({
         canDelete: false,
         dense: true,
         exportColumns,
+        exportControl: (
+            <DateRangeExport
+                url="/bdns/export"
+                columns={exportColumns}
+                filename="bdns"
+                dateLabel="delivery date"
+                filters={{ vessel: filters.vessel }}
+            />
+        ),
         toolbar: (
             <form
                 className="flex max-w-xl flex-col gap-2 sm:flex-row sm:items-center"

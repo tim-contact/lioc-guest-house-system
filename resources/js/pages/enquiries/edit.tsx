@@ -5,6 +5,7 @@ import {
 } from '@/actions/App/Http/Controllers/EnquiryController';
 import type { CrudConfig } from '@/components/crud/crud-types';
 import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
+import { DateRangeExport } from '@/components/date-range-export';
 import type { PaginationMeta } from '@/components/pagination-controls';
 import { FUEL_GRADES } from '@/lib/domain';
 import type { ExportColumn } from '@/lib/export-xlsx';
@@ -191,6 +192,14 @@ export default function EnquiriesEdit({
         formColumns: 2,
         dialogClassName: 'sm:max-w-2xl',
         exportColumns,
+        exportControl: (
+            <DateRangeExport
+                url="/enquiries/edit/export"
+                columns={exportColumns}
+                filename="enquiries"
+                dateLabel="enquiry date"
+            />
+        ),
         editTitle: (enquiry) => enquiry.vessel_name ?? `#${enquiry.id}`,
         deleteLabel: (enquiry) =>
             `${enquiry.vessel_name ?? 'enquiry'} (#${enquiry.id})`,

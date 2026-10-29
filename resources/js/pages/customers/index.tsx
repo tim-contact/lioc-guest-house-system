@@ -3,6 +3,7 @@
 import { Mail, MapPin, Phone } from 'lucide-react';
 import type { CrudConfig } from '@/components/crud/crud-types';
 import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
+import { DateRangeExport } from '@/components/date-range-export';
 import { Badge } from '@/components/ui/badge';
 import type { ExportColumn } from '@/lib/export-xlsx';
 import { formatMoney } from '@/lib/utils';
@@ -67,6 +68,14 @@ const config: CrudConfig<Customer> = {
     tableClassName:
         'min-w-[1180px] [&_th]:px-4 [&_tbody_td]:px-4 [&_tbody_td]:py-3.5',
     exportColumns: customerColumns,
+    exportControl: (
+        <DateRangeExport
+            url="/customers/export"
+            columns={customerColumns}
+            filename="customers"
+            dateLabel="customer creation date"
+        />
+    ),
     editTitle: (customer) => customer.name,
     deleteLabel: (customer) => `${customer.name} (${customer.sap_id})`,
     columns: [

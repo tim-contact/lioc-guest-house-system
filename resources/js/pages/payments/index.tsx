@@ -3,6 +3,7 @@ import { Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { CrudConfig } from '@/components/crud/crud-types';
 import { ResourceCrudPage } from '@/components/crud/resource-crud-page';
+import { DateRangeExport } from '@/components/date-range-export';
 import type { PaginationMeta } from '@/components/pagination-controls';
 import { Input } from '@/components/ui/input';
 import type { SortDir } from '@/hooks/use-sortable';
@@ -118,6 +119,15 @@ export default function PaymentsIndex({
         canEdit: false,
         canDelete: false,
         exportColumns,
+        exportControl: (
+            <DateRangeExport
+                url="/payments/export"
+                columns={exportColumns}
+                filename="past-payments"
+                dateLabel="delivery date"
+                filters={{ search: filters.search }}
+            />
+        ),
         toolbar: (
             <div className="flex flex-col gap-2">
                 <div className="relative w-full max-w-md">

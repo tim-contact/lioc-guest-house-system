@@ -13,6 +13,19 @@ test('guests are redirected from the payments page', function () {
     $this->get(route('payments.index'))->assertRedirect(route('login'));
 });
 
+test('payment export filters all records by delivery date and search', function () {
+    $this->actingAs(User::factory()->create(['type' => UserType::Finance]));
+    $order = Order::factory()->create(['vessel_name' => 'Matching Vessel']);
+    $order->bdn()->create(['delivery_date' => '2026-10-15']);
+    Payment::factory()->count(26)->create(['order_number' => $order->order_number]);
+    $other = Order::factory()->create(['vessel_name' => 'Other Vessel']);
+    $other->bdn()->create(['delivery_date' => '2026-10-15']);
+    Payment::factory()->create(['order_number' => $other->order_number]);
+
+    $this->getJson(route('payments.export', ['date_from' => '2026-10-01', 'date_to' => '2026-10-31', 'search' => 'Matching']))
+        ->assertOk()->assertJsonCount(26, 'rows');
+});
+
 test('index lists payments with their order and customer', function () {
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
 

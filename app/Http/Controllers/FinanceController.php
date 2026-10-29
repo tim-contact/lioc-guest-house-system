@@ -86,6 +86,12 @@ class FinanceController extends Controller
 
         $orders = Order::with(['customer', 'port', 'deliveryLocation', 'payments'])
             ->whereIn('status', OrderStatus::completedStatuses())
+            ->when(self::cleanSearchText($request->input('search', '')) !== '', function ($query) use ($request): void {
+                $pattern = '%'.self::cleanSearchText($request->input('search', '')).'%';
+                $query->where(fn ($query) => $query
+                    ->whereRaw('LOWER(vessel_name) LIKE ?', [$pattern])
+                    ->orWhereHas('customer', fn ($customer) => $customer->whereRaw('LOWER(name) LIKE ?', [$pattern])));
+            })
             ->when($validated['order_date_from'] ?? null, fn ($query, string $date) => $query->whereDate('order_date', '>=', $date))
             ->when($validated['order_date_to'] ?? null, fn ($query, string $date) => $query->whereDate('order_date', '<=', $date))
             ->when($validated['eta_from'] ?? null, fn ($query, string $date) => $query->whereDate('eta', '>=', $date))
