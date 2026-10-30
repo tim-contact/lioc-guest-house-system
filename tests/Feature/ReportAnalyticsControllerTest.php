@@ -361,7 +361,7 @@ test('barge drilldown validates filters and handles unknown barges', function ()
     $this->get(route('reports.barges.orders', 'not-a-barge'))->assertNotFound();
 });
 
-test('analytics stock position uses current stock balances and current month pending commitments', function (?string $cutoff, int $bargeBalance) {
+test('analytics stock position uses current stock balances and all pending commitments', function (?string $cutoff, int $bargeBalance) {
     $this->travelTo(now()->setDate(2026, 10, 5)->startOfDay());
     config(['stock.barge_stock_start_date' => $cutoff]);
     $this->actingAs(User::factory()->create(['type' => UserType::SuperAdmin]));
@@ -415,6 +415,7 @@ test('analytics stock position uses current stock balances and current month pen
         [OrderStatus::Pending, '2026-10-06', '2026-11-06', '2026-10-06', 500],
         [OrderStatus::Pending, '2026-10-05', '2026-09-30', '2026-10-20', 75],
         [OrderStatus::Pending, '2026-10-05', '2026-10-20', '2026-11-01', 50],
+        [OrderStatus::Pending, '2026-10-05', null, null, 25],
     ] as [$status, $orderDate, $eta, $laycanFrom, $quantity]) {
         Order::factory()->create([
             'port_id' => $colombo->id,
@@ -422,6 +423,7 @@ test('analytics stock position uses current stock balances and current month pen
             'order_date' => $orderDate,
             'eta' => $eta,
             'laycan_from' => $laycanFrom,
+            'barge_id' => null,
             'mgo_final_qty' => $quantity,
             'vlsfo_final_qty' => 0,
             'hsfo_final_qty' => 0,
@@ -436,20 +438,20 @@ test('analytics stock position uses current stock balances and current month pen
             ->where('stockPosition.rows.0.values.mgo', 1060)
             ->where('stockPosition.rows.1.values.mgo', $bargeBalance)
             ->where('stockPosition.rows.2.values.mgo', 1060 + $bargeBalance)
-            ->where('stockPosition.rows.3.values.mgo', 275)
-            ->where('stockPosition.rows.4.values.mgo', 785 + $bargeBalance)
+            ->where('stockPosition.rows.3.values.mgo', 850)
+            ->where('stockPosition.rows.4.values.mgo', 210 + $bargeBalance)
             ->where('stockPosition.rows.4.values.hsfo', 0)
             ->where('stockPosition.rows.5.values.mgo', null)
             ->where('stockPosition.rows.6.values.mgo', null)
             ->where('stockPosition.views.0.key', 'both')
             ->where('stockPosition.views.0.rows.0.values.mgo', 1060)
             ->where('stockPosition.views.0.rows.1.values.mgo', $bargeBalance)
-            ->where('stockPosition.views.0.rows.3.values.mgo', 275)
+            ->where('stockPosition.views.0.rows.3.values.mgo', 850)
             ->where('stockPosition.views.1.key', 'colombo')
             ->where('stockPosition.views.1.rows.0.values.mgo', 880)
             ->where('stockPosition.views.1.rows.1.values.mgo', $bargeBalance)
-            ->where('stockPosition.views.1.rows.3.values.mgo', 275)
-            ->where('stockPosition.views.1.rows.4.values.mgo', 605 + $bargeBalance)
+            ->where('stockPosition.views.1.rows.3.values.mgo', 850)
+            ->where('stockPosition.views.1.rows.4.values.mgo', 30 + $bargeBalance)
             ->where('stockPosition.views.2.key', 'trincomalee')
             ->where('stockPosition.views.2.rows.0.values.mgo', 180)
             ->where('stockPosition.views.2.rows.1.values.mgo', 0)

@@ -180,8 +180,7 @@ class ReportAnalyticsController extends Controller
 
         foreach ($orders as $order) {
             if ($order->status !== OrderStatus::Pending
-                || ! $portIds->contains($order->port_id)
-                || $this->pendingDeliveryDate($order)?->isCurrentMonth() !== true) {
+                || ! $portIds->contains($order->port_id)) {
                 continue;
             }
 
