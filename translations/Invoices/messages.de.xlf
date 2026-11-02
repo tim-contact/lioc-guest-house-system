@@ -746,6 +746,11 @@
                 <source>invoice.payment_due_date</source>
                 <target>Zahlbar bis</target>
             </trans-unit>
-        </body>
+                    <trans-unit id="invoice.directory.title"><source>invoice.directory.title</source><target>Rechnungen</target></trans-unit>
+            <trans-unit id="invoice.directory.subtitle"><source>invoice.directory.subtitle</source><target>Verwalte Rechnungen und Zahlungsstatus.</target></trans-unit>
+            <trans-unit id="invoice.directory.search"><source>invoice.directory.search</source><target>Rechnungen suchen</target></trans-unit>
+            <trans-unit id="invoice.directory.empty"><source>invoice.directory.empty</source><target>Keine Rechnungen vorhanden.</target></trans-unit>
+            <trans-unit id="invoice.directory.empty_search"><source>invoice.directory.empty_search</source><target>Keine Rechnungen entsprechen deiner Suche.</target></trans-unit>
+</body>
     </file>
 </xliff>

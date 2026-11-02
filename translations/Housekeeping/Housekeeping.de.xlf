@@ -138,6 +138,19 @@
                 <source>housekeeping.summary.depart</source>
                 <target>Abreise</target>
             </trans-unit>
+            <trans-unit id="housekeeping.subtitle"><source>housekeeping.subtitle</source><target>Tägliche Zimmerpflege und Zuweisungen</target></trans-unit>
+            <trans-unit id="housekeeping.view.label"><source>housekeeping.view.label</source><target>Housekeeping-Ansicht</target></trans-unit>
+            <trans-unit id="housekeeping.filters"><source>housekeeping.filters</source><target>Filter</target></trans-unit>
+            <trans-unit id="housekeeping.panel.title"><source>housekeeping.panel.title</source><target>Zimmerpflege</target></trans-unit>
+            <trans-unit id="housekeeping.summary.title"><source>housekeeping.summary.title</source><target>Übersicht für das gewählte Datum</target></trans-unit>
+            <trans-unit id="housekeeping.summary.rooms"><source>housekeeping.summary.rooms</source><target>Zimmer gesamt</target></trans-unit>
+            <trans-unit id="housekeeping.summary.stayovers"><source>housekeeping.summary.stayovers</source><target>Bleibende Gäste</target></trans-unit>
+            <trans-unit id="housekeeping.summary.free"><source>housekeeping.summary.free</source><target>Freie Zimmer</target></trans-unit>
+            <trans-unit id="housekeeping.summary.open"><source>housekeeping.summary.open</source><target>Offene Aufgaben</target></trans-unit>
+            <trans-unit id="housekeeping.summary.selected_date"><source>housekeeping.summary.selected_date</source><target>Gewähltes Datum und Filter</target></trans-unit>
+            <trans-unit id="housekeeping.save.room"><source>housekeeping.save.room</source><target>%room% speichern</target></trans-unit>
+            <trans-unit id="housekeeping.saved"><source>housekeeping.saved</source><target>Gespeichert</target></trans-unit>
+            <trans-unit id="housekeeping.save_failed"><source>housekeeping.save_failed</source><target>Speichern fehlgeschlagen. Bitte versuche es erneut.</target></trans-unit>
         </body>
     </file>
 </xliff>

@@ -172,7 +172,7 @@
             </trans-unit>
             <trans-unit id="reservation.flash.delete.not.possible">
                 <source>reservation.flash.delete.not.possible</source>
-                <target>Die Reservierung kann nicht mehr gelöscht werden (Besitzt sie bereits eine Rechnung?).</target>
+                <target>Eine Reservierung mit Rechnungen oder Mahlzeiten kann nicht gelöscht werden.</target>
             </trans-unit>
             <trans-unit id="reservation.flash.update.customeralreadyinlist">
                 <source>reservation.flash.update.customeralreadyinlist</source>
@@ -749,6 +749,7 @@
             <trans-unit id="reservation.overview.hero_subtitle"><source>reservation.overview.hero_subtitle</source><target>Aufenthalte und ZimmerverfÃ¼gbarkeit auf einen Blick verwalten.</target></trans-unit>
             <trans-unit id="reservation.overview.new_reservation"><source>reservation.overview.new_reservation</source><target>Neue Reservierung</target></trans-unit>
             <trans-unit id="reservation.overview.loading"><source>reservation.overview.loading</source><target>Zimmerplan wird geladenâ€¦</target></trans-unit>
+            <trans-unit id="reservation.overview.metrics.selected_view"><source>reservation.overview.metrics.selected_view</source><target>Aktuelle Ansicht</target></trans-unit>
             <trans-unit id="reservation.overview.metrics.label"><source>reservation.overview.metrics.label</source><target>TagesÃ¼bersicht</target></trans-unit>
             <trans-unit id="reservation.overview.metrics.rooms"><source>reservation.overview.metrics.rooms</source><target>Zimmer</target></trans-unit>
             <trans-unit id="reservation.overview.metrics.in_house"><source>reservation.overview.metrics.in_house</source><target>Im Haus</target></trans-unit>

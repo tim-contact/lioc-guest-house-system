@@ -1,0 +1,60 @@
+meals.title: Mahlzeiten
+meals.export.title: Mahlzeitenverlauf
+meals.intro: Erfasse Mahlzeiten pro Gast und prüfe die Tagesübersicht.
+meals.property: Unterkunft
+meals.all_properties: Alle Unterkünfte
+meals.date: Datum der Mahlzeit
+meals.apply: Anwenden
+meals.orders: Tagesübersicht der Mahlzeiten
+meals.summary.title: Tagessummen der Mahlzeiten
+meals.summary.hint: Stornierte und zu prüfende Mahlzeiten sind ausgeschlossen; Beträge verstehen sich vor zusätzlich berechneter Steuer.
+meals.summary.subtotal: Zwischensumme
+meals.guest: Gast
+meals.room: Unterkunft und Zimmer
+meals.item: Mahlzeit oder Getränk
+meals.quantity: Menge
+meals.total: Zwischensumme
+meals.status: Rechnungsstatus
+meals.actions: Aktionen
+meals.cancelled: Storniert
+meals.invoiced: Berechnet
+meals.unbilled: Nicht berechnet
+meals.cancel_order: Mahlzeit stornieren
+meals.empty: Für dieses Datum sind keine Mahlzeiten erfasst.
+meals.record: Mahlzeit erfassen
+meals.record_hint: Wähle oben Datum und Unterkunft und anschließend Gast und Mahlzeit.
+meals.select_guest: Gast und Zimmer auswählen
+meals.select_item: Mahlzeit oder Getränk auswählen
+meals.booker: Buchende Person
+meals.menu: Speisen und Preise
+meals.menu_hint: Änderungen gelten für künftige Bestellungen; erfasste Bestellungen behalten ihren Preis und Steuersatz.
+meals.add_option: Mahlzeit oder Getränk hinzufügen
+meals.save: Speichern
+meals.inactive: Inaktiv
+meals.active: Für neue Bestellungen verfügbar
+meals.service: Mahlzeit oder Service
+meals.price: Preis pro Stück
+meals.currency: Währung
+meals.tax_rate: Steuersatz (%)
+meals.tax_mode: Steuerbehandlung
+meals.tax_included: Im Preis enthalten
+meals.tax_added: Zum Preis hinzugefügt
+meals.flash.recorded: Mahlzeit erfasst.
+meals.flash.cancelled: Mahlzeit storniert.
+meals.flash.option_saved: Mahlzeit gespeichert.
+meals.error.option_invalid: Gib eine gültige Mahlzeit, einen Service, einen Preis und eine Währung ein.
+meals.error.tax_invalid: Gib einen gültigen Steuersatz und eine Steuerbehandlung ein.
+meals.error.quantity_invalid: Gib eine Menge zwischen 1 und 100 ein.
+meals.error.reservation_inactive: Wähle eine nicht stornierte Reservierung ohne Konflikt.
+meals.error.guest_invalid: Wähle einen Gast aus dieser Reservierung.
+meals.error.date_outside_stay: Das Datum muss innerhalb des Aufenthalts liegen.
+meals.error.option_inactive: Diese Mahlzeit ist nicht mehr verfügbar.
+meals.error.duplicate: Diese Mahlzeit ist für den Gast an diesem Tag bereits erfasst.
+meals.error.selection_invalid: Wähle einen gültigen Gast und eine Mahlzeit.
+meals.error.date_invalid: Gib ein gültiges Datum ein.
+meals.error.already_invoiced: Eine berechnete Mahlzeit kann hier nicht storniert werden.
+meals.error.invoice_locked: Diese Rechnung enthält verknüpfte Mahlzeiten und kann hier nicht gelöscht werden.
+meals.error.invoice_changed: Eine Mahlzeit wurde geändert oder bereits berechnet. Starte die Rechnungserstellung neu und prüfe die Positionen.
+meals.error.invoice_configuration: Die Mahlzeitenwährung muss zur Rechnungswährung passen und die Steuer muss eingerichtet sein.
+meals.error.reservation_changed: Eine Mahlzeit passt nicht mehr zur Reservierung. Prüfe die Mahlzeitenübersicht vor der Rechnungsstellung.
+meals.needs_review: Reservierung geändert – prüfen

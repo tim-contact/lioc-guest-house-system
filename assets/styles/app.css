@@ -1864,3 +1864,750 @@ details.einvoice-readiness > summary {
 details.einvoice-readiness > summary::-webkit-details-marker {
     display: none;
 }
+
+/* Shared dialog surfaces follow the reservation workspace while retaining Bootstrap behavior. */
+.modal,
+.offcanvas,
+.popover {
+    --dialog-ink: #171717;
+    --dialog-muted: #6f6d68;
+    --dialog-surface: #fff;
+    --dialog-soft: #f8f7f4;
+    --dialog-border: #e7e5e1;
+    --dialog-accent: #f04b08;
+    font-family: "Radio Canada", Arial, sans-serif;
+}
+
+[data-bs-theme="dark"] .modal,
+[data-bs-theme="dark"] .offcanvas,
+[data-bs-theme="dark"] .popover {
+    --dialog-ink: #f3f1ed;
+    --dialog-muted: #bcb8b0;
+    --dialog-surface: #25282c;
+    --dialog-soft: #2f3337;
+    --dialog-border: #45494d;
+    --dialog-accent: #ff9a64;
+}
+
+.modal-content {
+    border: 1px solid var(--dialog-border);
+    border-radius: 10px;
+    background: var(--dialog-surface);
+    color: var(--dialog-ink);
+    box-shadow: 0 20px 60px rgb(0 0 0 / 18%);
+}
+
+.modal-backdrop.show,
+.offcanvas-backdrop.show { opacity: .42; }
+
+.modal-header,
+.offcanvas-header {
+    gap: 16px;
+    padding: 20px 24px;
+    border-color: var(--dialog-border);
+    color: var(--dialog-ink);
+}
+
+.modal-title,
+.offcanvas-title {
+    color: var(--dialog-ink);
+    font-family: "Radio Canada Big", "Radio Canada", Arial, sans-serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -.02em;
+    line-height: 1.25;
+}
+
+.modal-header .btn-close,
+.offcanvas-header .btn-close {
+    flex: 0 0 auto;
+    padding: 10px;
+    border-radius: 6px;
+    opacity: .65;
+}
+
+.modal-header .btn-close:hover,
+.offcanvas-header .btn-close:hover { background-color: var(--dialog-soft); opacity: 1; }
+
+.modal-body { padding: 22px 24px; color: var(--dialog-ink); }
+.modal-footer { gap: 8px; padding: 16px 24px; border-color: var(--dialog-border); }
+.modal-footer > * { margin: 0; }
+
+.offcanvas:not(.inventory-drawer) {
+    border-color: var(--dialog-border);
+    background: var(--dialog-surface);
+    color: var(--dialog-ink);
+    box-shadow: 0 12px 40px rgb(0 0 0 / 16%);
+}
+
+.offcanvas-body { color: var(--dialog-ink); }
+
+.modal .form-control,
+.modal .form-select,
+.offcanvas:not(.inventory-drawer) .form-control,
+.offcanvas:not(.inventory-drawer) .form-select {
+    min-height: 40px;
+    padding: .55rem .75rem;
+    border: 1px solid var(--dialog-border);
+    border-radius: 5px;
+    background-color: var(--dialog-surface);
+    color: var(--dialog-ink);
+    font-family: inherit;
+    box-shadow: none;
+}
+
+.modal .form-select,
+.offcanvas:not(.inventory-drawer) .form-select { padding-right: 2.25rem; }
+
+.modal textarea.form-control,
+.offcanvas textarea.form-control { min-height: 88px; }
+
+.modal .form-control:disabled,
+.modal .form-control[readonly],
+.modal .form-select:disabled,
+.offcanvas:not(.inventory-drawer) .form-control:disabled,
+.offcanvas:not(.inventory-drawer) .form-control[readonly],
+.offcanvas:not(.inventory-drawer) .form-select:disabled {
+    background-color: var(--dialog-soft);
+    color: var(--dialog-muted);
+}
+
+.modal .form-control:focus,
+.modal .form-select:focus,
+.offcanvas .form-control:focus,
+.offcanvas .form-select:focus {
+    border-color: var(--dialog-accent);
+    box-shadow: 0 0 0 3px rgb(240 75 8 / 15%);
+}
+
+.modal .form-label,
+.offcanvas .form-label { color: var(--dialog-ink); font-weight: 600; }
+.modal .form-text,
+.offcanvas .form-text { color: var(--dialog-muted); }
+
+.modal .btn,
+.offcanvas .btn,
+.popover .btn {
+    border-radius: 5px;
+    font-family: inherit;
+    font-weight: 600;
+    box-shadow: none;
+    text-transform: none;
+}
+
+.modal .btn-secondary,
+.offcanvas:not(.inventory-drawer) .btn-secondary,
+.popover .btn-secondary {
+    --bs-btn-color: var(--dialog-ink);
+    --bs-btn-bg: var(--dialog-surface);
+    --bs-btn-border-color: var(--dialog-border);
+    --bs-btn-hover-color: var(--dialog-ink);
+    --bs-btn-hover-bg: var(--dialog-soft);
+    --bs-btn-hover-border-color: var(--dialog-border);
+    --bs-btn-active-color: var(--dialog-ink);
+    --bs-btn-active-bg: var(--dialog-soft);
+    --bs-btn-active-border-color: var(--dialog-border);
+}
+
+.modal .btn-primary,
+.offcanvas:not(.inventory-drawer) .btn-primary {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: #171717;
+    --bs-btn-border-color: #171717;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #d93e00;
+    --bs-btn-hover-border-color: #d93e00;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #bd3500;
+    --bs-btn-active-border-color: #bd3500;
+}
+
+.modal .btn:focus-visible,
+.offcanvas .btn:focus-visible,
+.popover .btn:focus-visible,
+.modal .btn-close:focus-visible,
+.offcanvas .btn-close:focus-visible {
+    outline: 2px solid var(--dialog-accent);
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+.popover {
+    --bs-popover-bg: var(--dialog-surface);
+    --bs-popover-border-color: var(--dialog-border);
+    --bs-popover-header-bg: var(--dialog-soft);
+    --bs-popover-header-color: var(--dialog-ink);
+    --bs-popover-body-color: var(--dialog-ink);
+    border: 1px solid var(--dialog-border);
+    border-radius: 8px;
+    box-shadow: 0 12px 32px rgb(0 0 0 / 14%);
+}
+
+.popover-header { padding: 12px 14px; font-weight: 600; }
+.popover-body { padding: 14px; }
+
+@media (max-width: 575.98px) {
+    .modal-dialog { margin: 12px; }
+    .modal-header,
+    .modal-body,
+    .offcanvas-header { padding: 16px 18px; }
+    .modal-footer { padding: 14px 18px; }
+}
+
+
+/* Reservation dashboard and shared application navigation */
+.lioc-app-header {
+    --lioc-ink: #14243b;
+    --lioc-line: #dce6f2;
+    --lioc-orange: #0875d1;
+    background: #fff;
+}
+.lioc-app-header .lioc-brand {
+    font-family: var(--lioc-font-body);
+    font-weight: 700;
+    letter-spacing: .02em;
+    text-transform: none;
+}
+.lioc-app-header .lioc-primary-nav .nav-link,
+.lioc-app-header .lioc-shell-actions .nav-link { color: #53677f; }
+.lioc-app-header .nav-item.active > .nav-link,
+.lioc-app-header .nav-link:hover,
+.lioc-app-header .nav-link:focus-visible { color: #075da6; }
+.lioc-app-header .nav-item.active > .nav-link { box-shadow: inset 0 -2px #0875d1; }
+.lioc-app-header .dropdown-menu { border-radius: 10px; box-shadow: 0 8px 24px rgb(30 75 120 / 12%); }
+.lioc-app-header .dropdown-item:hover,
+.lioc-app-header .dropdown-item:focus-visible,
+.lioc-app-header .dropdown-item.active { background: #edf6ff; color: #075da6; }
+.lioc-app-header .lioc-avatar { background: #0875d1; }
+
+.lioc-reservations {
+    --lioc-ink: #14243b;
+    --lioc-muted: #53677f;
+    --lioc-orange: #0875d1;
+    --lioc-line: #dce6f2;
+    --lioc-soft: #f1f7fe;
+    --lioc-weekend: #f3f7fc;
+    --lioc-olive: #dcefe5;
+    --lioc-olive-dark: #26835b;
+    --lioc-lavender: #dcecff;
+    --lioc-lavender-dark: #2876b9;
+    --lioc-terracotta: #fff0d8;
+    --lioc-terracotta-dark: #ae6116;
+    --lioc-font-label: var(--lioc-font-body);
+    min-height: calc(100vh - 65px);
+    padding: 20px 24px 32px;
+    background: #f4f7fb;
+}
+.lioc-reservations .lioc-summary-row {
+    display: block;
+    min-height: 0;
+    margin: 0 0 18px;
+    padding: 0;
+    border: 0;
+}
+.lioc-page-title { margin-bottom: 14px; }
+.lioc-reservations .lioc-summary-row h1 {
+    color: var(--lioc-ink);
+    font-size: clamp(1.55rem, 2vw, 1.9rem);
+    letter-spacing: -.02em;
+    white-space: normal;
+}
+.lioc-page-title p { margin: 4px 0 0; color: var(--lioc-muted); font-size: .9rem; }
+.lioc-reservations .lioc-metrics {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+.lioc-reservations .lioc-metric,
+.lioc-reservations .lioc-metric:first-child {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    min-height: 110px;
+    align-items: center;
+    gap: 14px;
+    overflow: hidden;
+    padding: 16px 18px;
+    border: 0;
+    border-radius: 17px;
+    color: #fff;
+}
+.lioc-metric::after {
+    position: absolute;
+    right: -25px;
+    bottom: -60px;
+    width: 130px;
+    height: 130px;
+    border: 18px solid rgb(255 255 255 / 10%);
+    border-radius: 50%;
+    content: '';
+    pointer-events: none;
+}
+.lioc-metric--orange { background: linear-gradient(120deg, #a84300, #d75303); box-shadow: 0 7px 18px rgb(196 76 11 / 20%); }
+.lioc-metric--red { background: linear-gradient(120deg, #a3223b, #d33b4d); box-shadow: 0 7px 18px rgb(184 48 66 / 20%); }
+.lioc-metric--blue { background: linear-gradient(120deg, #07569c, #0875d1); box-shadow: 0 7px 18px rgb(8 117 209 / 20%); }
+.lioc-metric--green { background: linear-gradient(120deg, #08704c, #149568); box-shadow: 0 7px 18px rgb(20 149 104 / 20%); }
+.lioc-metric-icon {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid rgb(255 255 255 / 45%);
+    border-radius: 12px;
+    background: rgb(255 255 255 / 12%);
+    font-size: 1rem;
+}
+.lioc-metric-copy { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.lioc-reservations .lioc-metric-label { color: #fff; font-size: .75rem; font-weight: 700; letter-spacing: .04em; }
+.lioc-reservations .lioc-metric-value { color: #fff; font-size: 1.8rem; line-height: 1; }
+.lioc-metric-note { color: #fff; font-size: .72rem; }
+
+.lioc-reservations .lioc-workspace {
+    grid-template-columns: minmax(0, 1fr) 265px;
+    align-items: start;
+    gap: 16px;
+    border: 0;
+}
+.lioc-reservations .lioc-ledger,
+.lioc-reservations .lioc-handover,
+.lioc-reservations .lioc-date-lockup,
+.lioc-reservations .lioc-briefing-section {
+    background: #fff;
+    border: 1px solid var(--lioc-line);
+    border-radius: 20px;
+    box-shadow: 0 5px 18px rgb(36 75 115 / 6%);
+}
+.lioc-reservations .lioc-ledger { min-width: 0; padding: 18px; }
+.lioc-reservations .lioc-ledger-toolbar { flex-wrap: wrap; gap: 12px; }
+.lioc-reservations .lioc-ledger-heading { flex-wrap: wrap; }
+.lioc-reservations .lioc-calendar-controls { flex-wrap: wrap; justify-content: flex-start; }
+.lioc-reservations .lioc-ledger-actions { flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.lioc-reservations .lioc-icon-button,
+.lioc-reservations .lioc-control-button,
+.lioc-reservations .lioc-text-button,
+.lioc-reservations .lioc-location-select,
+.lioc-reservations .lioc-date-control,
+.lioc-reservations .lioc-range-control { border-radius: 9px; }
+.lioc-reservations .lioc-icon-button,
+.lioc-reservations .lioc-control-button,
+.lioc-reservations .lioc-date-control,
+.lioc-reservations .lioc-range-control { min-height: 36px; }
+.lioc-reservations .lioc-ledger-scroll { overflow-x: auto; border: 1px solid var(--lioc-line); border-radius: 10px; }
+.lioc-reservations .lioc-ledger #reservation-table thead th,
+.lioc-reservations .lioc-ledger #reservation-table thead td { font-size: .68rem; }
+.lioc-reservations .lioc-room-meta strong { font-size: .72rem; letter-spacing: .02em; }
+.lioc-reservations .lioc-room-meta small { font-size: .68rem; }
+.lioc-reservations .lioc-ledger .reservation-inner,
+.lioc-reservations .lioc-ledger .blocked-inner { border-radius: 7px; }
+.lioc-reservations .lioc-reservation-name { font-size: .72rem; }
+.lioc-reservations .lioc-reservation-detail { font-size: .65rem; }
+.lioc-reservations .lioc-briefing {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+.lioc-reservations .lioc-new-reservation {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid #0875d1;
+    border-radius: 10px;
+    background: #0875d1;
+    color: white;
+    font-size: .85rem;
+}
+.lioc-reservations .lioc-new-reservation:hover { background: #075da6; border-color: #075da6; }
+.lioc-reservations .lioc-date-lockup { min-height: 88px; padding: 15px 18px; }
+.lioc-reservations .lioc-date-number { color: #0875d1; font-size: 2.5rem; }
+.lioc-reservations .lioc-date-copy { font-size: .75rem; }
+.lioc-reservations .lioc-date-copy strong { font-size: .85rem; letter-spacing: .03em; }
+.lioc-reservations .lioc-briefing-section { padding: 16px; }
+.lioc-reservations .lioc-briefing h3 { font-size: .94rem; }
+.lioc-reservations .lioc-arrival-time { font-size: .65rem; }
+.lioc-reservations .lioc-arrival-main strong,
+.lioc-reservations .lioc-housekeeping-room strong { font-size: .78rem; }
+.lioc-reservations .lioc-arrival-main span,
+.lioc-reservations .lioc-housekeeping-room span,
+.lioc-reservations .lioc-housekeeping-state,
+.lioc-reservations .lioc-empty-state { font-size: .73rem; }
+.lioc-reservations .lioc-status-pill { font-size: .65rem; border-radius: 6px; }
+.lioc-reservations .lioc-handover { margin: 16px 0 0; padding: 16px 18px; }
+.lioc-handover-heading-icon { margin-right: 8px; color: #0875d1; }
+.lioc-reservations .lioc-handover-item strong { font-size: .78rem; }
+.lioc-reservations .lioc-handover-item span { font-size: .7rem; }
+.lioc-reservations .lioc-text-link { color: #075da6; font-size: .78rem; }
+.lioc-reservations :focus-visible, .lioc-app-header :focus-visible { outline-color: #0875d1; }
+
+@media (max-width: 1100px) {
+    .lioc-reservations .lioc-workspace { grid-template-columns: minmax(0, 1fr); }
+    .lioc-reservations .lioc-briefing { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lioc-reservations .lioc-new-reservation { grid-column: 1 / -1; }
+    .lioc-reservations .lioc-date-lockup { grid-column: 1 / -1; }
+}
+@media (max-width: 767.98px) {
+    .lioc-reservations { padding: 16px; }
+    .lioc-reservations .lioc-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lioc-reservations .lioc-metric,
+    .lioc-reservations .lioc-metric:first-child { min-height: 100px; padding: 14px; }
+    .lioc-reservations .lioc-ledger { padding: 14px; }
+    .lioc-reservations .lioc-ledger-toolbar,
+    .lioc-reservations .lioc-ledger-actions { align-items: stretch; }
+    .lioc-reservations .lioc-ledger-heading .lioc-location-select { width: min(100%, 230px); }
+    .lioc-reservations .lioc-briefing { grid-template-columns: minmax(0, 1fr); }
+    .lioc-reservations .lioc-date-lockup,
+    .lioc-reservations .lioc-new-reservation { grid-column: auto; }
+}
+@media (max-width: 420px) {
+    .lioc-reservations .lioc-metrics { grid-template-columns: minmax(0, 1fr); }
+}
+
+
+/* Housekeeping workspace */
+.lioc-housekeeping-page {
+    --hk-ink: #14243b;
+    --hk-muted: #53677f;
+    --hk-border: #dce6f2;
+    --hk-blue: #0875d1;
+    display: flex;
+    min-height: calc(100vh - 65px);
+    flex-direction: column;
+    padding: 22px 24px 40px;
+    background: #f4f7fb;
+    color: var(--hk-ink);
+    font-family: "Radio Canada", Arial, sans-serif;
+}
+.hk-heading { order: 0; margin-bottom: 18px; }
+.hk-heading h1 { color: var(--hk-ink); font-family: "Radio Canada Big", Arial, sans-serif; font-size: 1.9rem; font-weight: 700; }
+.hk-page-subtitle { margin: 5px 0 0; color: var(--hk-muted); font-size: .9rem; }
+.hk-heading > a { display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid var(--hk-border); border-radius: 9px; background: white; color: var(--hk-blue); }
+.hk-view-switch { padding: 4px; border: 1px solid var(--hk-border); border-radius: 11px; background: white; }
+.hk-view-switch .btn { min-height: 36px; padding: 6px 16px; border: 0; border-radius: 8px !important; color: #31526e; }
+.hk-view-switch .btn.active { background: var(--hk-blue); color: white; }
+.hk-content { display: contents; }
+.hk-summary { order: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+.hk-stat { position: relative; display: flex; min-height: 108px; align-items: center; gap: 14px; overflow: hidden; padding: 16px 18px; border-radius: 17px; color: white; }
+.hk-stat::after { position: absolute; right: -25px; bottom: -60px; width: 130px; height: 130px; border: 18px solid rgb(255 255 255 / 10%); border-radius: 50%; content: ''; pointer-events: none; }
+.hk-stat--orange { background: linear-gradient(120deg, #a84300, #d75303); box-shadow: 0 7px 18px rgb(196 76 11 / 20%); }
+.hk-stat--red { background: linear-gradient(120deg, #a3223b, #d33b4d); box-shadow: 0 7px 18px rgb(184 48 66 / 20%); }
+.hk-stat--blue { background: linear-gradient(120deg, #07569c, #0875d1); box-shadow: 0 7px 18px rgb(8 117 209 / 20%); }
+.hk-stat--green { background: linear-gradient(120deg, #08704c, #149568); box-shadow: 0 7px 18px rgb(20 149 104 / 20%); }
+.hk-stat-icon { display: grid; width: 42px; height: 42px; flex: 0 0 auto; place-items: center; border: 1px solid rgb(255 255 255 / 45%); border-radius: 12px; background: rgb(255 255 255 / 12%); }
+.hk-stat > div { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.hk-stat-label { font-size: .75rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.hk-stat strong { font-size: 1.8rem; line-height: 1; }
+.hk-stat-note { font-size: .72rem; }
+.hk-toolbar, .hk-table-panel { background: white; border: 1px solid var(--hk-border); box-shadow: 0 5px 18px rgb(36 75 115 / 6%); }
+.hk-toolbar { order: 2; margin: 0; padding: 18px 20px 14px; border-bottom: 0; border-radius: 20px 20px 0 0; }
+.hk-panel-heading h2 { margin: 0 0 12px; font-family: "Radio Canada Big", Arial, sans-serif; font-size: 1.18rem; font-weight: 700; }
+.hk-toolbar .form-label { color: var(--hk-muted); font-size: .78rem; font-weight: 600; }
+.hk-toolbar .form-control, .hk-toolbar .form-select, .hk-toolbar .btn { min-height: 40px; border: 1px solid var(--hk-border); border-radius: 9px; }
+.hk-toolbar .btn { color: #075da6; }
+.hk-toolbar .btn:hover { background: #edf6ff; color: #075da6; }
+.hk-table-panel { order: 3; min-width: 0; padding: 0 20px 20px; border-top: 0; border-radius: 0 0 20px 20px; }
+.hk-table-scroll { overflow-x: auto; border: 1px solid var(--hk-border); border-radius: 10px; }
+.hk-table { min-width: 1120px; margin: 0; font-size: .83rem; }
+.hk-table > thead > tr > th { padding: 12px; border-color: var(--hk-border); background: #edf5fd; color: var(--hk-ink); font-size: .77rem; font-weight: 700; white-space: nowrap; }
+.hk-table > tbody > tr > td { padding: 12px; border-color: #e9eff6; color: var(--hk-ink); }
+.hk-table > tbody > tr:hover > td { background-color: #f8fbff; }
+.hk-room { width: 185px; min-width: 155px; }
+.hk-room strong, .hk-room span { display: block; }
+.hk-room span { margin-top: 3px; color: var(--hk-muted); font-size: .74rem; line-height: 1.35; overflow-wrap: anywhere; }
+.hk-reservation { max-width: 180px; min-width: 110px; overflow-wrap: anywhere; }
+.hk-occupancy { display: inline-block; padding: 5px 9px; border-radius: 999px; background: #e9edf2; color: #344960; font-size: .72rem; font-weight: 700; white-space: nowrap; }
+.hk-occupancy--stayover { background: #eee7fa; color: #594080; }
+.hk-occupancy--free { background: #dff4e9; color: #126643; }
+.hk-occupancy--arrival { background: #e0efff; color: #075a9b; }
+.hk-occupancy--departure { background: #fff2d7; color: #805000; }
+.hk-occupancy--turnover { background: #fee6e3; color: #983d37; }
+.hk-occupancy--blocked { background: #e6e9ef; color: #3e495b; }
+.hk-table .form-control, .hk-table .form-select {
+    min-width: 145px; min-height: 40px; padding: 8px 12px;
+    border: 1px solid #b8ccdf !important; border-radius: 9px !important;
+    background-color: white; background-image: none; color: var(--hk-ink); font-size: .8rem;
+}
+.hk-table .form-select { padding-right: 38px; background-image: var(--bs-form-select-bg-img); background-position: right 12px center; background-size: 16px 12px; }
+.hk-table input.form-control { min-width: 190px; }
+.hk-save-button { min-width: 40px; min-height: 40px; border-radius: 9px; background: var(--hk-blue); color: white; }
+.hk-save-button:hover, .hk-save-button:focus-visible { background: #075da6; color: white; }
+.hk-save-feedback { display: block; min-width: 70px; margin-top: 4px; color: #126643; font-size: .7rem; }
+.hk-save-feedback.is-error { color: #ad2639; }
+.hk-week-table { min-width: 1000px; }
+.hk-week-table td { min-width: 115px; }
+.lioc-housekeeping-page :focus-visible { outline: 2px solid var(--hk-blue); outline-offset: 2px; }
+@media (max-width: 800px) { .hk-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) {
+    .lioc-housekeeping-page { padding: 16px; }
+    .hk-summary { grid-template-columns: minmax(0, 1fr); }
+    .hk-toolbar, .hk-table-panel { padding-left: 14px; padding-right: 14px; }
+}
+
+/* Shared light-mode page canvas. */
+html[data-bs-theme="light"] body,
+html[data-bs-theme="light"] .lioc-inventory {
+    background-color: #f4f7fb;
+}
+
+/* Front-desk checklist uses the same room-care surfaces and table controls. */
+.lioc-frontdesk-page .frontdesk-panel {
+    min-width: 0;
+    padding: 18px 20px 20px;
+    border: 1px solid #dce6f2;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 0 5px 18px rgb(36 75 115 / 6%);
+}
+.frontdesk-toolbar { margin-bottom: 16px; }
+.frontdesk-toolbar .form-label { color: #53677f; font-size: .78rem; font-weight: 600; }
+.frontdesk-toolbar .form-control,
+.frontdesk-toolbar .form-select,
+.frontdesk-toolbar .btn {
+    min-height: 40px;
+    border: 1px solid #dce6f2;
+    border-radius: 9px;
+}
+.frontdesk-toolbar .btn { color: #075da6; }
+.frontdesk-toolbar .btn:hover { color: #075da6; background: #edf6ff; }
+.frontdesk-table { min-width: 1160px; }
+.frontdesk-table .frontdesk-period { min-width: 190px; white-space: nowrap; }
+.frontdesk-table .hk-occupancy { margin: 2px; }
+.frontdesk-table .hk-occupancy--inhouse { color: #075a9b; background: #e0efff; }
+.frontdesk-table .btn {
+    display: inline-grid;
+    min-width: 40px;
+    min-height: 40px;
+    place-items: center;
+    padding: 6px;
+    border: 1px solid #c6d9ec;
+    border-radius: 9px;
+    color: #075da6;
+    background: white;
+    box-shadow: none;
+}
+.frontdesk-table .btn:hover { color: #075da6; background: #edf6ff; }
+.frontdesk-table .btn.disabled { opacity: .5; }
+.frontdesk-table .frontdesk-invoice-badge {
+    display: inline-block;
+    padding: 7px 10px;
+    border-radius: 8px;
+    text-decoration: none;
+}
+.frontdesk-table .frontdesk-invoice-badge.text-bg-warning {
+    background: #fff0cc !important;
+    color: #805000 !important;
+}
+.frontdesk-table .frontdesk-invoice-badge.text-bg-success {
+    background: #dff4e9 !important;
+    color: #126643 !important;
+}
+.frontdesk-table .frontdesk-invoice-badge.text-bg-light {
+    background: #edf3f9 !important;
+    color: #344960 !important;
+}
+@media (max-width: 480px) {
+    .lioc-frontdesk-page .frontdesk-panel { padding: 14px; }
+}
+
+/* Give native date controls room for both the date and calendar icon. */
+.frontdesk-toolbar input[type="date"],
+.hk-toolbar input[type="date"] {
+    padding-inline: 12px;
+}
+.frontdesk-toolbar input[type="date"]::-webkit-calendar-picker-indicator,
+.hk-toolbar input[type="date"]::-webkit-calendar-picker-indicator {
+    margin-inline-start: 10px;
+}
+
+/* Keep meal dropdown text and arrows comfortably inside their borders. */
+.lioc-meals .form-select {
+    padding: 8px 38px 8px 12px;
+    background-position: right 12px center;
+    background-size: 16px 12px;
+}
+
+/* Guest directory */
+.guest-directory {
+    --guest-ink: #14243b;
+    --guest-muted: #53677f;
+    --guest-line: #dce6f2;
+    --guest-blue: #0875d1;
+    min-height: calc(100vh - 65px);
+    padding: 22px 24px 40px;
+    color: var(--guest-ink);
+    background: #f4f7fb;
+    font-family: "Radio Canada", Arial, sans-serif;
+}
+.guest-directory-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 18px; }
+.guest-directory-heading h1 { margin: 0; color: var(--guest-ink); font-family: "Radio Canada Big", Arial, sans-serif; font-size: 1.9rem; font-weight: 700; }
+.guest-directory-heading p { margin: 5px 0 0; color: var(--guest-muted); font-size: .9rem; }
+.guest-primary-button, .guest-search-button, .guest-action-button {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 40px; padding: 8px 14px; border: 1px solid var(--guest-blue);
+    border-radius: 9px; background: var(--guest-blue); color: white; font: inherit; font-weight: 600;
+}
+.guest-primary-button:hover, .guest-search-button:hover { border-color: #075da6; background: #075da6; }
+.guest-directory-panel { padding: 20px; border: 1px solid var(--guest-line); border-radius: 20px; background: white; box-shadow: 0 5px 18px rgb(36 75 115 / 6%); }
+.guest-search { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
+.guest-search-input { position: relative; width: min(100%, 370px); }
+.guest-search-input > svg, .guest-search-input > i { position: absolute; top: 50%; left: 13px; z-index: 1; transform: translateY(-50%); color: #53677f; }
+.guest-search-input .form-control { min-height: 42px; padding: 9px 12px 9px 39px; border: 1px solid #b8ccdf; border-radius: 9px; background: white; color: var(--guest-ink); box-shadow: none; }
+.guest-search-input .form-control:focus { border-color: var(--guest-blue); box-shadow: 0 0 0 3px rgb(8 117 209 / 18%); }
+.guest-table-scroll { overflow-x: auto; border: 1px solid var(--guest-line); border-radius: 10px; }
+.guest-table { min-width: 760px; margin: 0; color: var(--guest-ink); font-size: .85rem; }
+.guest-table > thead > tr > th { padding: 12px 14px; border: 0; background: #edf5fd; color: var(--guest-ink); font-size: .77rem; white-space: nowrap; }
+.guest-table > tbody > tr > td { padding: 12px 14px; border: 0; border-top: 1px solid #e9eff6; background: white; color: var(--guest-ink); }
+.guest-table > tbody > tr:hover > td { background: #f8fbff; }
+.guest-table .guest-id { width: 70px; color: var(--guest-muted); font-size: .78rem; }
+.guest-name { font-weight: 600; }
+.guest-company { min-width: 180px; overflow-wrap: anywhere; }
+.guest-muted { color: var(--guest-muted); }
+.guest-booking-count { display: inline-block; min-width: 32px; padding: 5px 9px; border-radius: 8px; background: #e0efff; color: #075a9b; font-weight: 600; text-align: center; }
+.guest-actions { white-space: nowrap; }
+.guest-action-button { width: 40px; min-height: 40px; padding: 0; border-color: #c6d9ec; background: white; color: #075da6; }
+.guest-action-button + .guest-action-button { margin-left: 5px; }
+.guest-action-button:hover { background: #edf6ff; }
+.guest-table .guest-empty { padding: 26px 14px; color: var(--guest-muted); text-align: center; }
+.guest-directory .pagination { margin: 16px 0 0; }
+.guest-directory :focus-visible { outline: 2px solid var(--guest-blue); outline-offset: 2px; }
+.guest-dialog { font-family: "Radio Canada", Arial, sans-serif; }
+.guest-dialog .form-control, .guest-dialog .form-select {
+    min-height: 40px; padding: 8px 12px; border: 1px solid #b8ccdf; border-radius: 9px; background-color: white;
+}
+.guest-dialog .form-select { padding-right: 38px; background-position: right 12px center; }
+.guest-dialog .form-control:focus, .guest-dialog .form-select:focus { border-color: #0875d1; box-shadow: 0 0 0 3px rgb(8 117 209 / 18%); }
+.guest-dialog .btn { border-radius: 9px; }
+@media (max-width: 575.98px) {
+    .guest-directory { padding: 16px; }
+    .guest-directory-panel { padding: 14px; }
+    .guest-search-input { flex: 1 1 100%; }
+    .guest-dialog .modal-body { padding-right: 18px !important; padding-left: 18px !important; }
+}
+
+/* Invoice directory shares the guest directory layout. */
+.invoice-heading-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.invoice-list-table { min-width: 800px; }
+.invoice-list-number { font-weight: 600; }
+.invoice-list-actions { white-space: nowrap; }
+.invoice-list-actions .guest-action-button { vertical-align: middle; text-decoration: none; }
+.invoice-list-actions .guest-action-button + .guest-action-button { margin-left: 5px; }
+.invoice-status { display: inline-block; padding: 5px 9px; border-radius: 8px; background: #edf3f9; color: #344960; font-size: .76rem; font-weight: 600; }
+.invoice-status--1 { background: #fff0cc; color: #805000; }
+.invoice-status--2 { background: #dff4e9; color: #126643; }
+.invoice-status--3 { background: #e0efff; color: #075a9b; }
+.invoice-status--0, .invoice-status--4 { background: #fee6e3; color: #983d37; }
+
+
+/* Registration book directory */
+.registration-list-table { min-width: 1120px; }
+.registration-list-table .registration-year { color: #53677f; }
+.registration-list-table .registration-guest { font-weight: 600; }
+.registration-list-table .registration-guest small { color: #53677f; font-weight: 400; }
+.registration-list-table td:nth-child(7) { min-width: 190px; white-space: nowrap; }
+.registration-list-table .btn-outline-danger {
+    min-width: 40px;
+    min-height: 40px;
+    border: 1px solid #ebc9c8;
+    border-radius: 9px;
+    background: white;
+    color: #a4313d;
+    box-shadow: none;
+}
+.registration-list-table .btn-outline-danger:hover { background: #fff0ef; color: #8e2531; }
+
+
+/* Booking journal overview */
+.journal-heading { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 18px; }
+.journal-heading h1 { margin: 0; color: #14243b; font-family: "Radio Canada Big", Arial, sans-serif; font-size: 1.9rem; font-weight: 700; }
+.journal-heading p { margin: 5px 0 0; color: #53677f; font-size: .9rem; }
+.journal-heading-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.journal-heading-actions .form-select,
+.journal-heading-actions .btn {
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px solid #c6d9ec;
+    border-radius: 9px;
+    background-color: white;
+    color: #075da6;
+    font-family: "Radio Canada", Arial, sans-serif;
+    font-size: .82rem;
+    box-shadow: none;
+}
+.journal-heading-actions .form-select { width: 90px; padding-right: 32px; background-position: right 10px center; }
+.journal-heading-actions .btn:hover { background: #edf6ff; color: #075da6; }
+.journal-heading-actions .journal-primary-button { border-color: #0875d1; background: #0875d1; color: white; }
+.journal-heading-actions .journal-primary-button:hover { border-color: #075da6; background: #075da6; color: white; }
+.journal-panel { min-width: 0; }
+.journal-batch-table { min-width: 720px; }
+.journal-batch-table a:not(.guest-action-button) { color: #075da6; font-weight: 600; text-decoration: none; }
+.journal-batch-table a:hover { text-decoration: underline; }
+.journal-batch-table .guest-action-button { vertical-align: middle; text-decoration: none; }
+.journal-batch-table .badge { padding: 6px 9px; border-radius: 8px; }
+.journal-empty { padding: 26px 14px; color: #53677f; text-align: center; }
+@media (max-width: 575.98px) { .journal-heading-actions { justify-content: flex-start; } }
+
+
+/* The reservation date card stays within the existing 88px sidebar slot. */
+.lioc-reservations .lioc-paper-calendar {
+    position: relative;
+    display: grid;
+    grid-template-columns: 25% 25% 50%;
+    align-items: center;
+    gap: 0;
+    height: 88px;
+    min-height: 88px;
+    padding: 10px 12px 8px;
+    overflow: hidden;
+    border: 1px solid #d8dfe3;
+    background: linear-gradient(180deg, #fff 0%, #fdfefe 80%, #f3f5f5 100%);
+    box-shadow: 0 3px 10px rgb(35 57 67 / 8%);
+    font-family: "Radio Canada", Arial, sans-serif;
+}
+.lioc-paper-calendar::after {
+    position: absolute;
+    right: 14px;
+    bottom: 3px;
+    left: 14px;
+    height: 3px;
+    border-top: 1px solid #e4e8e8;
+    border-bottom: 1px solid #ebeeee;
+    content: '';
+    pointer-events: none;
+}
+.lioc-paper-calendar__binding {
+    position: absolute;
+    top: 0;
+    right: 10px;
+    left: 10px;
+    height: 4px;
+    border-radius: 0 0 3px 3px;
+    background: linear-gradient(#d8dddf, #f2f3f3);
+}
+.lioc-paper-calendar__binding span { position: absolute; top: 1px; width: 3px; height: 3px; border-radius: 50%; background: #aab3b7; }
+.lioc-paper-calendar__binding span:first-child { left: 25%; }
+.lioc-paper-calendar__binding span:last-child { right: 25%; }
+.lioc-paper-calendar__markers { position: absolute; top: 28px; left: 0; display: grid; gap: 3px; }
+.lioc-paper-calendar__markers span { width: 4px; height: 9px; border-radius: 0 3px 3px 0; background: #fed538; }
+.lioc-paper-calendar__markers span:last-child { background: #139ab4; }
+.lioc-paper-calendar__day {
+    min-width: 0;
+    color: #139ab4;
+    font-family: "Arial Narrow", "Radio Canada Big", sans-serif;
+    font-size: clamp(2rem, 2.7vw, 2.65rem);
+    font-stretch: condensed;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+}
+.lioc-paper-calendar__date { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: 1px; color: #405969; font-size: .72rem; font-weight: 600; line-height: 1.15; text-transform: uppercase; }
+.lioc-paper-calendar__date strong { color: #174c5a; font-size: .78rem; }
+.lioc-paper-calendar__month { min-width: 0; padding-left: 8px; border-left: 1px solid #dce4e5; }
+.lioc-paper-calendar__month-title { margin-bottom: 2px; color: #365562; font-size: .48rem; font-weight: 700; line-height: 1; text-align: center; text-transform: uppercase; }
+.lioc-paper-calendar__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: repeat(7, 7.4px); align-items: center; justify-items: center; }
+.lioc-paper-calendar__weekday, .lioc-paper-calendar__cell { display: grid; width: 9px; height: 9px; place-items: center; font-size: 6px; line-height: 1; }
+.lioc-paper-calendar__weekday { color: #087c92; font-weight: 700; }
+.lioc-paper-calendar__cell { color: #526979; }
+.lioc-paper-calendar__cell--selected { border-radius: 50%; background: #fed538; color: #075563; font-weight: 700; }

@@ -69,3 +69,12 @@ customer.accountIBAN.hint: >-
 customer.mandateReference.label: Mandate Reference Number
 customer.reservation.history: "Reservation history"
 customer.reservation.history.empty: "No reservations found."
+
+customer.directory.title: Guests
+customer.directory.subtitle: Manage guest details and booking history.
+customer.directory.create: Create guest
+customer.directory.search: Search guests
+customer.directory.view: View guest details
+customer.directory.edit: Edit guest
+customer.directory.empty: No guests found.
+customer.directory.empty_search: No guests match your search.

@@ -49,6 +49,12 @@ class InvoicePosition
     #[ORM\Column(name: 'position_group', type: 'string', length: 32, nullable: true)]
     private ?string $positionGroup = null;
 
+    #[ORM\OneToOne(mappedBy: 'invoicePosition', targetEntity: MealOrder::class)]
+    private ?MealOrder $mealOrder = null;
+
+    // Session-only reference used while an invoice is being assembled.
+    private ?int $sourceMealOrderId = null;
+
     public function __construct()
     {
         $this->isFlatPrice = false;
@@ -59,6 +65,21 @@ class InvoicePosition
     public function getId()
     {
         return $this->id;
+    }
+
+    public function getMealOrder(): ?MealOrder
+    {
+        return $this->mealOrder;
+    }
+
+    public function getSourceMealOrderId(): ?int
+    {
+        return $this->sourceMealOrderId;
+    }
+
+    public function setSourceMealOrderId(?int $id): void
+    {
+        $this->sourceMealOrderId = $id;
     }
 
     public function getDescription()

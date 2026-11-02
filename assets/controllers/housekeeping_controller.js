@@ -4,7 +4,8 @@ import { request as httpRequest, serializeForm as httpSerializeForm } from '../j
 /* stimulusFetch: 'lazy' */
 
 export default class extends Controller {
-    static targets = ['form', 'spinner', 'content'];
+    static targets = ['form', 'spinner', 'content', 'selectedDate', 'export'];
+    static values = { saved: String, error: String };
 
     connect() {
         const isPreview = document.documentElement.hasAttribute('data-turbo-preview');
@@ -43,6 +44,10 @@ export default class extends Controller {
                 method: 'GET',
                 target: this.contentTarget,
                 loader: false,
+                onSuccess: (html) => {
+                    this.contentTarget.innerHTML = html;
+                    this.syncNavigation();
+                },
                 onComplete: () => {
                     this.stopSpin();
                 },
@@ -61,6 +66,27 @@ export default class extends Controller {
         }
     }
 
+    // Keep the heading, export and view links aligned with AJAX filter changes.
+    syncNavigation() {
+        const summary = this.contentTarget.querySelector('[data-hk-date]');
+        if (summary && this.hasSelectedDateTarget) this.selectedDateTarget.textContent = summary.dataset.hkDate;
+        const params = new URLSearchParams(httpSerializeForm(this.formTarget));
+        this.element.querySelectorAll('[data-hk-view]').forEach((link) => {
+            const url = new URL(link.href, window.location.href);
+            const viewParams = new URLSearchParams(params);
+            viewParams.set('view', link.dataset.hkView);
+            url.search = viewParams.toString();
+            link.href = url.toString();
+        });
+        if (this.hasExportTarget) {
+            const url = new URL(this.exportTarget.href, window.location.href);
+            params.set('range', params.get('view') || 'day');
+            params.delete('view');
+            url.search = params.toString();
+            this.exportTarget.href = url.toString();
+        }
+    }
+
     spin() {
         if (this.hasSpinnerTarget) {
             this.spinnerTarget.classList.add('fa-spin');
@@ -73,10 +99,19 @@ export default class extends Controller {
         }
     }
 
+    clearFeedback(event) {
+        const form = event.target.form;
+        if (!form) return;
+        const feedback = this.element.querySelector('[data-hk-feedback="' + form.id + '"]');
+        if (feedback) feedback.textContent = '';
+    }
+
     async saveRow(event) {
         event.preventDefault();
         const form = event.target;
-        const submitter = event.submitter || form.querySelector('button[type="submit"]');
+        const submitter = event.submitter || this.element.querySelector('button[form="' + form.id + '"]');
+        const feedback = this.element.querySelector('[data-hk-feedback="' + form.id + '"]');
+        if (feedback) feedback.textContent = '';
 
         if (submitter) {
             submitter.disabled = true;
@@ -87,7 +122,20 @@ export default class extends Controller {
             method: form.method || 'POST',
             data: httpSerializeForm(form),
             loader: false,
-            onSuccess: () => {},
+            onSuccess: (text) => {
+                try {
+                    const result = JSON.parse(text);
+                    if (!result.ok) throw new Error('Save failed');
+                    const wasOpen = form.dataset.hkOpen === '1';
+                    const isOpen = result.hkStatus === 'OPEN';
+                    const count = this.element.querySelector('[data-housekeeping-open-count]');
+                    if (count && wasOpen !== isOpen) count.textContent = String(Number(count.textContent) + (isOpen ? 1 : -1));
+                    form.dataset.hkOpen = isOpen ? '1' : '0';
+                    if (feedback) { feedback.textContent = this.savedValue; feedback.classList.remove('is-error'); }
+                } catch (error) {
+                    if (feedback) { feedback.textContent = this.errorValue; feedback.classList.add('is-error'); }
+                }
+            },
             onComplete: () => {
                 if (submitter) {
                     submitter.disabled = false;
@@ -95,6 +143,7 @@ export default class extends Controller {
             },
             onError: (message) => {
                 console.warn('[housekeeping] save failed', message);
+                if (feedback) { feedback.textContent = this.errorValue; feedback.classList.add('is-error'); }
             },
         });
     }

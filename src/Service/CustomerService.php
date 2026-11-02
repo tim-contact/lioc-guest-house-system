@@ -16,6 +16,7 @@ namespace App\Service;
 use App\Entity\Customer;
 use App\Entity\CustomerAddresses;
 use App\Entity\Enum\IDCardType;
+use App\Entity\MealOrder;
 use App\Entity\Template;
 use App\GeoEntity\PostalCodeData;
 use App\Repository\PostalCodeDataRepository;
@@ -161,6 +162,14 @@ class CustomerService
                 'lastname' => 'Anonym',
             ];
             $deletedCustomer = $this->em->getRepository(Customer::class)->findOneBy($criteria);
+            if (!$deletedCustomer instanceof Customer) {
+                throw new \LogicException('The anonymous guest record is missing.');
+            }
+
+            // Retain meal accounting history without retaining the deleted guest association.
+            foreach ($this->em->getRepository(MealOrder::class)->findBy(['guest' => $customer]) as $mealOrder) {
+                $mealOrder->anonymizeGuest($deletedCustomer);
+            }
 
             // assign all reservations of the user to our anonymous user
             foreach ($reservations as $reservation) {

@@ -130,6 +130,12 @@ class ReservationStatus
         return (bool) $this->isBlocking;
     }
 
+    /** Identify the system cancellation/no-show status independently of room blocking. */
+    public function isCancelled(): bool
+    {
+        return self::CODE_CANCELED_NOSHOW === $this->code;
+    }
+
     public function setIsBlocking(bool $isBlocking): self
     {
         $this->isBlocking = $isBlocking;

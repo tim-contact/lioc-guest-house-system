@@ -3,50 +3,51 @@
 {% block title %}{{ 'housekeeping.title'|trans({}, 'Housekeeping') }}{% endblock %}
 
 {% block content %}
-    <div class="container mt-4" data-controller="housekeeping">
-        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <main class="lioc-housekeeping-page" data-controller="housekeeping"
+          data-housekeeping-saved-value="{{ 'housekeeping.saved'|trans({}, 'Housekeeping') }}"
+          data-housekeeping-error-value="{{ 'housekeeping.save_failed'|trans({}, 'Housekeeping') }}">
+        <div class="hk-heading d-flex flex-wrap align-items-center gap-2">
             <div class="me-auto">
                 <h1 class="h3 mb-0">{{ 'housekeeping.title'|trans({}, 'Housekeeping') }}</h1>
-                <div class="text-muted small">
-                    {{ selectedDate|date('d.m.Y') }}
-                </div>
+                <p class="hk-page-subtitle">{{ 'housekeeping.subtitle'|trans({}, 'Housekeeping') }} · <span data-housekeeping-target="selectedDate">{{ selectedDate|date('d.m.Y') }}</span></p>
             </div>
             <a href="#"
                class="btn btn-sm btn-outline-secondary shadow-none"
                data-action="click->housekeeping#submitFilters"
-               title="{{ 'housekeeping.apply'|trans({}, 'Housekeeping') }}">
+               title="{{ 'housekeeping.apply'|trans({}, 'Housekeeping') }}" aria-label="{{ 'housekeeping.apply'|trans({}, 'Housekeeping') }}">
                 <i class="fas fa-sync-alt" data-housekeeping-target="spinner" aria-hidden="true"></i>
             </a>
-            <div class="btn-group" role="group">
-                <a class="btn btn-outline-primary{% if view == 'day' %} active{% endif %}"
+            <div class="btn-group hk-view-switch" role="group" aria-label="{{ 'housekeeping.view.label'|trans({}, 'Housekeeping') }}">
+                <a data-hk-view="day" class="btn btn-outline-primary{% if view == 'day' %} active{% endif %}"
                    href="{{ path('operations.housekeeping', { date: selectedDate|date('Y-m-d'), subsidiary: selectedSubsidiaryId, view: 'day' }) }}">
                     {{ 'housekeeping.view.day'|trans({}, 'Housekeeping') }}
                 </a>
-                <a class="btn btn-outline-primary{% if view == 'week' %} active{% endif %}"
+                <a data-hk-view="week" class="btn btn-outline-primary{% if view == 'week' %} active{% endif %}"
                    href="{{ path('operations.housekeeping', { date: selectedDate|date('Y-m-d'), subsidiary: selectedSubsidiaryId, view: 'week' }) }}">
                     {{ 'housekeeping.view.week'|trans({}, 'Housekeeping') }}
                 </a>
             </div>
         </div>
 
-        <form method="get" action="{{ path('operations.housekeeping') }}" class="mb-3"
+        <form method="get" action="{{ path('operations.housekeeping') }}" class="hk-toolbar"
               data-housekeeping-target="form"
               data-action="change->housekeeping#submitFilters submit->housekeeping#spin">
+            <div class="hk-panel-heading"><h2>{{ 'housekeeping.panel.title'|trans({}, 'Housekeeping') }}</h2></div>
             <div class="row g-2 align-items-end">
                 <div class="col col-md-3">
-                    <label class="form-label">{{ 'housekeeping.date'|trans({}, 'Housekeeping') }}</label>
-                    <input type="date" name="date" value="{{ selectedDate|date('Y-m-d') }}" class="form-control">
+                    <label class="form-label" for="hk-date">{{ 'housekeeping.date'|trans({}, 'Housekeeping') }}</label>
+                    <input type="date" id="hk-date" name="date" value="{{ selectedDate|date('Y-m-d') }}" class="form-control">
                 </div>
                 <div class="col-auto ms-auto d-flex gap-2 flex-nowrap">
                     {% if view == 'day' %}
-                        <a class="btn btn-outline-primary"
+                        <a data-housekeeping-target="export" class="btn btn-outline-primary"
                            href="{{ path('operations.housekeeping.export', { date: selectedDate|date('Y-m-d'), subsidiary: selectedSubsidiaryId, range: 'day', occupancyTypes: selectedOccupancyTypes, statuses: selectedStatusIds }) }}"
                            title="{{ 'housekeeping.export.day'|trans({}, 'Housekeeping') }}">
                             <i class="fas fa-file-csv" aria-hidden="true"></i>
                             <span class="visually-hidden">{{ 'housekeeping.export.day'|trans({}, 'Housekeeping') }}</span>
                         </a>
                     {% else %}
-                        <a class="btn btn-outline-primary"
+                        <a data-housekeeping-target="export" class="btn btn-outline-primary"
                            href="{{ path('operations.housekeeping.export', { date: selectedDate|date('Y-m-d'), subsidiary: selectedSubsidiaryId, range: 'week', occupancyTypes: selectedOccupancyTypes, statuses: selectedStatusIds }) }}"
                            title="{{ 'housekeeping.export.week'|trans({}, 'Housekeeping') }}">
                             <i class="fas fa-file-csv" aria-hidden="true"></i>
@@ -58,7 +59,7 @@
                             data-bs-toggle="collapse"
                             data-bs-target="#housekeepingFilters"
                             aria-expanded="false"
-                            aria-controls="housekeepingFilters">
+                            aria-controls="housekeepingFilters" title="{{ 'housekeeping.filters'|trans({}, 'Housekeeping') }}" aria-label="{{ 'housekeeping.filters'|trans({}, 'Housekeeping') }}">
                         <i class="fas fa-sliders-h" aria-hidden="true"></i>
                     </button>
                 </div>
@@ -114,8 +115,8 @@
             <input type="hidden" name="view" value="{{ view }}">
         </form>
 
-        <div data-housekeeping-target="content">
+        <div class="hk-content" data-housekeeping-target="content">
             {% include 'Operations/Housekeeping/_content.html.twig' %}
         </div>
-    </div>
+    </main>
 {% endblock %}

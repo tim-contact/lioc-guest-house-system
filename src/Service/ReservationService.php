@@ -361,7 +361,7 @@ class ReservationService
     {
         $reservation = $this->em->getRepository(Reservation::class)->find($id);
 
-        if (0 == count($reservation->getInvoices())) {
+        if (0 == count($reservation->getInvoices()) && 0 === $this->em->getRepository(\App\Entity\MealOrder::class)->count(['reservation' => $reservation])) {
             $customers = $reservation->getCustomers();
 
             foreach ($customers as $customer) {

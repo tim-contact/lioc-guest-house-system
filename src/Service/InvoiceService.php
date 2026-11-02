@@ -56,6 +56,7 @@ class InvoiceService
         // Optional like the two above, so the unit tests that build this service by
         // hand keep working; templates then see a null due date.
         private readonly ?EInvoiceReadinessService $readinessService = null,
+        private readonly ?MealBillingService $mealBillingService = null,
     ) {
     }
 
@@ -190,6 +191,12 @@ class InvoiceService
         $invoice = $this->em->getRepository(Invoice::class)->find($id);
 
         if ($invoice instanceof Invoice) {
+            // An invoiced meal must retain its billing link until a correction workflow exists.
+            foreach ($invoice->getPositions() as $position) {
+                if (null !== $position->getMealOrder()) {
+                    throw new \DomainException('meals.error.invoice_locked');
+                }
+            }
             $reservations = $invoice->getReservations();
             foreach ($reservations as $reservation) {
                 $reservation->removeInvoice($invoice);
@@ -551,6 +558,8 @@ class InvoiceService
      */
     public function prefillMiscPositionsWithReservationIds(array $reservationIds, RequestStack $requestStack, bool $useExistingPrices = false): void
     {
+        // Reservation previews use a different entry point and must not absorb invoice-only meals.
+        $mealPositions = $this->mealBillingService?->buildPositions(array_map('intval', $reservationIds)) ?? [];
         $reservations = [];
         foreach ($reservationIds as $resId) {
             $reservation = $this->em->getRepository(Reservation::class)->find($resId);
@@ -559,6 +568,9 @@ class InvoiceService
             }
         }
         $this->prefillMiscPositions($reservations, $requestStack, $useExistingPrices);
+        foreach ($mealPositions as $mealPosition) {
+            $this->saveNewMiscPosition($mealPosition, $requestStack);
+        }
     }
 
     /**

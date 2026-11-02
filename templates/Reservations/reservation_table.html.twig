@@ -86,30 +86,28 @@
 <div class="d-none" data-reservations-calendar-reminder-count="{{ calendarReminderCount|default(0) }}"></div>
 
 <header class="lioc-summary-row">
-    <h1>{{ 'reservation.overview.hero_prefix'|trans }}<span class="lioc-orange">.</span></h1>
+    <div class="lioc-page-title">
+        <h1>{{ 'reservation.overview.brand'|trans }}</h1>
+        <p>{{ 'reservation.overview.hero_prefix'|trans }}.</p>
+    </div>
     <section class="lioc-metrics" aria-label="{{ 'reservation.overview.metrics.label'|trans }}">
         {% set metrics = [
-            {label: 'reservation.overview.metrics.rooms', value: overview.roomCount},
-            {label: 'reservation.overview.metrics.in_house', value: overview.inHouseCount},
-            {label: 'reservation.overview.metrics.available', value: overview.availableCount},
-            {label: 'reservation.overview.metrics.arriving', value: overview.arrivingCount},
+            {label: 'reservation.overview.metrics.rooms', value: overview.roomCount, icon: 'fa-door-open', tone: 'orange'},
+            {label: 'reservation.overview.metrics.in_house', value: overview.inHouseCount, icon: 'fa-user-group', tone: 'red'},
+            {label: 'reservation.overview.metrics.available', value: overview.availableCount, icon: 'fa-bed', tone: 'blue'},
+            {label: 'reservation.overview.metrics.arriving', value: overview.arrivingCount, icon: 'fa-arrow-right-to-bracket', tone: 'green'},
         ] %}
         {% for metric in metrics %}
-            <div class="lioc-metric">
-                <span class="lioc-metric-value">{{ metric.value }}</span>
-                <span class="lioc-metric-label">{{ metric.label|trans }}</span>
+            <div class="lioc-metric lioc-metric--{{ metric.tone }}">
+                <span class="lioc-metric-icon" aria-hidden="true"><i class="fa-solid {{ metric.icon }}"></i></span>
+                <div class="lioc-metric-copy">
+                    <span class="lioc-metric-label">{{ metric.label|trans }}</span>
+                    <strong class="lioc-metric-value">{{ metric.value }}</strong>
+                    <span class="lioc-metric-note">{{ 'reservation.overview.metrics.selected_view'|trans }}</span>
+                </div>
             </div>
         {% endfor %}
     </section>
-    {% if is_granted('ROLE_RESERVATIONS') %}
-        <button type="button" class="btn lioc-new-reservation"
-                data-action="click->reservations#selectAppartmentAction"
-                data-reservations-create-new="true"
-                data-url="{{ path('reservations.select.appartment', {object: objectId}) }}"
-                data-bs-toggle="modal" data-bs-target="#modalCenter">
-            <span aria-hidden="true">+</span> {{ 'reservation.overview.new_reservation'|trans }}
-        </button>
-    {% endif %}
 </header>
 
 <div class="lioc-workspace">

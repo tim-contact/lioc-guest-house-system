@@ -36,6 +36,7 @@ use App\Service\EInvoice\Validation\EInvoiceValidationException;
 use App\Repository\InvoiceRepository;
 use App\Service\InvoiceNumberGenerator;
 use App\Service\InvoiceService;
+use App\Service\MealBillingService;
 use App\Service\PriceService;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use App\Service\ReservationService;
@@ -50,6 +51,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[IsGranted('ROLE_INVOICES')]
 #[Route('/invoices')]
@@ -227,7 +229,7 @@ class InvoiceServiceController extends AbstractController
     }
 
     #[Route('/create/positions/create', name: 'invoices.create.invoice.positions', methods: ['GET', 'POST'])]
-    public function showCreateInvoicePositionsFormAction(ManagerRegistry $doctrine, RequestStack $requestStack, InvoiceService $is, ReservationService $reservationService, EInvoiceReadinessService $readinessService, InvoiceNumberGenerator $numberGenerator, Request $request)
+    public function showCreateInvoicePositionsFormAction(ManagerRegistry $doctrine, RequestStack $requestStack, InvoiceService $is, ReservationService $reservationService, EInvoiceReadinessService $readinessService, InvoiceNumberGenerator $numberGenerator, Request $request, TranslatorInterface $translator)
     {
         $em = $doctrine->getManager();
         $selectedReservationIds = $reservationService->getSelectedReservationIds();
@@ -236,7 +238,14 @@ class InvoiceServiceController extends AbstractController
         if (!$requestStack->getSession()->has('invoicePositionsMiscellaneous')) {
             $requestStack->getSession()->set('invoicePositionsMiscellaneous', new ArrayCollection());
             // prefill positions for all selected reservations
-            $is->prefillMiscPositionsWithReservationIds($selectedReservationIds, $requestStack, true);
+            try {
+                $is->prefillMiscPositionsWithReservationIds($selectedReservationIds, $requestStack, true);
+            } catch (\DomainException $exception) {
+                $requestStack->getSession()->remove('invoicePositionsMiscellaneous');
+                $this->addFlash('warning', $translator->trans($exception->getMessage(), [], 'Meals'));
+
+                return $this->render('feedback.html.twig', ['error' => true]);
+            }
         }
         $newInvoicePositionsMiscellaneousArray = $requestStack->getSession()->get('invoicePositionsMiscellaneous');
 
@@ -603,6 +612,10 @@ class InvoiceServiceController extends AbstractController
             $positionMiscellaneous = $em->getRepository(InvoicePosition::class)->find($id);
         }
 
+        if (null !== $positionMiscellaneous->getSourceMealOrderId() || null !== $positionMiscellaneous->getMealOrder()) {
+            throw $this->createAccessDeniedException();
+        }
+
         $form = $this->createForm(InvoiceMiscPositionType::class, $positionMiscellaneous, [
             'action' => $this->generateUrl('invoices.edit.miscellaneous.position', ['invoiceId' => $invoiceId, 'id' => $id]),
         ]);
@@ -664,6 +677,9 @@ class InvoiceServiceController extends AbstractController
         } else {
             $em = $doctrine->getManager();
             $invoiceMisc = $em->getRepository(InvoicePosition::class)->find($positionId);
+            if (null !== $invoiceMisc->getMealOrder()) {
+                throw $this->createAccessDeniedException();
+            }
             $invoiceId = $invoiceMisc->getInvoice()->getId();
 
             $em->remove($invoiceMisc);
@@ -734,7 +750,7 @@ class InvoiceServiceController extends AbstractController
     }
 
     #[Route('/create/new/invoice', name: 'invoices.create.invoice', methods: ['POST'])]
-    public function createNewInvoiceAction(ManagerRegistry $doctrine, CSRFProtectionService $csrf, RequestStack $requestStack, InvoiceService $is, ReservationService $reservationService, EventDispatcherInterface $eventDispatcher, InvoiceRepository $invoiceRepository, Request $request)
+    public function createNewInvoiceAction(ManagerRegistry $doctrine, CSRFProtectionService $csrf, RequestStack $requestStack, InvoiceService $is, ReservationService $reservationService, EventDispatcherInterface $eventDispatcher, InvoiceRepository $invoiceRepository, Request $request, MealBillingService $mealBilling, TranslatorInterface $translator)
     {
         $em = $doctrine->getManager();
         $error = false;
@@ -770,33 +786,36 @@ class InvoiceServiceController extends AbstractController
                 $invoice->setSubsidiary($em->getReference(Subsidiary::class, $subsidiary->getId()));
             }
 
-            $em->persist($invoice);
+            try {
+                // Claim meal orders in the same transaction as the invoice and its lines.
+                $em->wrapInTransaction(function () use ($em, $invoice, $newInvoicePositionsAppartmentsArray, $newInvoicePositionsMiscellaneousArray, $newInvoiceReservationsArray, $mealBilling): void {
+                    $mealBilling->claimPositions($newInvoicePositionsMiscellaneousArray, array_map('intval', $newInvoiceReservationsArray));
+                    $em->persist($invoice);
+                    foreach ($newInvoicePositionsAppartmentsArray as $appartmentPosition) {
+                        $appartmentPosition->setInvoice($invoice);
+                        if (null !== ($ra = $appartmentPosition->getRevenueAccount())) {
+                            $appartmentPosition->setRevenueAccount($em->getReference(AccountingAccount::class, $ra->getId()));
+                        }
+                        $em->persist($appartmentPosition);
+                    }
+                    foreach ($newInvoicePositionsMiscellaneousArray as $miscellaneousPosition) {
+                        $miscellaneousPosition->setInvoice($invoice);
+                        if (null !== ($ra = $miscellaneousPosition->getRevenueAccount())) {
+                            $miscellaneousPosition->setRevenueAccount($em->getReference(AccountingAccount::class, $ra->getId()));
+                        }
+                        $em->persist($miscellaneousPosition);
+                    }
+                    foreach ($newInvoiceReservationsArray as $reservationid) {
+                        $reservation = $em->getReference(Reservation::class, $reservationid);
+                        $reservation->addInvoice($invoice);
+                        $em->persist($reservation);
+                    }
+                });
+            } catch (\DomainException $exception) {
+                $this->addFlash('warning', $translator->trans($exception->getMessage(), [], 'Meals'));
 
-            foreach ($newInvoicePositionsAppartmentsArray as $appartmentPosition) {
-                $appartmentPosition->setInvoice($invoice);
-                if (null !== ($ra = $appartmentPosition->getRevenueAccount())) {
-                    $appartmentPosition->setRevenueAccount($em->getReference(AccountingAccount::class, $ra->getId()));
-                }
-                $em->persist($appartmentPosition);
+                return $this->render('feedback.html.twig', ['error' => true]);
             }
-
-            foreach ($newInvoicePositionsMiscellaneousArray as $miscellaneousPosition) {
-                $miscellaneousPosition->setInvoice($invoice);
-                // Position lives in session between requests → its revenueAccount is detached.
-                // Re-attach via a managed reference so persist() doesn't treat it as a new entity.
-                if (null !== ($ra = $miscellaneousPosition->getRevenueAccount())) {
-                    $miscellaneousPosition->setRevenueAccount($em->getReference(AccountingAccount::class, $ra->getId()));
-                }
-                $em->persist($miscellaneousPosition);
-            }
-
-            foreach ($newInvoiceReservationsArray as $reservationid) {
-                $reservation = $em->getReference(Reservation::class, $reservationid);
-                $reservation->addInvoice($invoice);
-                $em->persist($reservation);
-            }
-
-            $em->flush();
             $em->refresh($invoice);
 
             $eventDispatcher->dispatch(new InvoiceCreatedEvent($invoice));
@@ -1145,11 +1164,17 @@ class InvoiceServiceController extends AbstractController
      * @return string
      */
     #[Route('/invoice/delete', name: 'invoices.dodelete.invoice', methods: ['DELETE'])]
-    public function deleteInvoiceAction(CSRFProtectionService $csrf, AuthorizationCheckerInterface $authChecker, InvoiceService $is, Request $request)
+    public function deleteInvoiceAction(CSRFProtectionService $csrf, AuthorizationCheckerInterface $authChecker, InvoiceService $is, Request $request, TranslatorInterface $translator)
     {
         if ($authChecker->isGranted('ROLE_ADMIN')) {
             if ($csrf->validateCSRFToken($request, true)) {
-                $delete = $is->deleteInvoice($request->request->get('id'));
+                try {
+                    $delete = $is->deleteInvoice($request->request->get('id'));
+                } catch (\DomainException $exception) {
+                    $this->addFlash('warning', $translator->trans($exception->getMessage(), [], 'Meals'));
+
+                    return new Response('', Response::HTTP_NO_CONTENT);
+                }
 
                 if ($delete) {
                     $this->addFlash('success', 'invoice.flash.delete.success');

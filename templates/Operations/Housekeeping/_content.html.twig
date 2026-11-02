@@ -1,3 +1,20 @@
+<section class="hk-summary" aria-label="{{ 'housekeeping.summary.title'|trans({}, 'Housekeeping') }}" data-hk-date="{{ selectedDate|date('d.m.Y') }}">
+    {% set cards = [
+        {key: 'rooms', label: 'housekeeping.summary.rooms', icon: 'fa-door-open', tone: 'orange'},
+        {key: 'stayovers', label: 'housekeeping.summary.stayovers', icon: 'fa-bed', tone: 'red'},
+        {key: 'free', label: 'housekeeping.summary.free', icon: 'fa-door-closed', tone: 'blue'},
+        {key: 'open', label: 'housekeeping.summary.open', icon: 'fa-clipboard-check', tone: 'green'},
+    ] %}
+    {% for card in cards %}
+        <div class="hk-stat hk-stat--{{ card.tone }}">
+            <span class="hk-stat-icon" aria-hidden="true"><i class="fa-solid {{ card.icon }}"></i></span>
+            <div><span class="hk-stat-label">{{ card.label|trans({}, 'Housekeeping') }}</span>
+                <strong{% if card.key == 'open' %} data-housekeeping-open-count{% endif %}>{{ attribute(summary, card.key) }}</strong>
+                <span class="hk-stat-note">{{ 'housekeeping.summary.selected_date'|trans({}, 'Housekeeping') }}</span></div>
+        </div>
+    {% endfor %}
+</section>
+<div class="hk-table-panel">
 {% if view == 'week' %}
     {% include 'Operations/Housekeeping/_week_view.html.twig' with {
         weekView: weekView,
@@ -17,3 +34,5 @@
         view: view
     } %}
 {% endif %}
+
+</div>

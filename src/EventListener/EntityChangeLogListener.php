@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\EventListener;
 
 use App\Entity\Enum\LogAction;
+use App\Entity\InvoicePosition;
 use App\Entity\Log;
+use App\Entity\MealOrder;
 use App\Entity\MonthlyStatsSnapshot;
 use App\Entity\User;
 use App\Entity\WorkflowLog;
@@ -142,7 +144,7 @@ final class EntityChangeLogListener
                 $log->setEntityClass($item['class']);
                 $log->setEntityId($item['id'] ?? $this->getEntityId($item['entity'], $em));
                 $log->setAction($item['action']);
-                $log->setChanges($this->sanitize($item['changes']));
+                $log->setChanges($this->sanitize($item['changes'], $item['class'], $item['entity']));
                 $log->setUser($userRef);
                 $log->setUsername($username);
                 $log->setIpAddress($ip);
@@ -257,11 +259,13 @@ final class EntityChangeLogListener
      *
      * @return array<string, array{0: mixed, 1: mixed}|array{0: string, 1: string}>
      */
-    private function sanitize(array $changes): array
+    private function sanitize(array $changes, string $entityClass, object $entity): array
     {
         $out = [];
+        // A meal line can reveal a guest's dietary choices through its description and invoice.
+        $mealLine = $entity instanceof InvoicePosition && (null !== $entity->getSourceMealOrderId() || null !== $entity->getMealOrder());
         foreach ($changes as $field => $values) {
-            if ($this->isSensitive($field)) {
+            if (MealOrder::class === $entityClass || $mealLine || $this->isSensitive($field)) {
                 $out[$field] = ['***redacted***', '***redacted***'];
                 continue;
             }

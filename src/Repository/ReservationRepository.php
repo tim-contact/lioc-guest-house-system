@@ -10,6 +10,7 @@ use App\Entity\Reservation;
 use App\Entity\Subsidiary;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\NoResultException;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\Uid\Uuid;
@@ -125,8 +126,8 @@ class ReservationRepository extends ServiceEntityRepository
             ->andWhere('r.endDate >= :start')
             ->andWhere('r.isConflict = 0')
             ->andWhere('r.isConflictIgnored = 0')
-            ->setParameter('start', $start)
-            ->setParameter('end', $end)
+            ->setParameter('start', $start, Types::DATE_IMMUTABLE)
+            ->setParameter('end', $end, Types::DATE_IMMUTABLE)
             ->addOrderBy('r.startDate', 'ASC');
 
         if ($subsidiary instanceof Subsidiary) {

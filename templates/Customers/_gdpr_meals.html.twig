@@ -1,0 +1,6 @@
+<section>
+    <h2>{{ 'meals.export.title'|trans({}, 'Meals') }}</h2>
+    <table><thead><tr><th>{{ 'meals.date'|trans({}, 'Meals') }}</th><th>{{ 'meals.property'|trans({}, 'Meals') }}</th><th>{{ 'meals.item'|trans({}, 'Meals') }}</th><th>{{ 'meals.quantity'|trans({}, 'Meals') }}</th><th>{{ 'meals.total'|trans({}, 'Meals') }}</th><th>{{ 'meals.status'|trans({}, 'Meals') }}</th></tr></thead><tbody>
+    {% for order in orders %}<tr><td>{{ order.mealDate|date('Y-m-d') }}</td><td>{{ order.property.name }}</td><td>{{ order.serviceName }} · {{ order.itemName }}</td><td>{{ order.quantity }}</td><td>{{ (order.quantity * order.unitPriceMinor)|inventory_money(order.currency, app.request.locale) }}</td><td>{{ (order.cancelled ? 'meals.cancelled' : (order.invoicePosition ? 'meals.invoiced' : 'meals.unbilled'))|trans({}, 'Meals') }}</td></tr>{% endfor %}
+    </tbody></table>
+</section>

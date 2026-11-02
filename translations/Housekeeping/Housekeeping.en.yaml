@@ -32,3 +32,17 @@ housekeeping.occupancy.turnover: Turnover
 housekeeping.occupancy.blocked: Blocked
 housekeeping.summary.arrive: Arrival
 housekeeping.summary.depart: Departure
+
+housekeeping.subtitle: Daily room care and assignments
+housekeeping.view.label: Housekeeping view
+housekeeping.filters: Filters
+housekeeping.panel.title: Room housekeeping
+housekeeping.summary.title: Selected date summary
+housekeeping.summary.rooms: Total rooms
+housekeeping.summary.stayovers: Stayovers
+housekeeping.summary.free: Free rooms
+housekeeping.summary.open: Open tasks
+housekeeping.summary.selected_date: Selected date and filters
+housekeeping.save.room: Save %room%
+housekeeping.saved: Saved
+housekeeping.save_failed: Save failed. Please try again.

@@ -9,14 +9,15 @@
 {% endblock %}
 
 {% block content %}
-<div class="container" data-controller="booking-journal"
+<main class="guest-directory journal-directory" data-controller="booking-journal"
      data-booking-journal-batches-url-value="{{ path('journal.batches') }}">
-    <div class="row justify-content-between mb-3">
-        <div class="col">
-            <h4>{{ 'nav.journal'|trans }}</h4>
+    <header class="journal-heading">
+        <div>
+            <h1>{{ 'nav.journal'|trans }}</h1>
+            <p>{{ 'accounting.journal.directory.subtitle'|trans({}, 'messages') }}</p>
         </div>
-        <div class="col-auto d-flex gap-2 align-items-center">
-            <select class="form-select form-select-sm" style="width:6rem"
+        <div class="journal-heading-actions">
+            <select class="form-select form-select-sm journal-year-select" aria-label="{{ 'accounting.journal.batch.year'|trans }}"
                     data-booking-journal-target="yearSelect"
                     data-action="change->booking-journal#yearChange">
                 {% for y in years %}
@@ -24,7 +25,7 @@
                 {% endfor %}
             </select>
             <div class="dropdown">
-                <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <button class="btn journal-primary-button dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fas fa-plus"></i> {{ 'button.add'|trans }}
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
@@ -59,18 +60,20 @@
                 <i class="fas fa-file-export"></i> {{ 'accounting.journal.export.year'|trans }}
             </button>
             <div class="vr"></div>
-            <a href="{{ path('bank_import.index') }}" class="btn btn-outline-secondary btn-sm" title="{{ 'accounting.bank_import.title'|trans }}">
+            <a href="{{ path('bank_import.index') }}" class="btn btn-outline-secondary btn-sm" title="{{ 'accounting.bank_import.title'|trans }}" aria-label="{{ 'accounting.bank_import.title'|trans }}">
                 <i class="fas fa-file-import"></i>
             </a>
-            <a href="{{ path('journal.settings.index') }}" class="btn btn-outline-secondary btn-sm" title="{{ 'accounting.settings.title'|trans }}">
+            <a href="{{ path('journal.settings.index') }}" class="btn btn-outline-secondary btn-sm" title="{{ 'accounting.settings.title'|trans }}" aria-label="{{ 'accounting.settings.title'|trans }}">
                 <i class="fas fa-cog"></i>
             </a>
         </div>
-    </div>
+    </header>
 
-    <div data-booking-journal-target="batchTable">
-        {% include 'BookingJournal/batch_table.html.twig' with {'batches': [], 'year': currentYear, 'page': 1, 'pages': 0} %}
-    </div>
+    <section class="guest-directory-panel journal-panel" aria-label="{{ 'nav.journal'|trans }}">
+        <div data-booking-journal-target="batchTable">
+            {% include 'BookingJournal/batch_table.html.twig' with {'batches': [], 'year': currentYear, 'page': 1, 'pages': 0} %}
+        </div>
+    </section>
 
     {# ── Offcanvas for forms ─────────────────────────────── #}
     <div class="offcanvas offcanvas-end" tabindex="-1" id="journalOffcanvas"
@@ -82,5 +85,5 @@
         <div class="offcanvas-body" data-booking-journal-target="offcanvasBody">
         </div>
     </div>
-</div>
+</main>
 {% endblock %}

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Unit;
 
 use App\Entity\Reservation;
+use App\Entity\RoomDayStatus;
+use App\Entity\Enum\HousekeepingStatus;
 use App\Repository\AppartmentRepository;
 use App\Repository\ReservationRepository;
 use App\Repository\RoomBlockRepository;
@@ -17,6 +19,29 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 
 final class HousekeepingViewServiceTest extends TestCase
 {
+    public function testSummaryCountsOnlyPersistedOpenRecords(): void
+    {
+        $service = new HousekeepingViewService(
+            $this->createStub(AppartmentRepository::class),
+            $this->createStub(ReservationRepository::class),
+            $this->createStub(RoomDayStatusRepository::class),
+            $this->createStub(TranslatorInterface::class),
+            $this->createStub(RoomBlockRepository::class),
+            new ReservationNameResolver()
+        );
+        $open = new RoomDayStatus();
+        $cleaned = (new RoomDayStatus())->setHkStatus(HousekeepingStatus::CLEANED);
+
+        self::assertSame(
+            ['rooms' => 3, 'stayovers' => 1, 'free' => 2, 'open' => 1],
+            $service->summarizeSelectedDay([
+                ['occupancyType' => 'STAYOVER', 'status' => $open],
+                ['occupancyType' => 'FREE', 'status' => null],
+                ['occupancyType' => 'FREE', 'status' => $cleaned],
+            ])
+        );
+    }
+
     /**
      * @return array<string, array{0: \DateTimeImmutable, 1: Reservation[], 2: string}>
      */

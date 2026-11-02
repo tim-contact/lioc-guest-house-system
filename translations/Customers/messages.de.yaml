@@ -6,3 +6,12 @@ customer.dietary.notes_hint: Ergänze Angaben des Gastes, die die Küche wissen 
 customer.dietary.vegetarian: Vegetarisch
 customer.dietary.non_vegetarian: Nicht vegetarisch
 customer.dietary.jain: Jain
+
+customer.directory.title: Gäste
+customer.directory.subtitle: Verwalte Gästedaten und Buchungsverlauf.
+customer.directory.create: Gast anlegen
+customer.directory.search: Gäste suchen
+customer.directory.view: Gastdetails anzeigen
+customer.directory.edit: Gast bearbeiten
+customer.directory.empty: Keine Gäste vorhanden.
+customer.directory.empty_search: Keine Gäste entsprechen deiner Suche.

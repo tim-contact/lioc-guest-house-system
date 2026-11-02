@@ -18,6 +18,7 @@ use App\Entity\CustomerAddresses;
 use App\Entity\Enum\IDCardType;
 use App\Entity\Template;
 use App\Repository\ReservationRepository;
+use App\Repository\MealOrderRepository;
 use App\Service\CSRFProtectionService;
 use App\Service\CustomerService;
 use App\Service\TemplatesService;
@@ -273,7 +274,7 @@ class CustomerServiceController extends AbstractController
     }
 
     #[Route('/{id}/gdpr', name: 'customers.gdpr.customer', methods: ['GET'])]
-    public function exportGDPRToPdfAction(ManagerRegistry $doctrine, TemplatesService $ts, $id)
+    public function exportGDPRToPdfAction(ManagerRegistry $doctrine, TemplatesService $ts, MealOrderRepository $mealOrders, $id)
     {
         $em = $doctrine->getManager();
 
@@ -291,13 +292,18 @@ class CustomerServiceController extends AbstractController
         $templateId = $defaultTemplate->getId();
 
         $templateOutput = $ts->renderTemplate($templateId, $customer);
+        $exportExtras = '';
         if (null !== $customer->getDietaryPreference() || null !== $customer->getDietaryNotes()) {
             // Include these fields even when an older, user-edited GDPR template does not contain them.
-            $dietaryDetails = $this->renderView('Customers/_gdpr_dietary.html.twig', ['customer' => $customer]);
+            $exportExtras .= $this->renderView('Customers/_gdpr_dietary.html.twig', ['customer' => $customer]);
+        }
+        $orders = $mealOrders->findForGuest($customer);
+        if ([] !== $orders) {
+            $exportExtras .= $this->renderView('Customers/_gdpr_meals.html.twig', ['orders' => $orders]);
+        }
+        if ('' !== $exportExtras) {
             $bodyEnd = strripos($templateOutput, '</body>');
-            $templateOutput = false === $bodyEnd
-                ? $templateOutput.$dietaryDetails
-                : substr_replace($templateOutput, $dietaryDetails, $bodyEnd, 0);
+            $templateOutput = false === $bodyEnd ? $templateOutput.$exportExtras : substr_replace($templateOutput, $exportExtras, $bodyEnd, 0);
         }
 
         $template = $em->getRepository(Template::class)->find($templateId);

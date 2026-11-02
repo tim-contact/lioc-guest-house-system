@@ -1,7 +1,7 @@
 <section class="lioc-handover" aria-labelledby="handover-title">
     <div class="lioc-handover-heading">
         <div>
-            <h2 id="handover-title">{{ 'reservation.overview.handover.title'|trans }}</h2>
+            <h2 id="handover-title"><i class="fa-solid fa-clipboard-check lioc-handover-heading-icon" aria-hidden="true"></i> {{ 'reservation.overview.handover.title'|trans }}</h2>
         </div>
         {% if is_granted('ROLE_OPERATIONS') %}
             <a href="{{ path('operations.housekeeping') }}" class="lioc-text-link">

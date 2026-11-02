@@ -3,7 +3,7 @@
 {% block title %}{{ 'operations.frontdesk.title'|trans }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4"
+<main class="lioc-housekeeping-page lioc-frontdesk-page"
      data-controller="reservations housekeeping"
      data-reservations-translations-value="{{
         {
@@ -18,28 +18,27 @@
             'reservation.conflict.title': 'reservation.conflict.title'|trans
         }|json_encode|e('html_attr')
      }}">
-    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <div class="hk-heading d-flex flex-wrap align-items-center gap-2">
         <div class="me-auto">
             <h1 class="h3 mb-0">{{ 'operations.frontdesk.title'|trans }}</h1>
-            <div class="text-muted small">
-                {{ selectedDate|date('d.m.Y') }}
-            </div>
+            <div class="hk-page-subtitle" data-housekeeping-target="selectedDate">{{ selectedDate|date('d.m.Y') }}</div>
         </div>
         <a href="#"
            class="btn btn-sm btn-outline-secondary shadow-none"
            data-action="click->housekeeping#submitFilters"
-           title="{{ 'housekeeping.apply'|trans({}, 'Housekeeping') }}">
+           title="{{ 'reservation.table.reload'|trans }}" aria-label="{{ 'reservation.table.reload'|trans }}">
             <i class="fas fa-sync-alt" data-housekeeping-target="spinner" aria-hidden="true"></i>
         </a>
     </div>
 
-    <form method="get" action="{{ path('operations.frontdesk') }}" class="mb-3"
+    <section class="frontdesk-panel">
+    <form method="get" action="{{ path('operations.frontdesk') }}" class="frontdesk-toolbar"
           data-housekeeping-target="form"
           data-action="change->housekeeping#submitFilters">
         <div class="row g-2 align-items-end">
             <div class="col col-md-3">
-                <label class="form-label">{{ 'operations.frontdesk.filter.date'|trans }}</label>
-                <input type="date" name="date" value="{{ selectedDate|date('Y-m-d') }}" class="form-control">
+                <label for="frontdesk-date" class="form-label">{{ 'operations.frontdesk.filter.date'|trans }}</label>
+                <input id="frontdesk-date" type="date" name="date" value="{{ selectedDate|date('Y-m-d') }}" class="form-control">
             </div>
             <div class="col-auto ms-auto">
                 <button class="btn btn-outline-secondary shadow-none"
@@ -47,7 +46,7 @@
                         data-bs-toggle="collapse"
                         data-bs-target="#frontdeskFilters"
                         aria-expanded="false"
-                        aria-controls="frontdeskFilters">
+                        aria-controls="frontdeskFilters" title="{{ 'housekeeping.filters'|trans({}, 'Housekeeping') }}" aria-label="{{ 'housekeeping.filters'|trans({}, 'Housekeeping') }}">
                     <i class="fas fa-sliders-h" aria-hidden="true"></i>
                 </button>
             </div>
@@ -56,8 +55,8 @@
             <div class="card card-body border mt-2 py-2 px-3">
                 <div class="d-flex flex-wrap align-items-end gap-3">
                     <div style="min-width:180px">
-                        <label class="form-label small mb-1">{{ 'operations.frontdesk.filter.subsidiary'|trans }}</label>
-                        <select name="subsidiary" class="form-select form-select-sm">
+                        <label for="frontdesk-subsidiary" class="form-label small mb-1">{{ 'operations.frontdesk.filter.subsidiary'|trans }}</label>
+                        <select id="frontdesk-subsidiary" name="subsidiary" class="form-select form-select-sm">
                             <option value="all"{% if selectedSubsidiaryId == 'all' %} selected{% endif %}>
                                 {{ 'housekeeping.subsidiary.all'|trans({}, 'Housekeeping') }}
                             </option>
@@ -111,5 +110,6 @@
     <div data-housekeeping-target="content">
         {% include 'Operations/Frontdesk/_content.html.twig' %}
     </div>
-</div>
+    </section>
+</main>
 {% endblock %}

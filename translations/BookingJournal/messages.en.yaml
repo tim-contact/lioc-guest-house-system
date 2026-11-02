@@ -287,3 +287,5 @@ preset.workflow.booking_card.desc: "Automatically creates a booking entry (debit
 
 # General
 journal.action: Action
+
+accounting.journal.directory.subtitle: Review journal batches and manage entries.

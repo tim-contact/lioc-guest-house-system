@@ -25,8 +25,8 @@
                 <td class="text-end">{{ position.price|number_format(2, ',', '.') }}</td>
                 {% if mode is defined and mode == 'edit' %}
                 <td>
-                    <a href="#" title="{{ 'button.edit'|trans }}">
-                        <i data-action="click->invoices#openModalAction" data-url="{{ path('invoices.edit.miscellaneous.position', {'invoiceId': 'new', 'id': key}) }}" class="fas fa-edit"></i></a>
+                    {% if not position.sourceMealOrderId %}<a href="#" title="{{ 'button.edit'|trans }}">
+                        <i data-action="click->invoices#openModalAction" data-url="{{ path('invoices.edit.miscellaneous.position', {'invoiceId': 'new', 'id': key}) }}" class="fas fa-edit"></i></a>{% endif %}
                     <a href="#" title="{{ 'button.delete'|trans }}">
                         <i data-action="click->invoices#removeMiscPositionAction" data-url="{{ path('invoices.delete.miscellaneous.invoice.position') }}" data-index="{{ key }}" class="fas fa-trash-alt"></i></a>
                 </td>

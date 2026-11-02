@@ -23,7 +23,7 @@ reservation.edit.change.appartment: Assign new room
 reservation.enddate: To
 reservation.flash.create.success: Reservation has been successfully added.
 reservation.flash.delete.customer.success: The guest was successfully deleted from the room.
-reservation.flash.delete.not.possible: The reservation can no longer be deleted (does it already have an invoice?).
+reservation.flash.delete.not.possible: A reservation with invoices or meal records cannot be deleted.
 reservation.flash.delete.success: Reservation has been successfully deleted.
 reservation.flash.update.conflict: >-
   Please adjust the period. The selected period conflicts with another
@@ -204,6 +204,7 @@ reservation.overview.hero_prefix: Every stay, in view
 reservation.overview.hero_subtitle: Manage stays and room availability at a glance.
 reservation.overview.new_reservation: New reservation
 reservation.overview.loading: Loading the room ledger…
+reservation.overview.metrics.selected_view: Selected view
 reservation.overview.metrics.label: Daily summary
 reservation.overview.metrics.rooms: Rooms
 reservation.overview.metrics.in_house: In house

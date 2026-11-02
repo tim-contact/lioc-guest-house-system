@@ -1,51 +1,42 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}
-    {{ parent() }} -  Kundenverwaltung
-{% endblock %}
-
-{% block description %}
-    {{ parent() }} -  Kundenverwaltung
-{% endblock %}
+{% block title %}{{ 'nav.registrationbook'|trans }}{% endblock %}
+{% block description %}{{ 'registrationbook.directory.subtitle'|trans({}, 'messages') }}{% endblock %}
 
 {% block content %}
-    <div class="container"
-         data-controller="registrationbook"
-         data-registrationbook-search-url-value="{{ path('registrationbook.search') }}">
-        <div class="row">
-            <div class="col-md-6 pe-2">
-                <form class="form" id="registrationbook-search-form"
-                      data-registrationbook-target="searchForm"
-                      data-action="submit->registrationbook#searchAction">
-                    <input type="search" class="form-control" id="search" name="search"
-                           data-registrationbook-target="searchInput"
-                           data-action="input->registrationbook#searchInputAction"
-                           placeholder="{{ 'nav.customer.search'|trans }}" value="{{ search }}"/>
-                </form>
-            </div>
-            <div class="col-md ps-0">
-                <button class="btn btn-secondary" type="button"
-                        data-action="click->registrationbook#searchAction">
-                    <i class="fas fa-search"></i> {{ 'nav.customer.search'|trans }}
-                </button>
-            </div>
-            <div class="col-md text-end">
-                <div class="btn-group">
-                    <button type="button" class="btn btn-secondary" id="openAdd"
-                            data-action="click->registrationbook#openAddReservationsAction"
-                            data-url="{{ path('registrationbook.showadd.reservations') }}"
-                            data-title="{{ 'registrationbook.addreservations'|trans }}"
-                            data-bs-toggle="modal" data-bs-target="#modalCenter">
-                        <i class="fas fa-plus"></i> {{ 'registrationbook.addreservations'|trans }}
-                    </button>
-                </div>
-            </div>
+<main class="guest-directory registration-directory"
+      data-controller="registrationbook"
+      data-registrationbook-search-url-value="{{ path('registrationbook.search') }}">
+    <header class="guest-directory-heading">
+        <div>
+            <h1>{{ 'nav.registrationbook'|trans }}</h1>
+            <p>{{ 'registrationbook.directory.subtitle'|trans({}, 'messages') }}</p>
         </div>
-
-        <div class="row mt-3">
-            <div id="reservationbook-table" class="col" data-registrationbook-target="table">
-                {% include 'RegistrationBook/registrationbook_table.html.twig' %}
+        <button type="button" class="guest-primary-button" id="openAdd"
+                data-action="click->registrationbook#openAddReservationsAction"
+                data-url="{{ path('registrationbook.showadd.reservations') }}"
+                data-title="{{ 'registrationbook.addreservations'|trans }}"
+                data-bs-toggle="modal" data-bs-target="#modalCenter">
+            <i class="fas fa-plus" aria-hidden="true"></i> {{ 'registrationbook.addreservations'|trans }}
+        </button>
+    </header>
+    <section class="guest-directory-panel" aria-label="{{ 'nav.registrationbook'|trans }}">
+        <form class="guest-search" id="registrationbook-search-form"
+              data-registrationbook-target="searchForm"
+              data-action="submit->registrationbook#searchAction">
+            <label class="visually-hidden" for="search">{{ 'registrationbook.directory.search'|trans({}, 'messages') }}</label>
+            <div class="guest-search-input">
+                <i class="fas fa-search" aria-hidden="true"></i>
+                <input type="search" class="form-control" id="search" name="search"
+                       data-registrationbook-target="searchInput"
+                       data-action="input->registrationbook#searchInputAction"
+                       placeholder="{{ 'registrationbook.directory.search'|trans({}, 'messages') }}" value="{{ search }}">
             </div>
+            <button class="guest-search-button" type="submit">{{ 'nav.customer.search'|trans }}</button>
+        </form>
+        <div id="reservationbook-table" data-registrationbook-target="table" aria-live="polite">
+            {% include 'RegistrationBook/registrationbook_table.html.twig' %}
         </div>
-    </div>
+    </section>
+</main>
 {% endblock %}

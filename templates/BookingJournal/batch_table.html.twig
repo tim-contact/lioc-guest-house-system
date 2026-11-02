@@ -1,6 +1,6 @@
 {% if batches|length > 0 %}
-<div class="table-responsive">
-    <table class="table table-bordered table-hover">
+<div class="table-responsive guest-table-scroll">
+    <table class="table guest-table journal-batch-table align-middle">
         <thead>
         <tr>
             <th>{{ 'accounting.journal.batch.month'|trans }}</th>
@@ -8,7 +8,7 @@
             <th class="text-end">{{ 'accounting.journal.cashbook.end'|trans }}</th>
             <th class="text-center">{{ 'accounting.journal.batch.status'|trans }}</th>
             <th>{{ 'accounting.journal.batch.entries_count'|trans }}</th>
-            <th></th>
+            <th><span class="visually-hidden">{{ 'button.details'|trans }}</span></th>
         </tr>
         </thead>
         <tbody>
@@ -34,8 +34,9 @@
                 </td>
                 <td>{{ batch.entries|length }}</td>
                 <td>
-                    <a href="{{ path('journal.batch.entries', {'id': batch.id}) }}" title="{{ 'button.details'|trans }}">
-                        <i class="fas fa-list"></i>
+                    <a href="{{ path('journal.batch.entries', {'id': batch.id}) }}" class="guest-action-button"
+                       title="{{ 'button.details'|trans }}" aria-label="{{ 'button.details'|trans }}">
+                        <i class="fas fa-list" aria-hidden="true"></i>
                     </a>
                 </td>
             </tr>
@@ -45,7 +46,7 @@
 </div>
 {% include 'paginator.html.twig' with { 'url': path('journal.batches', {'year': year}), 'search': '', 'pagination_action': 'click->booking-journal#paginateBatchesAction' } %}
 {% else %}
-<div class="text-center text-muted py-4">
+<div class="guest-empty journal-empty">
     {{ 'accounting.journal.batch.empty'|trans }}
 </div>
 {% endif %}

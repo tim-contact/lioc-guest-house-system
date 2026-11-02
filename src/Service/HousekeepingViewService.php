@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Appartment;
+use App\Entity\Enum\HousekeepingStatus;
 use App\Entity\Reservation;
 use App\Entity\ReservationStatus;
 use App\Entity\RoomBlock;
@@ -29,6 +30,31 @@ class HousekeepingViewService
         private readonly RoomBlockRepository $roomBlockRepository,
         private readonly ReservationNameResolver $reservationNameResolver,
     ) {
+    }
+
+    /**
+     * Summarize the selected date within the displayed, filtered room scope.
+     * Only persisted OPEN records count as tasks.
+     *
+     * @param array<int, array{occupancyType: string, status: RoomDayStatus|null}> $rows
+     * @return array{rooms: int, stayovers: int, free: int, open: int}
+     */
+    public function summarizeSelectedDay(array $rows): array
+    {
+        $summary = ['rooms' => 0, 'stayovers' => 0, 'free' => 0, 'open' => 0];
+        foreach ($rows as $row) {
+            ++$summary['rooms'];
+            if ($row['occupancyType'] === 'STAYOVER') {
+                ++$summary['stayovers'];
+            } elseif ($row['occupancyType'] === 'FREE') {
+                ++$summary['free'];
+            }
+            if ($row['status'] instanceof RoomDayStatus && $row['status']->getHkStatus() === HousekeepingStatus::OPEN) {
+                ++$summary['open'];
+            }
+        }
+
+        return $summary;
     }
 
     /**

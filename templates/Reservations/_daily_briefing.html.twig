@@ -1,10 +1,43 @@
 <aside class="lioc-briefing" aria-labelledby="daily-briefing-title">
-    <div class="lioc-date-lockup">
-        <span class="lioc-date-number">{{ overview.date|date('d') }}</span>
-        <span class="lioc-date-copy">
-            <strong>{{ weekdayLabels[overview.date|date('N')] }}</strong>
-            <span>{{ getLocalizedMonth(overview.date|date('n'), 'MMMM', app.request.locale) }} {{ overview.date|date('Y') }}</span>
-        </span>
+    {% if is_granted('ROLE_RESERVATIONS') %}
+        <button type="button" class="btn lioc-new-reservation"
+                data-action="click->reservations#selectAppartmentAction"
+                data-reservations-create-new="true"
+                data-url="{{ path('reservations.select.appartment', {object: objectId}) }}"
+                data-bs-toggle="modal" data-bs-target="#modalCenter">
+            <span aria-hidden="true">+</span> {{ 'reservation.overview.new_reservation'|trans }}
+        </button>
+    {% endif %}
+    {% set cardDate = overview.date %}
+    {% set monthStart = cardDate|date_modify('first day of this month') %}
+    {% set firstWeekday = monthStart|date('w') + 0 %}
+    {% set monthDays = cardDate|date('t') + 0 %}
+    {% set selectedDay = cardDate|date('j') + 0 %}
+    <div class="lioc-date-lockup lioc-paper-calendar"
+         data-controller="reservation-date-card"
+         data-reservation-date-card-displayed-value="{{ cardDate|date('Y-m-d', 'UTC') }}"
+         data-reservation-date-card-server-time-value="{{ 'now'|date('U') }}"
+         role="img" aria-label="{{ getLocalizedDate(cardDate, 'EEEE, d MMMM y', app.request.locale) }}">
+        <div class="lioc-paper-calendar__binding" aria-hidden="true"><span></span><span></span></div>
+        <div class="lioc-paper-calendar__markers" aria-hidden="true"><span></span><span></span></div>
+        <div class="lioc-paper-calendar__day" aria-hidden="true">{{ cardDate|date('d') }}</div>
+        <div class="lioc-paper-calendar__date" aria-hidden="true">
+            <strong>{{ weekdayLabels[cardDate|date('N')] }}</strong>
+            <span>{{ getLocalizedMonth(cardDate|date('n'), 'MMM', app.request.locale) }}</span>
+            <span>{{ cardDate|date('Y') }}</span>
+        </div>
+        <div class="lioc-paper-calendar__month" aria-hidden="true">
+            <div class="lioc-paper-calendar__month-title">{{ getLocalizedMonth(cardDate|date('n'), 'MMM', app.request.locale) }} {{ cardDate|date('Y') }}</div>
+            <div class="lioc-paper-calendar__grid">
+                {% for weekday in [7, 1, 2, 3, 4, 5, 6] %}
+                    <span class="lioc-paper-calendar__weekday">{{ weekdayLabels[weekday]|first|upper }}</span>
+                {% endfor %}
+                {% for cell in 0..41 %}
+                    {% set day = cell - firstWeekday + 1 %}
+                    <span class="lioc-paper-calendar__cell{% if day == selectedDay %} lioc-paper-calendar__cell--selected{% endif %}">{% if day >= 1 and day <= monthDays %}{{ day }}{% endif %}</span>
+                {% endfor %}
+            </div>
+        </div>
     </div>
 
     <section class="lioc-briefing-section" aria-labelledby="daily-briefing-title">

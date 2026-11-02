@@ -65,6 +65,18 @@ class HousekeepingController extends AbstractController
             $dayView = $viewService->filterDayViewByOccupancy($dayView, $selectedOccupancyTypes);
         }
 
+        $summaryRows = $dayView['rows'] ?? [];
+        if ('week' === $view && $weekView) {
+            $dateKey = $selectedDate->format('Y-m-d');
+            $summaryRows = [];
+            foreach ($weekView['rows'] as $row) {
+                $cell = $row['days'][$dateKey] ?? null;
+                if (null !== $cell && in_array($cell['occupancyType'], $selectedOccupancyTypes, true)) {
+                    $summaryRows[] = $cell;
+                }
+            }
+        }
+
         $rowForms = [];
         $rowFormsMobile = [];
         if ('day' === $view && $dayView) {
@@ -88,6 +100,7 @@ class HousekeepingController extends AbstractController
             'view' => $view,
             'dayView' => $dayView,
             'weekView' => $weekView,
+            'summary' => $viewService->summarizeSelectedDay($summaryRows),
             'rowForms' => $rowForms,
             'rowFormsMobile' => $rowFormsMobile,
             'statusLabels' => $viewService->getStatusLabels(),

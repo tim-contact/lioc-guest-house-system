@@ -1,0 +1,47 @@
+{% extends 'base.html.twig' %}
+{% block title %}{{ 'meals.title'|trans({}, 'Meals') }}{% endblock %}
+{% block content %}
+<main class="container-fluid px-3 px-xl-4 py-4 lioc-inventory lioc-meals">
+    <div class="inventory-header">
+        <div class="inventory-heading"><h1>{{ 'meals.title'|trans({}, 'Meals') }}</h1><p>{{ 'meals.intro'|trans({}, 'Meals') }}</p></div>
+        <form method="get" action="{{ path('operations.meals') }}" class="d-flex flex-wrap align-items-end gap-2">
+            <div><label class="form-label" for="meal-date-filter">{{ 'meals.date'|trans({}, 'Meals') }}</label><input class="form-control" type="date" name="date" id="meal-date-filter" value="{{ date|date('Y-m-d') }}" required></div>
+            <div><label class="form-label" for="meal-property-filter">{{ 'meals.property'|trans({}, 'Meals') }}</label><select class="form-select" id="meal-property-filter" name="subsidiary"><option value="all">{{ 'meals.all_properties'|trans({}, 'Meals') }}</option>{% for p in properties %}<option value="{{ p.id }}"{{ property and property.id == p.id ? ' selected' : '' }}>{{ p.name }}</option>{% endfor %}</select></div>
+            <button class="inventory-button inventory-button--quiet" type="submit">{{ 'meals.apply'|trans({}, 'Meals') }}</button>
+        </form>
+    </div>
+    <div class="inventory-workspace">
+        <section class="inventory-panel" aria-labelledby="meal-orders-title">
+            <div class="inventory-panel-heading"><h2 id="meal-orders-title">{{ 'meals.orders'|trans({}, 'Meals') }}</h2></div>
+            <div class="inventory-table-wrap"><table class="inventory-table"><thead><tr><th>{{ 'meals.guest'|trans({}, 'Meals') }}</th><th>{{ 'meals.room'|trans({}, 'Meals') }}</th><th>{{ 'meals.item'|trans({}, 'Meals') }}</th><th>{{ 'meals.quantity'|trans({}, 'Meals') }}</th><th>{{ 'meals.total'|trans({}, 'Meals') }}</th><th>{{ 'meals.status'|trans({}, 'Meals') }}</th><th>{{ 'meals.actions'|trans({}, 'Meals') }}</th></tr></thead><tbody>
+            {% for order in orders %}<tr><td>{{ order.guest.firstname }} {{ order.guest.lastname }}{% if order.guest.dietaryPreference %}<br><small>{{ order.guest.dietaryPreference }}</small>{% endif %}{% if order.guest.dietaryNotes %}<br><small>{{ order.guest.dietaryNotes }}</small>{% endif %}</td><td>{{ order.property.name }}{% if order.validForStay %} · {{ order.reservation.appartment.number }}{% endif %}</td><td>{{ order.serviceName }} · {{ order.itemName }}</td><td>{{ order.quantity }}</td><td>{{ (order.quantity * order.unitPriceMinor)|inventory_money(order.currency, app.request.locale) }}</td><td>{{ (order.cancelled ? 'meals.cancelled' : (order.invoicePosition ? 'meals.invoiced' : (order.validForStay ? 'meals.unbilled' : 'meals.needs_review')))|trans({}, 'Meals') }}</td><td>{% if not order.cancelled and not order.invoicePosition %}<form method="post" action="{{ path('operations.meals.order.cancel', {id: order.id}) }}"><input type="hidden" name="_token" value="{{ csrf_token('meal_cancel_' ~ order.id) }}"><input type="hidden" name="subsidiary" value="{{ property ? property.id : 'all' }}"><button type="submit" class="inventory-button inventory-button--quiet">{{ 'meals.cancel_order'|trans({}, 'Meals') }}</button></form>{% else %}—{% endif %}</td></tr>
+            {% else %}<tr><td colspan="7" class="inventory-empty-cell">{{ 'meals.empty'|trans({}, 'Meals') }}</td></tr>{% endfor %}
+            </tbody></table></div>
+        </section>
+        <section class="inventory-panel" aria-labelledby="meal-add-title"><div class="inventory-panel-heading"><h2 id="meal-add-title">{{ 'meals.record'|trans({}, 'Meals') }}</h2></div><div class="p-3">
+            <p class="inventory-panel-hint mx-0">{{ 'meals.record_hint'|trans({}, 'Meals') }}</p>
+            <form method="post" action="{{ path('operations.meals.order.create') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token('meal_order') }}"><input type="hidden" name="date" value="{{ date|date('Y-m-d') }}"><input type="hidden" name="subsidiary" value="{{ property ? property.id : 'all' }}">
+                <label class="form-label" for="meal-guest">{{ 'meals.guest'|trans({}, 'Meals') }}</label>
+                <select id="meal-guest" name="guestReservation" class="form-select mb-3" required><option value="">{{ 'meals.select_guest'|trans({}, 'Meals') }}</option>
+                    {% for reservation in reservations %}<optgroup label="{{ reservation.appartment.object.name }} · {{ reservation.appartment.number }}">
+                        {% set booker = reservation.booker %}
+                        {% if booker and booker not in reservation.customers %}<option value="{{ reservation.id }}:{{ booker.id }}">{{ booker.firstname }} {{ booker.lastname }} ({{ 'meals.booker'|trans({}, 'Meals') }}){% if booker.dietaryPreference %} · {{ booker.dietaryPreference }}{% endif %}</option>{% endif %}
+                        {% for guest in reservation.customers %}<option value="{{ reservation.id }}:{{ guest.id }}">{{ guest.firstname }} {{ guest.lastname }}{% if guest.dietaryPreference %} · {{ guest.dietaryPreference }}{% endif %}</option>{% endfor %}
+                    </optgroup>{% endfor %}
+                </select>
+                <label class="form-label" for="meal-option">{{ 'meals.item'|trans({}, 'Meals') }}</label><select id="meal-option" name="option" class="form-select mb-3" required><option value="">{{ 'meals.select_item'|trans({}, 'Meals') }}</option>{% for option in options %}<option value="{{ option.id }}">{{ option.service }} · {{ option.name }} — {{ option.priceMinor|inventory_money(option.currency, app.request.locale) }}</option>{% endfor %}</select>
+                <label class="form-label" for="meal-quantity">{{ 'meals.quantity'|trans({}, 'Meals') }}</label><input id="meal-quantity" class="form-control mb-3" type="number" min="1" max="100" value="1" name="quantity" required>
+                <button type="submit" class="inventory-button inventory-button--primary">{{ 'meals.record'|trans({}, 'Meals') }}</button>
+            </form>
+        </div></section>
+    </div>
+    <section class="inventory-panel mt-3" aria-labelledby="meal-summary-title"><div class="inventory-panel-heading"><div><h2 id="meal-summary-title">{{ 'meals.summary.title'|trans({}, 'Meals') }}</h2><p class="text-muted small mb-0">{{ 'meals.summary.hint'|trans({}, 'Meals') }}</p></div></div><div class="inventory-table-wrap"><table class="inventory-table"><thead><tr><th>{{ 'meals.item'|trans({}, 'Meals') }}</th><th>{{ 'meals.quantity'|trans({}, 'Meals') }}</th><th>{{ 'meals.summary.subtotal'|trans({}, 'Meals') }}</th></tr></thead><tbody>{% for row in summary %}<tr><td>{{ row.service }} · {{ row.item }}</td><td>{{ row.quantity }}</td><td>{{ row.totalMinor|inventory_money(row.currency, app.request.locale) }}</td></tr>{% else %}<tr><td colspan="3" class="inventory-empty-cell">{{ 'meals.empty'|trans({}, 'Meals') }}</td></tr>{% endfor %}</tbody></table></div></section>
+    {% if is_granted('ROLE_ADMIN') %}
+    <section class="inventory-panel mt-3" aria-labelledby="meal-menu-title"><div class="inventory-panel-heading"><div><h2 id="meal-menu-title">{{ 'meals.menu'|trans({}, 'Meals') }}</h2><p class="text-muted small mb-0">{{ 'meals.menu_hint'|trans({}, 'Meals') }}</p></div></div><div class="px-3 pb-3">
+        <details><summary class="fw-semibold">{{ 'meals.add_option'|trans({}, 'Meals') }}</summary><form class="row g-2 mt-1" method="post" action="{{ path('operations.meals.option.create') }}"><input type="hidden" name="_token" value="{{ csrf_token('meal_option') }}">{% include 'Meals/_option_fields.html.twig' with {option: null, prefix: 'new'} %}<div class="col-12"><button class="inventory-button inventory-button--primary" type="submit">{{ 'meals.save'|trans({}, 'Meals') }}</button></div></form></details>
+        {% for option in allOptions %}<details class="border-top mt-3 pt-3"><summary class="fw-semibold">{{ option.service }} · {{ option.name }} — {{ option.priceMinor|inventory_money(option.currency, app.request.locale) }}{% if not option.active %} ({{ 'meals.inactive'|trans({}, 'Meals') }}){% endif %}</summary><form class="row g-2 mt-1" method="post" action="{{ path('operations.meals.option.update', {id: option.id}) }}"><input type="hidden" name="_token" value="{{ csrf_token('meal_option_' ~ option.id) }}">{% include 'Meals/_option_fields.html.twig' with {option: option, prefix: option.id} %}<div class="col-12"><label><input type="checkbox" name="active" value="1"{{ option.active ? ' checked' : '' }}> {{ 'meals.active'|trans({}, 'Meals') }}</label></div><div class="col-12"><button class="inventory-button inventory-button--quiet" type="submit">{{ 'meals.save'|trans({}, 'Meals') }}</button></div></form></details>{% endfor %}
+    </div></section>
+    {% endif %}
+</main>
+{% endblock %}

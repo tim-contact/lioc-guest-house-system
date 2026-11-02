@@ -1,4 +1,5 @@
-<table class="table table-bordered table-hover">
+<div class="table-responsive guest-table-scroll">
+<table class="table guest-table invoice-list-table align-middle">
     <thead>
     <tr>
         <th>{{ 'invoice.number'|trans }}</th>
@@ -12,20 +13,22 @@
     <tbody>
     {% for invoice in invoices %}
         <tr>
-            <td>{{ invoice.number }}</td>
+            <td class="invoice-list-number">{{ invoice.number }}</td>
             <td>{{ invoice.date|date('d.m.Y') }}</td>
             <td>{{ invoice.lastname }}</td>
-            <td>{{ invoice.company }}</td>
+            <td>{{ invoice.company ?: '—' }}</td>
             <td>
-                {% if invoice.status == 1 %}
-                    {{ 'invoice.status.unpaid'|trans }}
-                {% elseif invoice.status == 2 %}
-                    {{ 'invoice.status.paid'|trans }}
-                {% elseif invoice.status == 3 %}
-                    {{ 'invoice.status.prepaid'|trans }}
-                {% else %}
-                    {{ 'invoice.status.canceled'|trans }}
-                {% endif %}
+                <span class="invoice-status invoice-status--{{ invoice.status }}">
+                    {% if invoice.status == 1 %}
+                        {{ 'invoice.status.unpaid'|trans }}
+                    {% elseif invoice.status == 2 %}
+                        {{ 'invoice.status.paid'|trans }}
+                    {% elseif invoice.status == 3 %}
+                        {{ 'invoice.status.prepaid'|trans }}
+                    {% else %}
+                        {{ 'invoice.status.canceled'|trans }}
+                    {% endif %}
+                </span>
                 {% if invoice.paymentMeans %}
                     {% set paymentMeansIcon = {
                         'CASH': 'fa-coins',
@@ -41,26 +44,28 @@
                     </span>
                 {% endif %}
             </td>
-            <td>
-                <a href="#" title="{{ 'button.details'|trans }}"
+            <td class="invoice-list-actions">
+                <a href="#" class="guest-action-button" aria-label="{{ 'button.details'|trans }}" title="{{ 'button.details'|trans }}"
                    data-action="click->invoices#showInvoiceAction"
                    data-url="{{ path('invoices.get.invoice', {'id': invoice.id}) }}"
                    data-bs-toggle="modal" data-bs-target="#modalCenter">
                     <i class="fas fa-info-circle"></i></a>
-                <a href="#" title="{{ 'button.edit'|trans }}"
+                <a href="#" class="guest-action-button" aria-label="{{ 'button.edit'|trans }}" title="{{ 'button.edit'|trans }}"
                    data-action="click->invoices#showInvoiceAction"
                    data-edit="true"
                    data-url="{{ path('invoices.get.invoice', {'id': invoice.id}) }}"
                    data-bs-toggle="modal" data-bs-target="#modalCenter">
                     <i class="fas fa-edit"></i></a>
                 {% set readiness = einvoiceReadiness[invoice.id] ?? null %}
-                <a class="export-link"
+                <a class="export-link guest-action-button"
+                   aria-label="{{ readiness and readiness.ready ? 'button.export.einvoicepdf'|trans : 'button.export.pdf'|trans }}"
                    href="{{ path('invoices.export.pdf', {'id': invoice.id, 'template': templateId }) }}"
                    title="{{ readiness and readiness.ready ? 'button.export.einvoicepdf'|trans : 'button.export.pdf'|trans }}" target="_blank">
                     <i class="fas fa-file-pdf"></i></a>
                 {# Per invoice, not list-wide: with per-branch issuers the profile can differ. #}
                 {% if readiness and readiness.profileKey == 'xrechnung' %}
                 <a href="{{ path('invoices.export.xrechnung', {'id': invoice.id }) }}"
+                    class="guest-action-button" aria-label="{{ 'button.export.xml'|trans }}"
                     title="{{ 'button.export.xml'|trans }}">
                      <i class="fa-solid fa-file-code"></i></a>
                 {% endif %}
@@ -80,8 +85,11 @@
                 {% endif %}
             </td>
         </tr>
+    {% else %}
+        <tr><td colspan="6" class="guest-empty">{{ (search|default('')|trim ? 'invoice.directory.empty_search' : 'invoice.directory.empty')|trans({}, 'messages') }}</td></tr>
     {% endfor %}
     </tbody>
 </table>
+</div>
 <input id="page" type="hidden" name="page" value="{{ page }}" />
 {% include 'paginator.html.twig' with { 'url' : path('invoices.overview') } %}

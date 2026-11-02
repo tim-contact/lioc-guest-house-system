@@ -74,6 +74,10 @@
                 <source>registrationbook.delete.ask</source>
                 <target>Eintrag wirklich löschen?</target>
             </trans-unit>
-        </body>
+                    <trans-unit id="registrationbook.directory.subtitle"><source>registrationbook.directory.subtitle</source><target>Sieh dir die Gästebucheinträge an.</target></trans-unit>
+            <trans-unit id="registrationbook.directory.search"><source>registrationbook.directory.search</source><target>Meldescheine suchen</target></trans-unit>
+            <trans-unit id="registrationbook.directory.empty"><source>registrationbook.directory.empty</source><target>Keine Meldescheine vorhanden.</target></trans-unit>
+            <trans-unit id="registrationbook.directory.empty_search"><source>registrationbook.directory.empty_search</source><target>Keine Meldescheine entsprechen deiner Suche.</target></trans-unit>
+</body>
     </file>
 </xliff>

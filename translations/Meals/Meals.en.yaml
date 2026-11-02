@@ -1,0 +1,60 @@
+meals.title: Meals
+meals.export.title: Meal history
+meals.intro: Record meals for each guest and review the daily register.
+meals.property: Guest house
+meals.all_properties: All guest houses
+meals.date: Meal date
+meals.apply: Apply
+meals.orders: Daily meal register
+meals.summary.title: Daily meal totals
+meals.summary.hint: Cancelled meals and meals needing review are excluded; amounts are before any added tax.
+meals.summary.subtotal: Subtotal
+meals.guest: Guest
+meals.room: Guest house and room
+meals.item: Meal or drink
+meals.quantity: Quantity
+meals.total: Subtotal
+meals.status: Billing status
+meals.actions: Actions
+meals.cancelled: Cancelled
+meals.invoiced: Invoiced
+meals.unbilled: Not invoiced
+meals.cancel_order: Cancel meal
+meals.empty: No meals recorded for this date.
+meals.record: Record meal
+meals.record_hint: Choose the date and guest house above, then select a guest and meal.
+meals.select_guest: Select a guest and room
+meals.select_item: Select a meal or drink
+meals.booker: booker
+meals.menu: Meal menu and prices
+meals.menu_hint: Changes affect future orders; recorded orders retain their original price and tax.
+meals.add_option: Add a meal or drink
+meals.save: Save
+meals.inactive: Inactive
+meals.active: Available for new orders
+meals.service: Meal or service
+meals.price: Price per item
+meals.currency: Currency
+meals.tax_rate: Tax rate (%)
+meals.tax_mode: Tax treatment
+meals.tax_included: Included in price
+meals.tax_added: Added to price
+meals.flash.recorded: Meal recorded.
+meals.flash.cancelled: Meal cancelled.
+meals.flash.option_saved: Meal option saved.
+meals.error.option_invalid: Enter a valid meal, service, price and currency.
+meals.error.tax_invalid: Enter a valid tax rate and treatment.
+meals.error.quantity_invalid: Enter a quantity from 1 to 100.
+meals.error.reservation_inactive: Select a non-cancelled reservation without a conflict.
+meals.error.guest_invalid: Select a guest belonging to the reservation.
+meals.error.date_outside_stay: The meal date must be within the guest's stay.
+meals.error.option_inactive: This meal is no longer available.
+meals.error.duplicate: This guest already has that meal recorded on this date.
+meals.error.selection_invalid: Select a valid guest and meal.
+meals.error.date_invalid: Enter a valid date.
+meals.error.already_invoiced: An invoiced meal cannot be cancelled here.
+meals.error.invoice_locked: This invoice contains linked meal charges and cannot be deleted here.
+meals.error.invoice_changed: A meal has changed or has already been invoiced. Restart invoice creation and review the meal lines.
+meals.error.invoice_configuration: Meal currency must match the invoice currency and its tax must be configured.
+meals.error.reservation_changed: A meal no longer matches its reservation. Review the meal register before invoicing.
+meals.needs_review: Reservation changed — review

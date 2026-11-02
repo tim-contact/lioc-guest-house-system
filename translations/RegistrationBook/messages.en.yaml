@@ -18,3 +18,8 @@ registrationbook.period: Period
 registrationbook.stays: Stays
 registrationbook.year: Year
 reservationbook.flash.add.success: Entry added successfully.
+
+registrationbook.directory.subtitle: Review guest registration entries.
+registrationbook.directory.search: Search registration entries
+registrationbook.directory.empty: No registration entries found.
+registrationbook.directory.empty_search: No registration entries match your search.
