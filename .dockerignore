@@ -18,6 +18,8 @@ assets/vendor/
 # Local env / secrets (never bake into image)
 .env
 .env.local
+.env.local.php
+/config/secrets/prod/prod.decrypt.private.php
 .env.*.local
 .env.dev
 .env.test
