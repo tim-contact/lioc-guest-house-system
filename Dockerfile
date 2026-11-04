@@ -25,7 +25,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 WORKDIR /var/www/html
 
 COPY composer.json composer.lock symfony.lock ./
-RUN --mount=type=cache,target=/tmp/composer-cache \
+RUN --mount=type=cache,id=lioc-composer-cache,target=/tmp/composer-cache \
     COMPOSER_CACHE_DIR=/tmp/composer-cache composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 
 COPY . .
